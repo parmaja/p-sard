@@ -16,7 +16,8 @@ unit sard;
 interface
 
 uses
-  Classes, SysUtils, mnStreams;
+  Classes, SysUtils, contnrs,
+  mnStreams;
 
 const
    sSardAnsiOpen = '{?sard '; //with the space
@@ -66,28 +67,50 @@ type
   end;
 
   TsardScanType = (stNone, stHeader, stNormal, stString);
-  TsardScanState = (ssNone, ssHeader, ssNormal, ssSQString, ssDQString);
+  TsardScanState = Integer; //(ssNone, ssHeader, ssNormal, ssSQString, ssDQString);
+
+  TsardProcesses = class;
+  TsardCustomScanner = class;
+
+  { TsardProcess }
 
   TsardProcess = class(TObject)
+  private
+    FProcesses: TsardProcesses;
   public
     Index: Integer;
     Collected: string; //buffer
     State: TsardScanState;
     StateType: TsardScanType;
+    constructor Create(vProcesses: TsardProcesses); virtual;
+    procedure Close;
     procedure Scan(const Text: string; Line: Integer; var Column: Integer); virtual; abstract;
   end;
 
-  TsardParserProc = procedure(const Text: string; Line: Integer; var Column: Integer) of object;
-  TsardParsers = array[TsardScanState] of TsardParserProc;
+  TsardProcessClass = class of TsardProcess;
+
+  { TsardProcesses }
+
+  TsardProcesses = class(TObjectList)
+  private
+    FScanner: TsardCustomScanner;
+    function GetItem(Index: Integer): TsardProcess;
+  public
+    constructor Create(vScanner: TsardCustomScanner; FreeObjects: boolean = True); virtual;
+    function Find(const ProcessClass: TsardProcessClass): TsardProcess;
+    function RegisterProcess(ProcessClass: TsardProcessClass): Integer;
+    property Items[Index: Integer]: TsardProcess read GetItem;
+    property Scanner: TsardCustomScanner read FScanner;
+  end;
 
   { TsardScanner }
 
-  TsardScanner = class(TsardFiler)
+  TsardCustomScanner = class(TsardFiler)
   private
-    FState: TsardScanState;
+    FState: Integer;
     FCompleted: Boolean;
     FStarted: Boolean;
-    FParsers: TsardParsers;
+    FProcesses: TsardProcesses;
   protected
     procedure procNone(const Text: string; Line: Integer; var Column: Integer);
     procedure procHeader(const Text: string; Line: Integer; var Column: Integer);
@@ -103,45 +126,71 @@ type
 
     property Started:Boolean read FStarted;
     property Completed:Boolean read FCompleted;
+    property Processes: TsardProcesses read FProcesses;
   public
     constructor Create; override;
     destructor Destroy; override;
     procedure ParseLine(const Text: string; Line: Integer);
   end;
 
+  TsardScanner = class(TsardCustomScanner)
+  private
+  protected
+    prcNone: Integer;
+    prcNormal: Integer;
+    prcHeader: Integer;
+    prcBlockComment: Integer;
+    prcSLComment: Integer;
+  public
+    constructor Create; override;
+  end;
 {
   Common Processes
 }
+
+  { TsardNoneProcess }
 
   TsardNoneProcess = class(TsardProcess)
   protected
     procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
   end;
 
-  TsardNormalCommentProcess = class(TsardProcess)
+  { TsardNormalCommentProcess }
+
+  TsardNormalProcess = class(TsardProcess)
   protected
     procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
   end;
 
-  TsardHeaderCommentProcess = class(TsardProcess)
+  { TsardHeaderCommentProcess }
+
+  TsardHeaderProcess = class(TsardProcess)
   protected
     procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
   end;
+
+  { TsardSLCommentProcess }
 
   TsardSLCommentProcess = class(TsardProcess)
   protected
     procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
   end;
 
+  { TsardBlockCommentProcess }
+
   TsardBlockCommentProcess = class(TsardProcess)
   protected
     procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
   end;
 
+  { TsardSQStringProcess }
+
   TsardSQStringProcess = class(TsardProcess)
   protected
     procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
   end;
+
+  { TsardDQStringProcess }
 
   TsardDQStringProcess = class(TsardProcess)
   protected
@@ -152,6 +201,136 @@ implementation
 
 uses
   StrUtils;
+
+{ TsardProcess }
+
+constructor TsardProcess.Create(vProcesses: TsardProcesses);
+begin
+  inherited Create;
+  FProcesses := vProcesses;
+end;
+
+procedure TsardProcess.Close;
+begin
+
+end;
+
+{ TsardScanner }
+
+constructor TsardScanner.Create;
+begin
+  inherited Create;
+
+  with Processes do
+  begin
+    prcNone := RegisterProcess(TsardNoneProcess);
+    prcNormal := RegisterProcess(TsardNormalProcess);
+    prcHeader := RegisterProcess(TsardHeaderProcess);
+    prcBlockComment := RegisterProcess(TsardBlockCommentProcess);
+    prcSLComment := RegisterProcess(TsardSLCommentProcess);
+  end;
+end;
+
+{ TsardDQStringProcess }
+
+procedure TsardDQStringProcess.Scan(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+{ TsardSQStringProcess }
+
+procedure TsardSQStringProcess.Scan(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+{ TsardBlockCommentProcess }
+
+procedure TsardBlockCommentProcess.Scan(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+{ TsardSLCommentProcess }
+
+procedure TsardSLCommentProcess.Scan(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+{ TsardHeaderCommentProcess }
+
+procedure TsardHeaderProcess.Scan(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+{ TsardNormalCommentProcess }
+
+procedure TsardNormalProcess.Scan(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+{ TsardNoneProcess }
+
+procedure TsardNoneProcess.Scan(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+  {if MidStr(Text, 1, Length(sSardAnsiOpen)) = sSardAnsiOpen then
+  begin
+    //There is a header and it is a Ansi document
+    FStarted := True;
+    FCompleted := False;
+    Column := Column + Length(sSardAnsiOpen); //put the column to the first char of attributes of document
+    ChangeState(ssHeader);
+  end
+  else
+    ChangeState(ssNormal); //nop there is no header... skip to normal}
+end;
+
+{ TsardProcesses }
+
+function TsardProcesses.GetItem(Index: Integer): TsardProcess;
+begin
+  Result := inherited Items[Index] as TsardProcess;
+end;
+
+constructor TsardProcesses.Create(vScanner: TsardCustomScanner; FreeObjects: boolean);
+begin
+  FScanner := vScanner;
+  inherited Create(FreeObjects);
+end;
+
+function TsardProcesses.Find(const ProcessClass: TsardProcessClass): TsardProcess;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if ProcessClass = Items[i].ClassType then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+function TsardProcesses.RegisterProcess(ProcessClass: TsardProcessClass): Integer;
+var
+  aProcess: TsardProcess;
+begin
+  aProcess := ProcessClass.Create(Self);
+  aProcess.Index := Add(aProcess);
+end;
 
 { EmnXMLException }
 
@@ -228,56 +407,46 @@ begin
   DoStart;
 end;
 
-{ TsardScanner }
+{ TsardCustomScanner }
 
-procedure TsardScanner.procNone(const Text: string; Line: Integer; var Column: Integer);
+procedure TsardCustomScanner.procNone(const Text: string; Line: Integer; var Column: Integer);
 begin
-  if MidStr(Text, 1, Length(sSardAnsiOpen)) = sSardAnsiOpen then
-  begin
-    //There is a header and it is a Ansi document
-    FStarted := True;
-    FCompleted := False;
-    Column := Column + Length(sSardAnsiOpen); //put the column to the first char of attributes of document
-    ChangeState(ssHeader);
-  end
-  else
-    ChangeState(ssNormal); //nop there is no header... skip to normal
 end;
 
-procedure TsardScanner.procHeader(const Text: string; Line: Integer; var Column: Integer);
+procedure TsardCustomScanner.procHeader(const Text: string; Line: Integer; var Column: Integer);
 begin
-  ScanBody(ssNormal, '?}', Text, Line, Column)
+  //ScanBody(ssNormal, '?}', Text, Line, Column)
 end;
 
-procedure TsardScanner.procDQString(const Text: string; Line: Integer; var Column: Integer);
+procedure TsardCustomScanner.procDQString(const Text: string; Line: Integer; var Column: Integer);
 begin
 
 end;
 
-procedure TsardScanner.procSQString(const Text: string; Line: Integer;
+procedure TsardCustomScanner.procSQString(const Text: string; Line: Integer;
   var Column: Integer);
 begin
 
 end;
 
-procedure TsardScanner.procSLComment(const Text: string; Line: Integer;
+procedure TsardCustomScanner.procSLComment(const Text: string; Line: Integer;
   var Column: Integer);
 begin
 
 end;
 
-procedure TsardScanner.procComment(const Text: string; Line: Integer;
+procedure TsardCustomScanner.procComment(const Text: string; Line: Integer;
   var Column: Integer);
 begin
 
 end;
 
-procedure TsardScanner.procNormal(const Text: string; Line: Integer; var Column: Integer);
+procedure TsardCustomScanner.procNormal(const Text: string; Line: Integer; var Column: Integer);
 begin
 
 end;
 
-procedure TsardScanner.ChangeState(NextState: TsardScanState);
+procedure TsardCustomScanner.ChangeState(NextState: TsardScanState);
 begin
   if FState <> NextState then
   begin
@@ -286,7 +455,7 @@ begin
   end;
 end;
 
-procedure TsardScanner.ScanBody(NextState: TsardScanState; const SubStr, Text: string; Line: Integer; var Column: Integer);
+procedure TsardCustomScanner.ScanBody(NextState: TsardScanState; const SubStr, Text: string; Line: Integer; var Column: Integer);
 var
   p: integer;
 begin
@@ -303,34 +472,32 @@ begin
   end;
 end;
 
-constructor TsardScanner.Create;
+constructor TsardCustomScanner.Create;
 begin
   inherited Create;
-  FParsers[ssNone] := @procNone;
-  FParsers[ssHeader] := @procHeader;
-  FParsers[ssNormal] := @procNormal;
-  FParsers[ssSQString] := @procSQString;
-  FParsers[ssDQString] := @procDQString;
+  FProcesses := TsardProcesses.Create(Self);
+
 end;
 
-destructor TsardScanner.Destroy;
+destructor TsardCustomScanner.Destroy;
 begin
+  FreeAndNil(FProcesses);
   inherited Destroy;
 end;
 
-procedure TsardScanner.ParseLine(const Text: string; Line: Integer);
+procedure TsardCustomScanner.ParseLine(const Text: string; Line: Integer);
 var
   Column, l: Integer;
 begin
   if not Active then
     raise EsardException.Create('Scanner not started');
-  Column := 1; //start of delphi string is 1
+  Column := 1; //start of pascal string is 1
   l := Length(Text);
   while (Column <= l) do
   begin
-    if not Assigned(FParsers[FState]) then
-      raise EsardException.Create('Parser state not assigned');
-    FParsers[FState](Text, Line, Column);
+    {if not Assigned(FParsers[FState]) then
+      raise EsardException.Create('Parser state not assigned');}
+    //FParsers[FState](Text, Line, Column);
   end;
 end;
 
