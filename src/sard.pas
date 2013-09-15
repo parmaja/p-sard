@@ -65,7 +65,17 @@ type
     property Charset: string read FCharset write FCharset;
   end;
 
-  TsardScanState = (ssNone, ssHeader, ssProlog, ssText);
+  TsardScanType = (stNone, stHeader, stNormal, stString);
+  TsardScanState = (ssNone, ssHeader, ssNormal, ssSQString, ssDQString);
+
+  TsardProcess = class(TObject)
+  public
+    Index: Integer;
+    Collected: string; //buffer
+    State: TsardScanState;
+    StateType: TsardScanType;
+    procedure Scan(const Text: string; Line: Integer; var Column: Integer); virtual; abstract;
+  end;
 
   TsardParserProc = procedure(const Text: string; Line: Integer; var Column: Integer) of object;
   TsardParsers = array[TsardScanState] of TsardParserProc;
@@ -75,17 +85,21 @@ type
   TsardScanner = class(TsardFiler)
   private
     FState: TsardScanState;
-    FSection: TsardScanState;
     FCompleted: Boolean;
     FStarted: Boolean;
     FParsers: TsardParsers;
   protected
     procedure procNone(const Text: string; Line: Integer; var Column: Integer);
     procedure procHeader(const Text: string; Line: Integer; var Column: Integer);
-    procedure procProlog(const Text: string; Line: Integer; var Column: Integer);
-    procedure procText(const Text: string; Line: Integer; var Column: Integer);
+    procedure procNormal(const Text: string; Line: Integer; var Column: Integer);
+    procedure procDQString(const Text: string; Line: Integer; var Column: Integer);
+    procedure procSQString(const Text: string; Line: Integer; var Column: Integer);
+    procedure procSLComment(const Text: string; Line: Integer; var Column: Integer); //Single line comment
+    procedure procComment(const Text: string; Line: Integer; var Column: Integer);
 
     procedure ChangeState(NextState: TsardScanState);
+
+    procedure ScanBody(NextState: TsardScanState; const SubStr, Text: string; Line: Integer; var Column: Integer); deprecated;
 
     property Started:Boolean read FStarted;
     property Completed:Boolean read FCompleted;
@@ -93,6 +107,45 @@ type
     constructor Create; override;
     destructor Destroy; override;
     procedure ParseLine(const Text: string; Line: Integer);
+  end;
+
+{
+  Common Processes
+}
+
+  TsardNoneProcess = class(TsardProcess)
+  protected
+    procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
+  end;
+
+  TsardNormalCommentProcess = class(TsardProcess)
+  protected
+    procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
+  end;
+
+  TsardHeaderCommentProcess = class(TsardProcess)
+  protected
+    procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
+  end;
+
+  TsardSLCommentProcess = class(TsardProcess)
+  protected
+    procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
+  end;
+
+  TsardBlockCommentProcess = class(TsardProcess)
+  protected
+    procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
+  end;
+
+  TsardSQStringProcess = class(TsardProcess)
+  protected
+    procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
+  end;
+
+  TsardDQStringProcess = class(TsardProcess)
+  protected
+    procedure Scan(const Text: string; Line: Integer; var Column: Integer);  override;
   end;
 
 implementation
@@ -184,24 +237,42 @@ begin
     //There is a header and it is a Ansi document
     FStarted := True;
     FCompleted := False;
-    Column := Column + Length(sSardAnsiOpen); //put the column to the first char of attributes of xml document
+    Column := Column + Length(sSardAnsiOpen); //put the column to the first char of attributes of document
     ChangeState(ssHeader);
   end
   else
-    ChangeState(ssProlog); //nop there is no header... skip to prolog section
+    ChangeState(ssNormal); //nop there is no header... skip to normal
 end;
 
 procedure TsardScanner.procHeader(const Text: string; Line: Integer; var Column: Integer);
 begin
-
+  ScanBody(ssNormal, '?}', Text, Line, Column)
 end;
 
-procedure TsardScanner.procProlog(const Text: string; Line: Integer; var Column: Integer);
+procedure TsardScanner.procDQString(const Text: string; Line: Integer; var Column: Integer);
 begin
 
 end;
 
-procedure TsardScanner.procText(const Text: string; Line: Integer; var Column: Integer);
+procedure TsardScanner.procSQString(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+procedure TsardScanner.procSLComment(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+procedure TsardScanner.procComment(const Text: string; Line: Integer;
+  var Column: Integer);
+begin
+
+end;
+
+procedure TsardScanner.procNormal(const Text: string; Line: Integer; var Column: Integer);
 begin
 
 end;
@@ -215,15 +286,31 @@ begin
   end;
 end;
 
+procedure TsardScanner.ScanBody(NextState: TsardScanState; const SubStr, Text: string; Line: Integer; var Column: Integer);
+var
+  p: integer;
+begin
+  p := PosEx(SubStr, Text, Column);
+  if p > 0 then
+  begin
+    //AddBuffer(RangeStr(Text, Column, p - 1), NextState);
+    Column := p + Length(SubStr);
+  end
+  else
+  begin
+    //AddBuffer(RangeStr(Text, Column, MaxInt), State);
+    Column := Length(Text) + 1;
+  end;
+end;
+
 constructor TsardScanner.Create;
 begin
   inherited Create;
-  FSection := ssProlog;
-
   FParsers[ssNone] := @procNone;
   FParsers[ssHeader] := @procHeader;
-  FParsers[ssText] := @procText;
-  FParsers[ssProlog] := @procProlog;
+  FParsers[ssNormal] := @procNormal;
+  FParsers[ssSQString] := @procSQString;
+  FParsers[ssDQString] := @procDQString;
 end;
 
 destructor TsardScanner.Destroy;
