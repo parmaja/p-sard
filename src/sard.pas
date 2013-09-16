@@ -320,7 +320,7 @@ end;
 
 function TsardProcess.CheckText(S: string; const Text: string; const Column: Integer): Boolean;
 begin
-  Result := (Length(Text) - Column) > length(S);
+  Result := (Length(Text) - Column) >= length(S);
   if Result then
     Result := LowerCase(MidStr(Text, Column, Length(S))) = LowerCase(S); //caseinsensitive
 end;
@@ -380,7 +380,6 @@ end;
 
 procedure TsardProcess.ChangeState(NextState: TsardScanState);
 begin
-  //Flush;
   Processes.Scanner.ChangeState(NextState);
 end;
 
@@ -463,8 +462,15 @@ end;
 
 procedure TsardBlockCommentProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
-  while (Column <= Length(Text)) and not (CheckText('*/', Text, Column)) do
+  while (Column <= Length(Text)) do
+  begin
+    if (CheckText('*/', Text, Column)) then
+    begin
+      Inc(Column, 2);//2 chars
+      break;
+    end;
     Inc(Column);
+  end;
   if Column <= Length(Text) then
     ChooseState(Text, Column, Line);
 end;
@@ -493,8 +499,15 @@ end;
 { TsardHeaderCommentProcess }
 
 procedure TsardHeaderProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
+var
+  c: Integer;
 begin
-  ScanTo(prcWhiteSpace, '?}', Text, Column, Line)
+  c := Column;
+  while (Column <= Length(Text)) and (Text[Column] <> '}') do
+    Inc(Column);
+  Push(MidStr(Text, c, Column - c));
+  if Column <= Length(Text) then
+    ChooseState(Text, Column, Line);
 end;
 
 function TsardHeaderProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -521,14 +534,14 @@ end;
 
 procedure TsardStartProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
-  if MidStr(Text, 1, Length(sSardAnsiOpen)) = sSardAnsiOpen then
+  if LeftStr(Text, Length(sSardAnsiOpen)) = sSardAnsiOpen then
   begin
     //There is a header and it is a Ansi document
     Column := Column + Length(sSardAnsiOpen); //put the column to the first char of attributes of document
     ChangeState(prcHeader);
   end
   else
-    ChangeState(prcWhiteSpace); //nop there is no header... skip to normal
+    ChooseState(Text, Column, Line); //nop there is no header... skip to normal
 end;
 
 function TsardStartProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
