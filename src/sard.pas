@@ -7,11 +7,10 @@ unit sard;
  * @author    Zaher Dirkey <zaher at parmaja dot com>
  *}
 
-{$M+}
-{$H+}
 {$IFDEF FPC}
 {$mode objfpc}
 {$ENDIF}
+{$H+}{$M+}
 
 interface
 
@@ -20,9 +19,12 @@ uses
   mnStreams;
 
 const
-  OPEN_IDENTIFIER_CHARS = ['A'..'Z', 'a'..'z', '_'];
-  IDENTIFIER_CHARS = OPEN_IDENTIFIER_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
-  OPERATOR_CHARS = ['+', '-', '*', '/', '^', '&'];
+  IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
+  IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
+  NUMBER_OPEN_CHARS = ['0'..'9'];
+  NUMBER_CHARS = NUMBER_OPEN_CHARS + ['.','E'];
+  OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&'];
+  OPERATOR_CHARS = OPERATOR_OPEN_CHARS {+ ['']};
   SYMBOL_CHARS = ['$', '#', '@', '!', '\'];
   sSardAnsiOpen = '{?sard '; //with the space
   sWhitespace = [' ', #9, #13, #10];
@@ -119,8 +121,6 @@ type
     property Scanner: TsardCustomScanner read FScanner;
   end;
 
-  { TsardScanner }
-
   { TsardCustomScanner }
 
   TsardCustomScanner = class(TsardFiler)
@@ -183,6 +183,14 @@ type
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
   end;
 
+  { TsardNumberProcess }
+
+  TsardNumberProcess = class(TsardProcess) //none white space
+  protected
+    procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
+    function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
+  end;
+
   { TsardOperatorProcess }
 
   TsardOperatorProcess = class(TsardProcess)
@@ -228,6 +236,7 @@ var
   prcHeader: Integer = 0;
   prcWhiteSpace: Integer = 0;
   prcIdentifier: Integer = 0;
+  prcNumber: Integer = 0;
   prcSQString: Integer = 0;
   prcDQString: Integer = 0;
   prcBlockComment: Integer = 0;
@@ -237,6 +246,25 @@ implementation
 
 uses
   StrUtils;
+
+{ TsardNumberProcess }
+
+procedure TsardNumberProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
+var
+  c: Integer;
+begin
+  c := Column;
+  while (Column <= Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
+    Inc(Column);
+  Push(MidStr(Text, c, Column - c));
+  if Column< Length(Text) then
+    ChooseState(Text, Column, Line);
+end;
+
+function TsardNumberProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+begin
+  Result := Text[Column] in NUMBER_OPEN_CHARS;//need to improve to accept unicode chars
+end;
 
 { TsardOperatorProcess }
 
@@ -257,7 +285,7 @@ var
   c: Integer;
 begin
   c := Column;
-  while (Column < Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
+  while (Column <= Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
     Inc(Column);
   Push(MidStr(Text, c, Column - c));
   if Column< Length(Text) then
@@ -266,7 +294,7 @@ end;
 
 function TsardIdentifierProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
-  Result := IsIdentifier(Text[Column]);//need to improve to accept unicode chars
+  Result := Text[Column] in IDENTIFIER_OPEN_CHARS;//need to improve to accept unicode chars
 end;
 
 { TsardProcess }
@@ -376,6 +404,7 @@ begin
     prcHeader := RegisterProcess(TsardHeaderProcess);
     prcWhiteSpace := RegisterProcess(TsardWhitespaceProcess);
     prcIdentifier := RegisterProcess(TsardIdentifierProcess);
+    prcNumber := RegisterProcess(TsardNumberProcess);
     prcSQString := RegisterProcess(TsardSQStringProcess);
     prcDQString := RegisterProcess(TsardDQStringProcess);
     prcBlockComment := RegisterProcess(TsardBlockCommentProcess);
@@ -447,7 +476,7 @@ end;
 
 procedure TsardWhitespaceProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
-  while (Column < Length(Text)) and (Text[Column] in sWhitespace) do
+  while (Column <= Length(Text)) and (Text[Column] in sWhitespace) do
     Inc(Column);
   if Column< Length(Text) then
     ChooseState(Text, Column, Line);
