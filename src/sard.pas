@@ -12,6 +12,12 @@ unit sard;
 {$ENDIF}
 {$H+}{$M+}
 
+{TODO:
+  Check s is not empty before push
+  Push with the process class and id
+
+}
+
 interface
 
 uses
@@ -87,7 +93,8 @@ type
   protected
     function IsIdentifier(vChar: AnsiChar): Boolean;
     function IsOperator(vChar: AnsiChar): Boolean;
-    function CheckText(S: string; const Text:string; const Column: Integer): Boolean;
+    function CheckText(S: string; const Text: string; const Column: Integer): Boolean;
+    function ScanText(S: string; const Text: string; var Column: Integer): Boolean;
     procedure ScanTo(NextState: TsardScanState; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer); virtual; abstract;
     procedure Push(S: String); virtual;
@@ -238,6 +245,7 @@ var
   prcWhiteSpace: Integer = 0;
   prcIdentifier: Integer = 0;
   prcNumber: Integer = 0;
+  prcOperator: Integer = 0;
   prcSQString: Integer = 0;
   prcDQString: Integer = 0;
   prcBlockComment: Integer = 0;
@@ -275,7 +283,7 @@ var
   c: Integer;
 begin
   c := Column;
-  while (Column <= Length(Text)) and not(IsOperator(Text[Column])) do //operator is multi char here
+  while (Column <= Length(Text)) and (IsOperator(Text[Column])) do //operator is multi char here
     Inc(Column);
   Push(MidStr(Text, c, Column - c));
   if Column <= Length(Text) then
@@ -323,6 +331,15 @@ begin
   Result := (Length(Text) - Column) >= length(S);
   if Result then
     Result := LowerCase(MidStr(Text, Column, Length(S))) = LowerCase(S); //caseinsensitive
+end;
+
+function TsardProcess.ScanText(S: string; const Text: string; var Column: Integer): Boolean;
+begin
+  Result := (Length(Text) - Column) >= length(S);
+  if Result then
+    Result := LowerCase(MidStr(Text, Column, Length(S))) = LowerCase(S); //caseinsensitive
+  if Result then
+    Column := Column + Length(S);
 end;
 
 procedure TsardProcess.ScanTo(NextState: TsardScanState; const SubStr, Text: string; var Column: Integer; const Line: Integer);
@@ -417,7 +434,9 @@ begin
     prcDQString := RegisterProcess(TsardDQStringProcess);
     prcBlockComment := RegisterProcess(TsardBlockCommentProcess);
     prcLineComment := RegisterProcess(TsardLineCommentProcess);
+    prcOperator := RegisterProcess(TsardOperatorProcess);//Register it after comment because comment take /*
   end;
+  FOffState := prcIdentifier;
 end;
 
 { TsardDQStringProcess }
@@ -566,7 +585,7 @@ function TsardProcesses.ChooseState(const Text: string; var Column: Integer; con
 var
   i: Integer;
 begin
-  Result := Scanner.FOffState;
+  Result := -1;//Scanner.FOffState;
   for i := 0 to Count - 1 do
   begin
     if (Items[i].Index <> Result) and Items[i].Accept(Text, Column, Line) then
@@ -575,6 +594,8 @@ begin
       break;
     end;
   end;
+  if Result < 0 then
+    raise EsardException.Create('State not found');
   Scanner.ChangeState(Result);
 end;
 
@@ -682,6 +703,8 @@ procedure TsardCustomScanner.ChangeState(NextState: TsardScanState);
 begin
   if FState <> NextState then
   begin
+    if NextState = 0 then
+      FState := FState;
     FState := NextState;
   end;
 end;
