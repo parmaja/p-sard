@@ -43,7 +43,6 @@ type
 
   EsardParserException = class(EsardException);
 
-
   TsardFiler = class(TObject)
   private
     FActive: Boolean;
@@ -88,6 +87,7 @@ type
     function CheckText(S: string; const Text:string; const Column: Integer): Boolean;
     procedure ScanTo(NextState: TsardScanState; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer); virtual; abstract;
+    procedure Push(S: String); virtual;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; virtual;
     function ChooseState(const Text: string; var Column: Integer; const Line: Integer): Integer;
     procedure ChangeState(NextState: TsardScanState);
@@ -121,24 +121,23 @@ type
 
   { TsardScanner }
 
+  { TsardCustomScanner }
+
   TsardCustomScanner = class(TsardFiler)
   private
     FState: TsardScanState;
-    FCompleted: Boolean;
-    FStarted: Boolean;
     FProcesses: TsardProcesses;
   protected
     FDefaultState: TsardScanState; //Default process
     FOffState: TsardScanState; //Fall off into it when no one accept it
     procedure ChangeState(NextState: TsardScanState);
-    property Started:Boolean read FStarted;
-
-    property Completed:Boolean read FCompleted;
+    procedure Push(S: String); virtual;
     property Processes: TsardProcesses read FProcesses;
   public
     constructor Create; override;
     destructor Destroy; override;
-    procedure ParseLine(const Text: string; const Line: Integer);
+    procedure ScanLine(const Text: string; const Line: Integer);
+    procedure Scan(const Lines: TStrings);
   end;
 
   TsardScanner = class(TsardCustomScanner)
@@ -254,8 +253,15 @@ end;
 { TsardIdentifierProcess }
 
 procedure TsardIdentifierProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
+var
+  c: Integer;
 begin
-
+  c := Column;
+  while (Column < Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
+    Inc(Column);
+  Push(MidStr(Text, c, Column - c));
+  if Column< Length(Text) then
+    ChooseState(Text, Column, Line);
 end;
 
 function TsardIdentifierProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -318,6 +324,11 @@ begin
     Column := Length(Text) + 1;
     ChangeState(State);
   end;
+end;
+
+procedure TsardProcess.Push(S: String);
+begin
+  Processes.Scanner.Push(S);
 end;
 
 function TsardProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -436,10 +447,10 @@ end;
 
 procedure TsardWhitespaceProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
-  while (Text[Column] in sWhitespace) and (Column < Length(Text)) do
+  while (Column < Length(Text)) and (Text[Column] in sWhitespace) do
     Inc(Column);
   if Column< Length(Text) then
-    Accept(Text, Column, Line);
+    ChooseState(Text, Column, Line);
 end;
 
 function TsardWhitespaceProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -603,6 +614,10 @@ begin
   end;
 end;
 
+procedure TsardCustomScanner.Push(S: String);
+begin
+end;
+
 constructor TsardCustomScanner.Create;
 begin
   inherited Create;
@@ -615,7 +630,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TsardCustomScanner.ParseLine(const Text: string; const Line: Integer);
+procedure TsardCustomScanner.ScanLine(const Text: string; const Line: Integer);
 var
   Column, l: Integer;
 begin
@@ -625,6 +640,18 @@ begin
   l := Length(Text);
   while (Column <= l) do
     Processes[FState].Scan(Text, Column, Line);
+end;
+
+procedure TsardCustomScanner.Scan(const Lines: TStrings);
+var
+  i: Integer;
+begin
+  Start;
+  for i := 0 to Lines.Count -1 do
+  begin
+    ScanLine(Lines[i], i);
+  end;
+  Stop;
 end;
 
 end.
