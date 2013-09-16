@@ -27,6 +27,7 @@ const
   OPERATOR_CHARS = OPERATOR_OPEN_CHARS {+ ['']};
   SYMBOL_CHARS = ['$', '#', '@', '!', '\'];
   sSardAnsiOpen = '{?sard '; //with the space
+  sEOL = [#0, #13, #10];
   sWhitespace = [' ', #9, #13, #10];
 
 type
@@ -251,13 +252,14 @@ uses
 
 procedure TsardNumberProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
-  c: Integer;
+  l, c: Integer;
 begin
   c := Column;
-  while (Column <= Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
+  l := Length(Text);
+  while (Column <= l) and (Text[Column] in NUMBER_CHARS) do
     Inc(Column);
   Push(MidStr(Text, c, Column - c));
-  if Column< Length(Text) then
+  if Column <= Length(Text) then
     ChooseState(Text, Column, Line);
 end;
 
@@ -269,8 +271,15 @@ end;
 { TsardOperatorProcess }
 
 procedure TsardOperatorProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
+var
+  c: Integer;
 begin
-
+  c := Column;
+  while (Column <= Length(Text)) and not(IsOperator(Text[Column])) do //operator is multi char here
+    Inc(Column);
+  Push(MidStr(Text, c, Column - c));
+  if Column <= Length(Text) then
+    ChooseState(Text, Column, Line);
 end;
 
 function TsardOperatorProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -288,7 +297,7 @@ begin
   while (Column <= Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
     Inc(Column);
   Push(MidStr(Text, c, Column - c));
-  if Column< Length(Text) then
+  if Column <= Length(Text) then
     ChooseState(Text, Column, Line);
 end;
 
@@ -415,8 +424,15 @@ end;
 { TsardDQStringProcess }
 
 procedure TsardDQStringProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
+var
+  c: Integer;
 begin
-
+  c := Column;
+  while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
+    Inc(Column);
+  Push(MidStr(Text, c, Column - c));
+  if Column <= Length(Text) then
+    ChooseState(Text, Column, Line);
 end;
 
 function TsardDQStringProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -427,8 +443,15 @@ end;
 { TsardSQStringProcess }
 
 procedure TsardSQStringProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
+var
+  c: Integer;
 begin
-
+  c := Column;
+  while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
+    Inc(Column);
+  Push(MidStr(Text, c, Column - c));
+  if Column <= Length(Text) then
+    ChooseState(Text, Column, Line);
 end;
 
 function TsardSQStringProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -440,7 +463,10 @@ end;
 
 procedure TsardBlockCommentProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
-
+  while (Column <= Length(Text)) and not (CheckText('*/', Text, Column)) do
+    Inc(Column);
+  if Column <= Length(Text) then
+    ChooseState(Text, Column, Line);
 end;
 
 function TsardBlockCommentProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -452,7 +478,11 @@ end;
 
 procedure TsardLineCommentProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
-
+  while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
+    Inc(Column);
+  //Push(MidStr(Text, c, Column - c)); ignore comment
+  if Column <= Length(Text) then
+    ChooseState(Text, Column, Line);
 end;
 
 function TsardLineCommentProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -478,7 +508,7 @@ procedure TsardWhitespaceProcess.Scan(const Text: string; var Column: Integer; c
 begin
   while (Column <= Length(Text)) and (Text[Column] in sWhitespace) do
     Inc(Column);
-  if Column< Length(Text) then
+  if Column <= Length(Text) then
     ChooseState(Text, Column, Line);
 end;
 
@@ -661,14 +691,22 @@ end;
 
 procedure TsardCustomScanner.ScanLine(const Text: string; const Line: Integer);
 var
-  Column, l: Integer;
+  Column, OldColumn: Integer;
+  OldState: TsardScanState;
+  l: Integer;
 begin
   if not Active then
     raise EsardException.Create('Scanner not started');
   Column := 1; //start of pascal string is 1
   l := Length(Text);
   while (Column <= l) do
+  begin
+    OldColumn := Column;
+    OldState := FState;
     Processes[FState].Scan(Text, Column, Line);
+    if (OldColumn = Column) and (OldState = FState) then
+      raise EsardException.Create('Scanner in loop with: ' + Processes[FState].ClassName);
+  end;
 end;
 
 procedure TsardCustomScanner.Scan(const Lines: TStrings);
@@ -678,7 +716,7 @@ begin
   Start;
   for i := 0 to Lines.Count -1 do
   begin
-    ScanLine(Lines[i], i);
+    ScanLine(Lines[i] + #13, i);
   end;
   Stop;
 end;
