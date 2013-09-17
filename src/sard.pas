@@ -84,6 +84,7 @@ type
 
   TsardProcesses = class;
   TsardCustomScanner = class;
+  TsardProcessClass = class of TsardProcess;
 
   { TsardProcess }
 
@@ -101,6 +102,7 @@ type
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; virtual;
     function ChooseState(const Text: string; var Column: Integer; const Line: Integer): Integer;
     procedure ChangeState(NextState: TsardScanState);
+    procedure SelectState(ProcessClass: TsardProcessClass);
   public
     Index: Integer;
     Collected: string; //buffer
@@ -111,8 +113,6 @@ type
     procedure Close;
     property Processes: TsardProcesses read FProcesses;
   end;
-
-  TsardProcessClass = class of TsardProcess;
 
   { TsardProcesses }
 
@@ -139,6 +139,7 @@ type
     FDefaultState: TsardScanState; //Default process
     FOffState: TsardScanState; //Fall off into it when no one accept it
     procedure ChangeState(NextState: TsardScanState);
+    procedure SelectState(ProcessClass: TsardProcessClass);
     procedure Push(S: String); virtual;
     property Processes: TsardProcesses read FProcesses;
   public
@@ -150,6 +151,16 @@ type
 
   TsardScanner = class(TsardCustomScanner)
   private
+    prcStart: Integer;
+    prcHeader: Integer;
+    prcWhiteSpace: Integer;
+    prcIdentifier: Integer;
+    prcNumber: Integer;
+    prcOperator: Integer;
+    prcSQString: Integer;
+    prcDQString: Integer;
+    prcBlockComment: Integer;
+    prcLineComment: Integer;
   protected
   public
     constructor Create; override;
@@ -238,18 +249,6 @@ type
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
   end;
-
-var
-  prcStart: Integer = 0;
-  prcHeader: Integer = 0;
-  prcWhiteSpace: Integer = 0;
-  prcIdentifier: Integer = 0;
-  prcNumber: Integer = 0;
-  prcOperator: Integer = 0;
-  prcSQString: Integer = 0;
-  prcDQString: Integer = 0;
-  prcBlockComment: Integer = 0;
-  prcLineComment: Integer = 0;
 
 implementation
 
@@ -398,6 +397,11 @@ end;
 procedure TsardProcess.ChangeState(NextState: TsardScanState);
 begin
   Processes.Scanner.ChangeState(NextState);
+end;
+
+procedure TsardProcess.SelectState(ProcessClass: TsardProcessClass);
+begin
+  Processes.Scanner.SelectState(ProcessClass);
 end;
 
 constructor TsardProcess.Create(vProcesses: TsardProcesses);
@@ -557,7 +561,7 @@ begin
   begin
     //There is a header and it is a Ansi document
     Column := Column + Length(sSardAnsiOpen); //put the column to the first char of attributes of document
-    ChangeState(prcHeader);
+    SelectState(TsardHeaderProcess);
   end
   else
     ChooseState(Text, Column, Line); //nop there is no header... skip to normal
@@ -707,6 +711,16 @@ begin
       FState := FState;
     FState := NextState;
   end;
+end;
+
+procedure TsardCustomScanner.SelectState(ProcessClass: TsardProcessClass);
+var
+  aProcess: TsardProcess;
+begin
+  aProcess := Processes.Find(ProcessClass);
+  if aProcess = nil then
+    raise EsardException.Create('Process not found');
+  ChangeState(aProcess.Index);
 end;
 
 procedure TsardCustomScanner.Push(S: String);
