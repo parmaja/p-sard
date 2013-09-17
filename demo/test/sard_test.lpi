@@ -39,7 +39,7 @@
         <PackageName Value="LCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="3">
+    <Units Count="4">
       <Unit0>
         <Filename Value="sard_test.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -49,6 +49,7 @@
         <Filename Value="main.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Form1"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="main"/>
       </Unit1>
@@ -57,6 +58,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="sard"/>
       </Unit2>
+      <Unit3>
+        <Filename Value="..\..\src\sardScripts.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="sardScripts"/>
+      </Unit3>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -79,6 +85,7 @@
     </Linking>
     <Other>
       <CompilerMessages>
+        <IgnoredMessages idx5024="True"/>
         <MsgFileName Value=""/>
       </CompilerMessages>
       <CompilerPath Value="$(CompPath)"/>
