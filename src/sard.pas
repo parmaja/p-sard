@@ -3,7 +3,7 @@ unit sard;
  *  This file is part of the "SARD"
  *
  * @license   Apache License Version 2.0 (modified of http://www.gnu.org/licenses/lgpl.html)
- *            included in this distribution,
+ *            included in this distribution
  * @author    Zaher Dirkey <zaher at parmaja dot com>
  *}
 
@@ -15,7 +15,7 @@ unit sard;
 interface
 
 uses
-  Classes, SysUtils, Contnrs,
+  Classes, SysUtils,
   sardClasses, sardScripts;
 
 type
@@ -35,11 +35,9 @@ type
   end;
 
 function Execute(Lines: TStrings): Boolean;
+procedure Test;
 
 implementation
-
-uses
-  StrUtils;
 
 { TmyScript }
 
@@ -71,6 +69,20 @@ begin
     Scanner.Free;
   end;
   Result := True;
+end;
+
+procedure Test;
+var
+  MainElement: TsardElement;
+begin
+  MainElement := TsardElement.Create(nil);
+  try
+    //MainElement.
+    //MainElement
+    //MainElement.Run;
+  finally
+    MainElement.Free;
+  end;
 end;
 
 end.

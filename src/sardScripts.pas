@@ -3,7 +3,7 @@ unit sardScripts;
  *  This file is part of the "SARD"
  *
  * @license   Apache License Version 2.0 (modified of http://www.gnu.org/licenses/lgpl.html)
- *            included in this distribution,
+ *            included in this distribution
  * @author    Zaher Dirkey <zaher at parmaja dot com>
  *}
 

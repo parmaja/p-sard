@@ -17,6 +17,23 @@ unit sardClasses;
   Push with the scanner class and id
 }
 
+(*
+
+  o1: {
+    o2: {
+    }
+    fn1;
+    fn2;
+  }
+
+ o1;
+ fn1;
+ fn2;
+ o1.o2;
+
+ o3 := 10+5;
+*)
+
 interface
 
 uses
@@ -148,41 +165,63 @@ type
     procedure Push(Token: String; TokenID: Integer); virtual; abstract;
   end;
 
+  TsardStack = class;
+
+  TsardStackItem = class(TObject)
+  public
+    Parser: TsardParser;
+    Owner: TsardStack;
+    Prior: TsardStackItem;
+  end;
+
+  TsardStack = class(TObject)
+  private
+    FCount: Integer;
+    FCurrent: TsardStackItem;
+    function GetCurrent: TsardParser;
+    procedure SetCurrent(const AValue: TsardParser);
+  public
+    function IsEmpty: Boolean;
+    procedure Push(vParser: TsardParser);
+    function Pop: TObject;
+    procedure Delete;
+    function Peek: TObject;
+    property Current: TsardParser read GetCurrent write SetCurrent;
+    property Count: Integer read FCount;
+  end;
+
   { TsardObject }
 
   TsardObject = class(TObject)
-  end;
-
-  { TsardBlock }
-
-  TsardBlock = class(TsardObject)
   private
+    FLink: TsardObject;
     FName: string;
-    FParent: TsardBlock;
+    FParent: TsardObject;
     procedure SetName(AValue: string);
   public
-    constructor Create(AParent: TsardBlock); virtual;
-    property Parent: TsardBlock read FParent;
+    constructor Create(AParent: TsardObject); virtual;
+    property Parent: TsardObject read FParent;
+    property Link: TsardObject read FLink;
     property Name: string read FName write SetName;
   end;
 
-  { TsardBlocks }
+  { TsardObjects }
 
-  TsardBlocks = class(TObjectList)
+  TsardObjects = class(TObjectList)
   private
-    function GetItem(Index: Integer): TsardBlock;
+    function GetItem(Index: Integer): TsardObject;
   public
-    property Items[Index: Integer]: TsardBlock read GetItem; default;
+    property Items[Index: Integer]: TsardObject read GetItem; default;
   end;
 
   TsardElements = class;
 
-  TsardElement = class(TsardBlock)
+  TsardElement = class(TsardObject)
   private
     FElements: TsardElements;
     FLinkOperator: string;
   public
-    constructor Create(AParent: TsardBlock); override;
+    constructor Create(AParent: TsardObject); override;
     destructor Destroy; override;
     property Elements: TsardElements read FElements;
     property LinkOperator: string read FLinkOperator;
@@ -190,7 +229,7 @@ type
 
   { TsardElements }
 
-  TsardElements = class(TsardBlocks)
+  TsardElements = class(TsardObjects)
   private
     function GetItem(Index: Integer): TsardElement;
   public
@@ -211,7 +250,7 @@ end;
 
 { TsardElement }
 
-constructor TsardElement.Create(AParent: TsardBlock);
+constructor TsardElement.Create(AParent: TsardObject);
 begin
   inherited Create(AParent);
   FElements := TsardElements.Create;
@@ -223,16 +262,82 @@ begin
   inherited Destroy;
 end;
 
-{ TsardBlocks }
-
-function TsardBlocks.GetItem(Index: Integer): TsardBlock;
+procedure TsardStack.Delete;
+var
+  aNode: TsardStackItem;
+  aParser: TsardParser;
 begin
-  Result := inherited Items[Index] as TsardBlock;
+  if FCurrent = nil then
+    raise EsardException.Create('Stack is empty');
+  aParser := FCurrent.Parser;
+  aNode := FCurrent;
+  FCurrent := aNode.Prior;
+  Dec(FCount);
+  aNode.Free;
+  aParser.Free;
 end;
 
-{ TsardBlock }
+function TsardStack.GetCurrent: TsardParser;
+begin
+  if FCurrent = nil then
+    raise EsardException.Create('Stack is empty');
+  Result := FCurrent.Parser;
+end;
 
-procedure TsardBlock.SetName(AValue: string);
+function TsardStack.IsEmpty: Boolean;
+begin
+  Result := FCurrent = nil;
+end;
+
+function TsardStack.Peek: TObject;
+begin
+  if FCurrent = nil then
+    raise EsardException.Create('Stack is empty');
+  Result := FCurrent.Parser;
+end;
+
+function TsardStack.Pop: TObject;
+var
+  aNode: TsardStackItem;
+begin
+  if FCurrent = nil then
+    raise EsardException.Create('Stack is empty');
+  Result := FCurrent.Parser;
+  aNode := FCurrent;
+  FCurrent := aNode.Prior;
+  aNode.Free;
+  Dec(FCount);
+end;
+
+procedure TsardStack.Push(vParser: TsardParser);
+var
+  aNode: TsardStackItem;
+begin
+  aNode := TsardStackItem.Create;
+  aNode.Parser := vParser;
+  aNode.Prior := FCurrent;
+  aNode.Owner := Self;
+  FCurrent := aNode;
+  Inc(FCount);
+end;
+
+procedure TsardStack.SetCurrent(const AValue: TsardParser);
+begin
+  if FCurrent = nil then
+    raise EsardException.Create('Stack is empty');
+  FCurrent.Parser := AValue;
+end;
+
+{ TsardObjects }
+
+function TsardObjects.GetItem(Index: Integer): TsardObject;
+begin
+  Result := inherited Items[Index] as TsardObject;
+end;
+
+{ TsardObject }
+
+procedure TsardObject.SetName(AValue: string);
 begin
   if FName <> AValue then
   begin
@@ -241,7 +346,7 @@ begin
   end;
 end;
 
-constructor TsardBlock.Create(AParent: TsardBlock);
+constructor TsardObject.Create(AParent: TsardObject);
 begin
   inherited Create;
   FParent := AParent;
@@ -439,8 +544,6 @@ begin
   FActive := True;
   DoStart;
 end;
-
-{ TsardFeeder }
 
 procedure TsardFeeder.SetParser(AValue: TsardParser);
 begin
