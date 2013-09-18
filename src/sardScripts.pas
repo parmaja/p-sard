@@ -82,7 +82,7 @@ type
 
   { TsardStartScanner }
 
-  TsardStartScanner = class(TsardScanner)
+  TsardStart_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
@@ -90,7 +90,7 @@ type
 
   { TsardHeaderScanner }
 
-  TsardHeaderScanner = class(TsardScanner)
+  TsardHeader_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
@@ -98,7 +98,7 @@ type
 
   { TsardWhitespaceScanner }
 
-  TsardWhitespaceScanner = class(TsardScanner)
+  TsardWhitespace_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
@@ -106,7 +106,7 @@ type
 
   { TsardIdentifierScanner }
 
-  TsardIdentifierScanner = class(TsardScanner)
+  TsardIdentifier_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
@@ -114,7 +114,7 @@ type
 
   { TsardNumberScanner }
 
-  TsardNumberScanner = class(TsardScanner)
+  TsardNumber_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
@@ -122,7 +122,7 @@ type
 
   { TsardBracketScanner }
 
-  TsardBracketScanner = class(TsardScanner)
+  TsardBracket_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
@@ -130,7 +130,7 @@ type
 
   { TsardTerminalScanner }
 
-  TsardControlScanner = class(TsardScanner)
+  TsardControl_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
@@ -138,7 +138,7 @@ type
 
   { TsardOperatorScanner }
 
-  TsardOperatorScanner = class(TsardScanner)
+  TsardOperator_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
@@ -146,7 +146,7 @@ type
 
   { TsardLineCommentScanner }
 
-  TsardLineCommentScanner = class(TsardScanner)
+  TsardLineComment_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
@@ -154,7 +154,7 @@ type
 
   { TsardBlockCommentScanner }
 
-  TsardBlockCommentScanner = class(TsardScanner)
+  TsardBlockComment_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
@@ -162,7 +162,7 @@ type
 
   { TsardSQStringScanner }
 
-  TsardSQStringScanner = class(TsardScanner)
+  TsardSQString_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
@@ -170,7 +170,7 @@ type
 
   { TsardDQStringScanner }
 
-  TsardDQStringScanner = class(TsardScanner)
+  TsardDQString_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
@@ -211,7 +211,7 @@ end;
 
 { TsardControlScanner }
 
-procedure TsardControlScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardControl_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   b: AnsiChar;
 begin
@@ -223,14 +223,14 @@ begin
   Inc(Column);
 end;
 
-function TsardControlScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardControl_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := Text[Column] in CONTROLS_OPEN_CHARS;
 end;
 
 { TsardBracketScanner }
 
-procedure TsardBracketScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardBracket_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   b: AnsiChar;
 begin
@@ -250,7 +250,7 @@ begin
   Inc(Column);
 end;
 
-function TsardBracketScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardBracket_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := Text[Column] in BRACKET_CHARS;
 end;
@@ -268,25 +268,25 @@ begin
 
   with Scanners do
   begin
-    prcStart := RegisterScanner(TsardStartScanner);
-    prcHeader := RegisterScanner(TsardHeaderScanner);
-    prcWhiteSpace := RegisterScanner(TsardWhitespaceScanner);
-    prcIdentifier := RegisterScanner(TsardIdentifierScanner);
-    prcNumber := RegisterScanner(TsardNumberScanner);
-    prcBracket := RegisterScanner(TsardBracketScanner);
-    prcControl := RegisterScanner(TsardControlScanner);
-    prcSQString := RegisterScanner(TsardSQStringScanner);
-    prcDQString := RegisterScanner(TsardDQStringScanner);
-    prcBlockComment := RegisterScanner(TsardBlockCommentScanner);
-    prcLineComment := RegisterScanner(TsardLineCommentScanner);
-    prcOperator := RegisterScanner(TsardOperatorScanner);//Register it after comment because comment take /*
+    prcStart := RegisterScanner(TsardStart_Scanner);
+    prcHeader := RegisterScanner(TsardHeader_Scanner);
+    prcWhiteSpace := RegisterScanner(TsardWhitespace_Scanner);
+    prcIdentifier := RegisterScanner(TsardIdentifier_Scanner);
+    prcNumber := RegisterScanner(TsardNumber_Scanner);
+    prcBracket := RegisterScanner(TsardBracket_Scanner);
+    prcControl := RegisterScanner(TsardControl_Scanner);
+    prcSQString := RegisterScanner(TsardSQString_Scanner);
+    prcDQString := RegisterScanner(TsardDQString_Scanner);
+    prcBlockComment := RegisterScanner(TsardBlockComment_Scanner);
+    prcLineComment := RegisterScanner(TsardLineComment_Scanner);
+    prcOperator := RegisterScanner(TsardOperator_Scanner);//Register it after comment because comment take /*
   end;
   FOffScanner := prcIdentifier;
 end;
 
 { TsardNumberScanner }
 
-procedure TsardNumberScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardNumber_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   l, c: Integer;
 begin
@@ -299,14 +299,14 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardNumberScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardNumber_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := Text[Column] in NUMBER_OPEN_CHARS;//need to improve to accept unicode chars
 end;
 
 { TsardOperatorScanner }
 
-procedure TsardOperatorScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardOperator_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   c: Integer;
 begin
@@ -318,14 +318,14 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardOperatorScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardOperator_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := IsOperator(Text[Column]);
 end;
 
 { TsardIdentifierScanner }
 
-procedure TsardIdentifierScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardIdentifier_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   c: Integer;
 begin
@@ -337,14 +337,14 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardIdentifierScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardIdentifier_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := Text[Column] in IDENTIFIER_OPEN_CHARS;//need to improve to accept unicode chars
 end;
 
 { TsardDQStringScanner }
 
-procedure TsardDQStringScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardDQString_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   c: Integer;
 begin
@@ -356,14 +356,14 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardDQStringScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardDQString_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := CheckText('"', Text, Column);
 end;
 
 { TsardSQStringScanner }
 
-procedure TsardSQStringScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardSQString_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   c: Integer;
 begin
@@ -375,14 +375,14 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardSQStringScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardSQString_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := CheckText('''', Text, Column);
 end;
 
 { TsardBlockCommentScanner }
 
-procedure TsardBlockCommentScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardBlockComment_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
   while (Column <= Length(Text)) do
   begin
@@ -397,14 +397,14 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardBlockCommentScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardBlockComment_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := CheckText('/*', Text, Column);
 end;
 
 { TsardSLCommentScanner }
 
-procedure TsardLineCommentScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardLineComment_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
@@ -413,14 +413,14 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardLineCommentScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardLineComment_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := CheckText('//', Text, Column);
 end;
 
 { TsardHeaderCommentScanner }
 
-procedure TsardHeaderScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardHeader_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   c: Integer;
 begin
@@ -432,14 +432,14 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardHeaderScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardHeader_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := False; //Only when file started, or first, so not accepted
 end;
 
 { TsardNormalCommentScanner }
 
-procedure TsardWhitespaceScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardWhitespace_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
   while (Column <= Length(Text)) and (Text[Column] in sWhitespace) do
     Inc(Column);
@@ -447,26 +447,26 @@ begin
     ChooseScanner(Text, Column, Line);
 end;
 
-function TsardWhitespaceScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardWhitespace_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := Text[Column] in sWhitespace;
 end;
 
 { TsardStartScanner }
 
-procedure TsardStartScanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardStart_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
   if LeftStr(Text, Length(sSardAnsiOpen)) = sSardAnsiOpen then
   begin
     //There is a header and it is a Ansi document
     Column := Column + Length(sSardAnsiOpen); //put the column to the first char of attributes of document
-    SelectScanner(TsardHeaderScanner);
+    SelectScanner(TsardHeader_Scanner);
   end
   else
     ChooseScanner(Text, Column, Line); //nop there is no header... skip to normal
 end;
 
-function TsardStartScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardStart_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := False;//Start not accept the scan, it is only when starting scan
 end;
