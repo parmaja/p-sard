@@ -27,7 +27,7 @@ interface
 
 uses
   Classes, SysUtils,
-  Sard;
+  sardClasses;
 
 const
   IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
