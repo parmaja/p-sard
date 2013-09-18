@@ -43,33 +43,6 @@ type
 
   EsardParserException = class(EsardException);
 
-  TsardFeeder = class(TObject)
-  private
-    FActive: Boolean;
-    FOwned: Boolean;
-    FVersion: string;
-    FStream: TmnWrapperStream;
-    FHeader: TStringList;
-    FCharset: string;
-    FStandalone: Boolean;
-  protected
-    procedure DoStart; virtual;
-    procedure DoStop; virtual;
-  public
-    constructor Create; overload; virtual;
-    constructor Create(Stream: TmnWrapperStream; Owned: Boolean = True); overload;
-    constructor Create(const FileName:string); overload;
-    destructor Destroy; override;
-    procedure Start;
-    procedure Stop;
-    property Active: Boolean read FActive write FActive;
-    property Stream: TmnWrapperStream read FStream;
-    property Header: TStringList read FHeader write FHeader;
-    property Standalone: Boolean read FStandalone write FStandalone;
-    property Version: string read FVersion write FVersion;
-    property Charset: string read FCharset write FCharset;
-  end;
-
   sardBracketKind = (brParenthesis, brSquare, brCurly);// and (), [], {} or maybe <>
   sardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
 
@@ -124,8 +97,13 @@ type
 
   { TsardCustomScanner }
 
-  TsardCustomScanner = class(TsardFeeder)
+  TsardCustomScanner = class(TObject)
   private
+    FActive: Boolean;
+    FVersion: string;
+    FHeader: TStringList;
+    FCharset: string;
+    FStandalone: Boolean;
     FParser: TsardParser;
     FProcess: TsardProcessID;
     FProcesses: TsardProcesses;
@@ -133,6 +111,9 @@ type
   protected
     FDefaultProcess: TsardProcessID; //Default process
     FOffProcess: TsardProcessID; //Fall off into it when no one accept it
+    procedure DoStart; virtual;
+    procedure DoStop; virtual;
+
     procedure ChangeProcess(NextProcess: TsardProcessID);
     procedure SelectProcess(ProcessClass: TsardProcessClass);
 
@@ -140,10 +121,18 @@ type
     property Processes: TsardProcesses read FProcesses;
     property Parser: TsardParser read FParser write SetParser;
   public
-    constructor Create; override;
+    constructor Create; virtual;
     destructor Destroy; override;
     procedure ScanLine(const Text: string; const Line: Integer);
     procedure Scan(const Lines: TStrings);
+
+    procedure Start;
+    procedure Stop;
+    property Active: Boolean read FActive write FActive;
+    property Header: TStringList read FHeader write FHeader;
+    property Standalone: Boolean read FStandalone write FStandalone;
+    property Version: string read FVersion write FVersion;
+    property Charset: string read FCharset write FCharset;
   end;
 
   { TsardParser }
@@ -337,7 +326,7 @@ begin
   aProcess.Index := Result;
 end;
 
-procedure TsardFeeder.Stop;
+procedure TsardCustomScanner.Stop;
 begin
   if not FActive then
     raise EsardException.Create('File already closed');
@@ -345,51 +334,8 @@ begin
   FActive := False;
 end;
 
-constructor TsardFeeder.Create(Stream: TmnWrapperStream; Owned: Boolean);
-begin
-  Create;
-  if Stream = nil then
-    raise EsardException.Create('Stream is nil');
-  FStream := Stream;
-  FOwned := Owned;
-end;
 
-constructor TsardFeeder.Create(const FileName: string);
-begin
-  Create(TmnWrapperStream.Create(TFileStream.Create(FileName, fmOpenRead)));
-end;
-
-constructor TsardFeeder.Create;
-begin
-  inherited;
-  FHeader := TStringList.Create;
-  FVersion := '1.0';
-  {$ifdef FPC}
-  FCharset := 'utf-8';
-  {$else}
-  FCharset := 'iso-8859-1';
-  {$endif}
-end;
-
-destructor TsardFeeder.Destroy;
-begin
-{  if Active then
-    Stop;}
-  if FOwned then
-    FStream.Free;
-  FHeader.Free;
-  inherited;
-end;
-
-procedure TsardFeeder.DoStop;
-begin
-end;
-
-procedure TsardFeeder.DoStart;
-begin
-end;
-
-procedure TsardFeeder.Start;
+procedure TsardCustomScanner.Start;
 begin
   if FActive then
     raise EsardException.Create('File already opened');
@@ -403,6 +349,14 @@ procedure TsardCustomScanner.SetParser(AValue: TsardParser);
 begin
   if FParser = AValue then Exit;
   FParser := AValue;
+end;
+
+procedure TsardCustomScanner.DoStart;
+begin
+end;
+
+procedure TsardCustomScanner.DoStop;
+begin
 end;
 
 procedure TsardCustomScanner.ChangeProcess(NextProcess: TsardProcessID);
@@ -428,12 +382,20 @@ end;
 constructor TsardCustomScanner.Create;
 begin
   inherited Create;
+  FHeader := TStringList.Create;
+  FVersion := '1.0';
+  {$ifdef FPC}
+  FCharset := 'utf-8';
+  {$else}
+  FCharset := 'iso-8859-1';
+  {$endif}
   FProcesses := TsardProcesses.Create(Self);
   Parser := CreateParser;
 end;
 
 destructor TsardCustomScanner.Destroy;
 begin
+  FHeader.Free;
   FreeAndNil(FProcesses);
   inherited Destroy;
 end;
