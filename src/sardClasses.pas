@@ -59,8 +59,9 @@ type
 
   EsardParserException = class(EsardException);
 
-  sardBracketKind = (brParenthesis, brSquare, brCurly);// and (), [], {} or maybe <>
-  sardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
+  TsardControl = (ctlDeclare, ctlAssign, ctlOpenParenthesis, ctlCloseParenthesis, ctlOpenBracket, ctlCloseBracket, ctlOpen, ctlClose, ctlComma, ctlSemicolon);
+  TsardBracketKind = (brParenthesis, brSquare, brCurly);// and (), [], {} or maybe <>
+  TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
 
   TsardScannerID = type Integer;
 
@@ -80,8 +81,8 @@ type
     function ScanText(S: string; const Text: string; var Column: Integer): Boolean;
     procedure ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer); virtual; abstract;
-    procedure Open(vBracket: sardBracketKind); virtual;
-    procedure Close(vBracket: sardBracketKind); virtual;
+    procedure Open(vBracket: TsardBracketKind); virtual;
+    procedure Close(vBracket: TsardBracketKind); virtual;
     procedure Terminate; virtual;
     procedure Push(Token: String; TokenID: Integer); virtual;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; virtual;
@@ -159,8 +160,9 @@ type
 
   TsardParser = class(TObject)
   protected
-    procedure Open(vBracket: sardBracketKind); virtual; abstract;
-    procedure Close(vBracket: sardBracketKind); virtual; abstract;
+    procedure Control(AControl: TsardControl); virtual;
+    procedure Open(vBracket: TsardBracketKind); virtual; abstract;
+    procedure Close(vBracket: TsardBracketKind); virtual; abstract;
     procedure Terminate; virtual; abstract;
     procedure Push(Token: String; TokenID: Integer); virtual; abstract;
   end;
@@ -240,6 +242,12 @@ implementation
 
 uses
   StrUtils;
+
+{ TsardParser }
+
+procedure TsardParser.Control(AControl: TsardControl);
+begin
+end;
 
 { TsardElements }
 
@@ -422,12 +430,12 @@ begin
   end;
 end;
 
-procedure TsardScanner.Open(vBracket: sardBracketKind);
+procedure TsardScanner.Open(vBracket: TsardBracketKind);
 begin
   Scanners.Feeder.Parser.Open(vBracket);
 end;
 
-procedure TsardScanner.Close(vBracket: sardBracketKind);
+procedure TsardScanner.Close(vBracket: TsardBracketKind);
 begin
   Scanners.Feeder.Parser.Close(vBracket);
 end;

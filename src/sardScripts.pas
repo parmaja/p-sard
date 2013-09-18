@@ -42,7 +42,6 @@ const
   BRACKET_CHARS = BRACKET_OPEN_CHARS + BRACKET_CLOSE_CHARS;
   CONTROLS_OPEN_CHARS = [':', '~', ';', ','];
   CONTROLS_CHARS = CONTROLS_OPEN_CHARS + ['='];
-  sSardAnsiOpen = '{?sard '; //with the space
 
 type
   TsardTokenKinds = (tknOperator, tknControl, tknBracket, tknIdentifier, tknString, tknNumber, tknComment);
@@ -63,8 +62,8 @@ type
 
   TsardScriptParser = class(TsardParser)
   protected
-    procedure Open(vBracket: sardBracketKind); override;
-    procedure Close(vBracket: sardBracketKind); override;
+    procedure Open(vBracket: TsardBracketKind); override;
+    procedure Close(vBracket: TsardBracketKind); override;
     procedure Terminate; override;
     procedure Push(Token: String; TokenID: Integer); override;
   end;
@@ -72,14 +71,6 @@ type
   { TsardStartScanner }
 
   TsardStart_Scanner = class(TsardScanner)
-  protected
-    procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
-    function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
-  end;
-
-  { TsardHeaderScanner }
-
-  TsardHeader_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
@@ -182,11 +173,11 @@ end;
 
 { TsardScriptParser }
 
-procedure TsardScriptParser.Open(vBracket: sardBracketKind);
+procedure TsardScriptParser.Open(vBracket: TsardBracketKind);
 begin
 end;
 
-procedure TsardScriptParser.Close(vBracket: sardBracketKind);
+procedure TsardScriptParser.Close(vBracket: TsardBracketKind);
 begin
 end;
 
@@ -258,7 +249,6 @@ begin
   with Scanners do
   begin
     RegisterScanner(TsardStart_Scanner);
-    RegisterScanner(TsardHeader_Scanner);
     RegisterScanner(TsardWhitespace_Scanner);
     RegisterScanner(TsardIdentifier_Scanner);
     RegisterScanner(TsardNumber_Scanner);
@@ -391,7 +381,7 @@ begin
   Result := CheckText('/*', Text, Column);
 end;
 
-{ TsardSLCommentScanner }
+{ TsardLineComment_Scanner }
 
 procedure TsardLineComment_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
@@ -407,26 +397,7 @@ begin
   Result := CheckText('//', Text, Column);
 end;
 
-{ TsardHeaderCommentScanner }
-
-procedure TsardHeader_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
-var
-  c: Integer;
-begin
-  c := Column;
-  while (Column <= Length(Text)) and (Text[Column] <> '}') do
-    Inc(Column);
-  Push(MidStr(Text, c, Column - c), 0);
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
-end;
-
-function TsardHeader_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
-begin
-  Result := False; //Only when file started, or first, so not accepted
-end;
-
-{ TsardNormalCommentScanner }
+{ TsardWhitespace_Scanner }
 
 procedure TsardWhitespace_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
@@ -441,18 +412,11 @@ begin
   Result := Text[Column] in sWhitespace;
 end;
 
-{ TsardStartScanner }
+{ TsardStart_Scanner }
 
 procedure TsardStart_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
-  if LeftStr(Text, Length(sSardAnsiOpen)) = sSardAnsiOpen then
-  begin
-    //There is a header and it is a Ansi document
-    Column := Column + Length(sSardAnsiOpen); //put the column to the first char of attributes of document
-    SelectScanner(TsardHeader_Scanner);
-  end
-  else
-    ChooseScanner(Text, Column, Line); //nop there is no header... skip to normal
+  ChooseScanner(Text, Column, Line); //nop there is no header... skip to normal
 end;
 
 function TsardStart_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
