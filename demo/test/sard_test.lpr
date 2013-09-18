@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, main, sard, sardScripts;
+  Forms, main, sard, sardScripts, sardCalculators;
 
 {$R *.res}
 

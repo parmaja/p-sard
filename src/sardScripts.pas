@@ -34,7 +34,7 @@ const
   IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
   NUMBER_OPEN_CHARS = ['0'..'9'];
   NUMBER_CHARS = NUMBER_OPEN_CHARS + ['.','E'];
-  OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&', '|', '!'];
+  OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&', '|', '!', '='];
   OPERATOR_CHARS = OPERATOR_OPEN_CHARS {+ ['']};
   SYMBOL_CHARS = ['$', '#', '@', '!', '\'];
   BRACKET_OPEN_CHARS = ['(', '[', '{'];
@@ -64,7 +64,6 @@ type
   protected
     procedure Open(vBracket: TsardBracketKind); override;
     procedure Close(vBracket: TsardBracketKind); override;
-    procedure Terminate; override;
     procedure Push(Token: String; TokenID: Integer); override;
   end;
 
@@ -181,10 +180,6 @@ procedure TsardScriptParser.Close(vBracket: TsardBracketKind);
 begin
 end;
 
-procedure TsardScriptParser.Terminate;
-begin
-end;
-
 procedure TsardScriptParser.Push(Token: String; TokenID: Integer);
 begin
 end;
@@ -197,9 +192,13 @@ var
 begin
   b := Text[Column];
   if b = ';' then //TODO need to improve it
-    Terminate
+    Control(ctlFinish)
   else if b = ',' then
-    Terminate;
+    Control(ctlSplit)
+  else if b = ':' then
+    Control(ctlDeclare)
+  else if b = '~' then
+    Control(ctlLink);
   Inc(Column);
 end;
 
@@ -274,8 +273,6 @@ begin
   while (Column <= l) and (Text[Column] in NUMBER_CHARS) do
     Inc(Column);
   Push(MidStr(Text, c, Column - c), Ord(tknNumber));
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
 end;
 
 function TsardNumber_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -293,8 +290,6 @@ begin
   while (Column <= Length(Text)) and (IsOperator(Text[Column])) do //operator is multi char here
     Inc(Column);
   Push(MidStr(Text, c, Column - c), Ord(tknOperator));
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
 end;
 
 function TsardOperator_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -312,8 +307,6 @@ begin
   while (Column <= Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
     Inc(Column);
   Push(MidStr(Text, c, Column - c), Ord(tknIdentifier));
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
 end;
 
 function TsardIdentifier_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -331,8 +324,6 @@ begin
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
   Push(MidStr(Text, c, Column - c), Ord(tknString));
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
 end;
 
 function TsardDQString_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -350,8 +341,6 @@ begin
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
   Push(MidStr(Text, c, Column - c), Ord(tknString));
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
 end;
 
 function TsardSQString_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -372,8 +361,6 @@ begin
     end;
     Inc(Column);
   end;
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
 end;
 
 function TsardBlockComment_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -388,8 +375,6 @@ begin
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
   //Push(MidStr(Text, c, Column - c)); ignore comment
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
 end;
 
 function TsardLineComment_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -403,8 +388,6 @@ procedure TsardWhitespace_Scanner.Scan(const Text: string; var Column: Integer; 
 begin
   while (Column <= Length(Text)) and (Text[Column] in sWhitespace) do
     Inc(Column);
-  if Column <= Length(Text) then
-    ChooseScanner(Text, Column, Line);
 end;
 
 function TsardWhitespace_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -416,7 +399,6 @@ end;
 
 procedure TsardStart_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
-  ChooseScanner(Text, Column, Line); //nop there is no header... skip to normal
 end;
 
 function TsardStart_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;

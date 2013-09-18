@@ -39,7 +39,7 @@
         <PackageName Value="LCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="4">
+    <Units Count="5">
       <Unit0>
         <Filename Value="sard_test.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -63,6 +63,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="sardScripts"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="..\..\src\sardCalculators.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="sardCalculators"/>
+      </Unit4>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -76,13 +81,6 @@
       <OtherUnitFiles Value="..\..\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
-    <Linking>
-      <Options>
-        <Win32>
-          <GraphicApplication Value="True"/>
-        </Win32>
-      </Options>
-    </Linking>
     <Other>
       <CompilerMessages>
         <IgnoredMessages idx5024="True"/>
