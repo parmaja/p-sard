@@ -1,6 +1,27 @@
 unit sardScripts;
+{**
+ *  This file is part of the "SARD"
+ *
+ * @license   Apache License Version 2.0 (modified of http://www.gnu.org/licenses/lgpl.html)
+ *            included in this distribution,
+ * @author    Zaher Dirkey <zaher at parmaja dot com>
+ *}
 
-{$mode objfpc}{$H+}
+{$IFDEF FPC}
+{$mode objfpc}
+{$ENDIF}
+{$H+}{$M+}
+
+(* Example
+
+object: {
+  v1:=10+10;
+  v2:int=10;
+  v3:=v2-v1;
+  =proc1(v3);
+};
+
+*)
 
 interface
 
@@ -13,17 +34,18 @@ const
   IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
   NUMBER_OPEN_CHARS = ['0'..'9'];
   NUMBER_CHARS = NUMBER_OPEN_CHARS + ['.','E'];
-  OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&'];
+  OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&', '|', '!'];
   OPERATOR_CHARS = OPERATOR_OPEN_CHARS {+ ['']};
   SYMBOL_CHARS = ['$', '#', '@', '!', '\'];
   BRACKET_OPEN_CHARS = ['(', '[', '{'];
   BRACKET_CLOSE_CHARS= [')', ']', '}'];
   BRACKET_CHARS = BRACKET_OPEN_CHARS + BRACKET_CLOSE_CHARS;
-  TERMINAL_CHARS = [';', ','];
+  CONTROLS_OPEN_CHARS = [':', '~', ';', ','];
+  CONTROLS_CHARS = CONTROLS_OPEN_CHARS + ['='];
   sSardAnsiOpen = '{?sard '; //with the space
 
 type
-  TsardTokenKinds = (tknOperator, tknTerminal, tknBracket, tknIdentifier, tknString, tknNumber, tknComment);
+  TsardTokenKinds = (tknOperator, tknControl, tknBracket, tknIdentifier, tknString, tknNumber, tknComment);
 
 { TsardScanner }
 
@@ -37,6 +59,7 @@ type
     prcNumber: Integer;
     prcBracket: Integer;
     prcOperator: Integer;
+    prcControl: Integer;
     prcSQString: Integer;
     prcDQString: Integer;
     prcBlockComment: Integer;
@@ -107,7 +130,7 @@ type
 
   { TsardTerminalProcess }
 
-  TsardTerminalProcess = class(TsardProcess)
+  TsardControlProcess = class(TsardProcess)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
@@ -186,9 +209,9 @@ procedure TsardScriptParser.Push(Token: String; TokenID: Integer);
 begin
 end;
 
-{ TsardTerminalProcess }
+{ TsardControlProcess }
 
-procedure TsardTerminalProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsardControlProcess.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   b: AnsiChar;
 begin
@@ -196,12 +219,13 @@ begin
   if b = ';' then //TODO need to improve it
     Terminate
   else if b = ',' then
-    Terminate
+    Terminate;
+  Inc(Column);
 end;
 
-function TsardTerminalProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardControlProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
-  Result := Text[Column] in TERMINAL_CHARS;
+  Result := Text[Column] in CONTROLS_OPEN_CHARS;
 end;
 
 { TsardBracketProcess }
@@ -250,6 +274,7 @@ begin
     prcIdentifier := RegisterProcess(TsardIdentifierProcess);
     prcNumber := RegisterProcess(TsardNumberProcess);
     prcBracket := RegisterProcess(TsardBracketProcess);
+    prcControl := RegisterProcess(TsardControlProcess);
     prcSQString := RegisterProcess(TsardSQStringProcess);
     prcDQString := RegisterProcess(TsardDQStringProcess);
     prcBlockComment := RegisterProcess(TsardBlockCommentProcess);

@@ -13,9 +13,8 @@ unit sard;
 {$H+}{$M+}
 
 {TODO:
-  Check s is not empty before push
+  Check S is not empty before push
   Push with the process class and id
-
 }
 
 interface
@@ -44,7 +43,7 @@ type
 
   EsardParserException = class(EsardException);
 
-  TsardFiler = class(TObject)
+  TsardFeeder = class(TObject)
   private
     FActive: Boolean;
     FOwned: Boolean;
@@ -125,7 +124,7 @@ type
 
   { TsardCustomScanner }
 
-  TsardCustomScanner = class(TsardFiler)
+  TsardCustomScanner = class(TsardFeeder)
   private
     FParser: TsardParser;
     FProcess: TsardProcessID;
@@ -338,7 +337,7 @@ begin
   aProcess.Index := Result;
 end;
 
-procedure TsardFiler.Stop;
+procedure TsardFeeder.Stop;
 begin
   if not FActive then
     raise EsardException.Create('File already closed');
@@ -346,7 +345,7 @@ begin
   FActive := False;
 end;
 
-constructor TsardFiler.Create(Stream: TmnWrapperStream; Owned: Boolean);
+constructor TsardFeeder.Create(Stream: TmnWrapperStream; Owned: Boolean);
 begin
   Create;
   if Stream = nil then
@@ -355,12 +354,12 @@ begin
   FOwned := Owned;
 end;
 
-constructor TsardFiler.Create(const FileName: string);
+constructor TsardFeeder.Create(const FileName: string);
 begin
   Create(TmnWrapperStream.Create(TFileStream.Create(FileName, fmOpenRead)));
 end;
 
-constructor TsardFiler.Create;
+constructor TsardFeeder.Create;
 begin
   inherited;
   FHeader := TStringList.Create;
@@ -372,7 +371,7 @@ begin
   {$endif}
 end;
 
-destructor TsardFiler.Destroy;
+destructor TsardFeeder.Destroy;
 begin
 {  if Active then
     Stop;}
@@ -382,15 +381,15 @@ begin
   inherited;
 end;
 
-procedure TsardFiler.DoStop;
+procedure TsardFeeder.DoStop;
 begin
 end;
 
-procedure TsardFiler.DoStart;
+procedure TsardFeeder.DoStart;
 begin
 end;
 
-procedure TsardFiler.Start;
+procedure TsardFeeder.Start;
 begin
   if FActive then
     raise EsardException.Create('File already opened');
