@@ -47,14 +47,16 @@ const
 type
   TsardTokenKinds = (tknOperator, tknControl, tknBracket, tknIdentifier, tknString, tknNumber, tknComment);
 
-{ TsardScanner }
+  { TsardScript }
 
   TsardScript = class(TsardFeeder)
   private
+    FIntoElement: TsardElement;
   protected
     function CreateParser: TsardParser; override;
   public
     constructor Create; override;
+    property IntoElement: TsardElement read FIntoElement write FIntoElement;
   end;
 
   { TsardScriptParser }
@@ -266,7 +268,7 @@ begin
     RegisterScanner(TsardDQString_Scanner);
     RegisterScanner(TsardBlockComment_Scanner);
     RegisterScanner(TsardLineComment_Scanner);
-    RegisterScanner(TsardOperator_Scanner);//Register it after comment because comment take /*
+    RegisterScanner(TsardOperator_Scanner); //Register it after comment because comment take /*
   end;
   //FOffScanner := scanIdentifier;
 end;
