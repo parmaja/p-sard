@@ -14,7 +14,7 @@ unit sard;
 
 {TODO:
   Check S is not empty before push
-  Push with the process class and id
+  Push with the scanner class and id
 }
 
 interface
@@ -46,52 +46,52 @@ type
   sardBracketKind = (brParenthesis, brSquare, brCurly);// and (), [], {} or maybe <>
   sardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
 
-  TsardProcessID = type Integer;
+  TsardScannerID = type Integer;
 
-  TsardProcesses = class;
+  TsardScanners = class;
   TsardFeeder = class;
-  TsardProcessClass = class of TsardProcess;
+  TsardScannerClass = class of TsardScanner;
   TsardParser = class;
 
-  { TsardProcess }
+  { TsardScanner }
 
-  TsardProcess = class(TObject)
+  TsardScanner = class(TObject)
   private
-    FProcesses: TsardProcesses;
+    FScanners: TsardScanners;
   protected
     function CheckText(S: string; const Text: string; const Column: Integer): Boolean;
     function ScanText(S: string; const Text: string; var Column: Integer): Boolean;
-    procedure ScanTo(NextProcess: TsardProcessID; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
+    procedure ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer); virtual; abstract;
     procedure Open(vBracket: sardBracketKind); virtual;
     procedure Close(vBracket: sardBracketKind); virtual;
     procedure Terminate; virtual;
     procedure Push(Token: String; TokenID: Integer); virtual;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; virtual;
-    function ChooseProcess(const Text: string; var Column: Integer; const Line: Integer): Integer;
-    procedure ChangeProcess(NextProcess: TsardProcessID);
-    procedure SelectProcess(ProcessClass: TsardProcessClass);
+    function ChooseScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
+    procedure ChangeScanner(NextScanner: TsardScannerID);
+    procedure SelectScanner(ScannerClass: TsardScannerClass);
   public
-    Index: TsardProcessID;
+    Index: TsardScannerID;
     Collected: string; //buffer
-    Process: TsardProcessID;
-    constructor Create(vProcesses: TsardProcesses); virtual;
+    Scanner: TsardScannerID;
+    constructor Create(vScanners: TsardScanners); virtual;
     destructor Destroy; override;
-    property Processes: TsardProcesses read FProcesses;
+    property Scanners: TsardScanners read FScanners;
   end;
 
-  { TsardProcesses }
+  { TsardScanners }
 
-  TsardProcesses = class(TObjectList)
+  TsardScanners = class(TObjectList)
   private
     FFeeder: TsardFeeder;
-    function GetItem(Index: Integer): TsardProcess;
+    function GetItem(Index: Integer): TsardScanner;
   public
     constructor Create(vFeeder: TsardFeeder; FreeObjects: boolean = True); virtual;
-    function ChooseProcess(const Text: string; var Column: Integer; const Line: Integer): Integer;
-    function Find(const ProcessClass: TsardProcessClass): TsardProcess;
-    function RegisterProcess(ProcessClass: TsardProcessClass): TsardProcessID;
-    property Items[Index: Integer]: TsardProcess read GetItem; default;
+    function ChooseScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
+    function Find(const ScannerClass: TsardScannerClass): TsardScanner;
+    function RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
+    property Items[Index: Integer]: TsardScanner read GetItem; default;
     property Feeder: TsardFeeder read FFeeder;
   end;
 
@@ -105,20 +105,20 @@ type
     FCharset: string;
     FStandalone: Boolean;
     FParser: TsardParser;
-    FProcess: TsardProcessID;
-    FProcesses: TsardProcesses;
+    FScanner: TsardScannerID;
+    FScanners: TsardScanners;
     procedure SetParser(AValue: TsardParser);
   protected
-    FDefaultProcess: TsardProcessID; //Default process
-    FOffProcess: TsardProcessID; //Fall off into it when no one accept it
+    FDefaultScanner: TsardScannerID; //Default Scanner
+    FOffScanner: TsardScannerID; //Fall off into it when no one accept it
     procedure DoStart; virtual;
     procedure DoStop; virtual;
 
-    procedure ChangeProcess(NextProcess: TsardProcessID);
-    procedure SelectProcess(ProcessClass: TsardProcessClass);
+    procedure ChangeScanner(NextScanner: TsardScannerID);
+    procedure SelectScanner(ScannerClass: TsardScannerClass);
 
     function CreateParser:TsardParser; virtual; abstract;
-    property Processes: TsardProcesses read FProcesses;
+    property Scanners: TsardScanners read FScanners;
     property Parser: TsardParser read FParser write SetParser;
   public
     constructor Create; virtual;
@@ -164,16 +164,16 @@ begin
   inherited Create(Msg);
 end;
 
-{ TsardProcess }
+{ TsardScanner }
 
-function TsardProcess.CheckText(S: string; const Text: string; const Column: Integer): Boolean;
+function TsardScanner.CheckText(S: string; const Text: string; const Column: Integer): Boolean;
 begin
   Result := (Length(Text) - Column) >= length(S);
   if Result then
     Result := LowerCase(MidStr(Text, Column, Length(S))) = LowerCase(S); //caseinsensitive
 end;
 
-function TsardProcess.ScanText(S: string; const Text: string; var Column: Integer): Boolean;
+function TsardScanner.ScanText(S: string; const Text: string; var Column: Integer): Boolean;
 begin
   Result := (Length(Text) - Column) >= length(S);
   if Result then
@@ -182,7 +182,7 @@ begin
     Column := Column + Length(S);
 end;
 
-procedure TsardProcess.ScanTo(NextProcess: TsardProcessID; const SubStr, Text: string; var Column: Integer; const Line: Integer);
+procedure TsardScanner.ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer);
 var
   p: integer;
   l, c, i: integer;
@@ -211,84 +211,84 @@ begin
   if p > 0 then
   begin
     Column := p;
-    ChangeProcess(NextProcess);
+    ChangeScanner(NextScanner);
   end
   else
   begin
     Column := Length(Text) + 1;
-    ChangeProcess(Process);
+    ChangeScanner(Scanner);
   end;
 end;
 
-procedure TsardProcess.Open(vBracket: sardBracketKind);
+procedure TsardScanner.Open(vBracket: sardBracketKind);
 begin
-  Processes.Feeder.Parser.Open(vBracket);
+  Scanners.Feeder.Parser.Open(vBracket);
 end;
 
-procedure TsardProcess.Close(vBracket: sardBracketKind);
+procedure TsardScanner.Close(vBracket: sardBracketKind);
 begin
-  Processes.Feeder.Parser.Close(vBracket);
+  Scanners.Feeder.Parser.Close(vBracket);
 end;
 
-procedure TsardProcess.Terminate;
+procedure TsardScanner.Terminate;
 begin
-  Processes.Feeder.Parser.Terminate;
+  Scanners.Feeder.Parser.Terminate;
 end;
 
-procedure TsardProcess.Push(Token: String; TokenID: Integer);
+procedure TsardScanner.Push(Token: String; TokenID: Integer);
 begin
-  Processes.Feeder.Parser.Push(Token, TokenID);
+  Scanners.Feeder.Parser.Push(Token, TokenID);
 end;
 
-function TsardProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := False;
 end;
 
-function TsardProcess.ChooseProcess(const Text: string; var Column: Integer; const Line: Integer): Integer;
+function TsardScanner.ChooseScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
 begin
-  Result := Processes.ChooseProcess(Text, Column, Line);
+  Result := Scanners.ChooseScanner(Text, Column, Line);
 end;
 
-procedure TsardProcess.ChangeProcess(NextProcess: TsardProcessID);
+procedure TsardScanner.ChangeScanner(NextScanner: TsardScannerID);
 begin
-  Processes.Feeder.ChangeProcess(NextProcess);
+  Scanners.Feeder.ChangeScanner(NextScanner);
 end;
 
-procedure TsardProcess.SelectProcess(ProcessClass: TsardProcessClass);
+procedure TsardScanner.SelectScanner(ScannerClass: TsardScannerClass);
 begin
-  Processes.Feeder.SelectProcess(ProcessClass);
+  Scanners.Feeder.SelectScanner(ScannerClass);
 end;
 
-constructor TsardProcess.Create(vProcesses: TsardProcesses);
+constructor TsardScanner.Create(vScanners: TsardScanners);
 begin
   inherited Create;
-  FProcesses := vProcesses;
+  FScanners := vScanners;
 end;
 
-destructor TsardProcess.Destroy;
+destructor TsardScanner.Destroy;
 begin
   inherited Destroy;
 end;
 
-{ TsardProcesses }
+{ TsardScanners }
 
-function TsardProcesses.GetItem(Index: Integer): TsardProcess;
+function TsardScanners.GetItem(Index: Integer): TsardScanner;
 begin
-  Result := inherited Items[Index] as TsardProcess;
+  Result := inherited Items[Index] as TsardScanner;
 end;
 
-constructor TsardProcesses.Create(vFeeder: TsardFeeder; FreeObjects: boolean);
+constructor TsardScanners.Create(vFeeder: TsardFeeder; FreeObjects: boolean);
 begin
   FFeeder := vFeeder;
   inherited Create(FreeObjects);
 end;
 
-function TsardProcesses.ChooseProcess(const Text: string; var Column: Integer; const Line: Integer): Integer;
+function TsardScanners.ChooseScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
 var
   i: Integer;
 begin
-  Result := -1;//Feeder.FOffProcess;
+  Result := -1;//Feeder.FOffScanner;
   for i := 0 to Count - 1 do
   begin
     if (Items[i].Index <> Result) and Items[i].Accept(Text, Column, Line) then
@@ -298,18 +298,18 @@ begin
     end;
   end;
   if Result < 0 then
-    raise EsardException.Create('Process not found:' + Text[Column]);
-  Feeder.ChangeProcess(Result);
+    raise EsardException.Create('Scanner not found:' + Text[Column]);
+  Feeder.ChangeScanner(Result);
 end;
 
-function TsardProcesses.Find(const ProcessClass: TsardProcessClass): TsardProcess;
+function TsardScanners.Find(const ScannerClass: TsardScannerClass): TsardScanner;
 var
   i: Integer;
 begin
   Result := nil;
   for i := 0 to Count - 1 do
   begin
-    if ProcessClass = Items[i].ClassType then
+    if ScannerClass = Items[i].ClassType then
     begin
       Result := Items[i];
       break;
@@ -317,13 +317,13 @@ begin
   end;
 end;
 
-function TsardProcesses.RegisterProcess(ProcessClass: TsardProcessClass): TsardProcessID;
+function TsardScanners.RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
 var
-  aProcess: TsardProcess;
+  aScanner: TsardScanner;
 begin
-  aProcess := ProcessClass.Create(Self);
-  Result := Add(aProcess);
-  aProcess.Index := Result;
+  aScanner := ScannerClass.Create(Self);
+  Result := Add(aScanner);
+  aScanner.Index := Result;
 end;
 
 procedure TsardFeeder.Stop;
@@ -359,24 +359,24 @@ procedure TsardFeeder.DoStop;
 begin
 end;
 
-procedure TsardFeeder.ChangeProcess(NextProcess: TsardProcessID);
+procedure TsardFeeder.ChangeScanner(NextScanner: TsardScannerID);
 begin
-  if FProcess <> NextProcess then
+  if FScanner <> NextScanner then
   begin
-    if NextProcess = 0 then
-      FProcess := FProcess;
-    FProcess := NextProcess;
+    if NextScanner = 0 then
+      FScanner := FScanner;
+    FScanner := NextScanner;
   end;
 end;
 
-procedure TsardFeeder.SelectProcess(ProcessClass: TsardProcessClass);
+procedure TsardFeeder.SelectScanner(ScannerClass: TsardScannerClass);
 var
-  aProcess: TsardProcess;
+  aScanner: TsardScanner;
 begin
-  aProcess := Processes.Find(ProcessClass);
-  if aProcess = nil then
-    raise EsardException.Create('Process not found');
-  ChangeProcess(aProcess.Index);
+  aScanner := Scanners.Find(ScannerClass);
+  if aScanner = nil then
+    raise EsardException.Create('Scanner not found');
+  ChangeScanner(aScanner.Index);
 end;
 
 constructor TsardFeeder.Create;
@@ -389,21 +389,21 @@ begin
   {$else}
   FCharset := 'iso-8859-1';
   {$endif}
-  FProcesses := TsardProcesses.Create(Self);
+  FScanners := TsardScanners.Create(Self);
   Parser := CreateParser;
 end;
 
 destructor TsardFeeder.Destroy;
 begin
   FHeader.Free;
-  FreeAndNil(FProcesses);
+  FreeAndNil(FScanners);
   inherited Destroy;
 end;
 
 procedure TsardFeeder.ScanLine(const Text: string; const Line: Integer);
 var
   Column, OldColumn: Integer;
-  OldProcess: TsardProcessID;
+  OldScanner: TsardScannerID;
   l: Integer;
 begin
   if not Active then
@@ -413,10 +413,10 @@ begin
   while (Column <= l) do
   begin
     OldColumn := Column;
-    OldProcess := FProcess;
-    Processes[FProcess].Scan(Text, Column, Line);
-    if (OldColumn = Column) and (OldProcess = FProcess) then
-      raise EsardException.Create('Feeder in loop with: ' + Processes[FProcess].ClassName);
+    OldScanner := FScanner;
+    Scanners[FScanner].Scan(Text, Column, Line);
+    if (OldColumn = Column) and (OldScanner = FScanner) then
+      raise EsardException.Create('Feeder in loop with: ' + Scanners[FScanner].ClassName);
   end;
 end;
 
