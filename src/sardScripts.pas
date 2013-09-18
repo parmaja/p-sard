@@ -52,18 +52,18 @@ type
   TsardScript = class(TsardFeeder)
   private
     //       <--------- i don't know why i save it in variables, so it is temporary solution
-    prcStart: Integer;
-    prcHeader: Integer;
-    prcWhiteSpace: Integer;
-    prcIdentifier: Integer;
-    prcNumber: Integer;
-    prcBracket: Integer;
-    prcOperator: Integer;
-    prcControl: Integer;
-    prcSQString: Integer;
-    prcDQString: Integer;
-    prcBlockComment: Integer;
-    prcLineComment: Integer;
+    scanStart: Integer;
+    scanHeader: Integer;
+    scanWhiteSpace: Integer;
+    scanIdentifier: Integer;
+    scanNumber: Integer;
+    scanBracket: Integer;
+    scanOperator: Integer;
+    scanControl: Integer;
+    scanSQString: Integer;
+    scanDQString: Integer;
+    scanBlockComment: Integer;
+    scanLineComment: Integer;
   protected
     function CreateParser: TsardParser; override;
   public
@@ -268,20 +268,20 @@ begin
 
   with Scanners do
   begin
-    prcStart := RegisterScanner(TsardStart_Scanner);
-    prcHeader := RegisterScanner(TsardHeader_Scanner);
-    prcWhiteSpace := RegisterScanner(TsardWhitespace_Scanner);
-    prcIdentifier := RegisterScanner(TsardIdentifier_Scanner);
-    prcNumber := RegisterScanner(TsardNumber_Scanner);
-    prcBracket := RegisterScanner(TsardBracket_Scanner);
-    prcControl := RegisterScanner(TsardControl_Scanner);
-    prcSQString := RegisterScanner(TsardSQString_Scanner);
-    prcDQString := RegisterScanner(TsardDQString_Scanner);
-    prcBlockComment := RegisterScanner(TsardBlockComment_Scanner);
-    prcLineComment := RegisterScanner(TsardLineComment_Scanner);
-    prcOperator := RegisterScanner(TsardOperator_Scanner);//Register it after comment because comment take /*
+    scanStart := RegisterScanner(TsardStart_Scanner);
+    scanHeader := RegisterScanner(TsardHeader_Scanner);
+    scanWhiteSpace := RegisterScanner(TsardWhitespace_Scanner);
+    scanIdentifier := RegisterScanner(TsardIdentifier_Scanner);
+    scanNumber := RegisterScanner(TsardNumber_Scanner);
+    scanBracket := RegisterScanner(TsardBracket_Scanner);
+    scanControl := RegisterScanner(TsardControl_Scanner);
+    scanSQString := RegisterScanner(TsardSQString_Scanner);
+    scanDQString := RegisterScanner(TsardDQString_Scanner);
+    scanBlockComment := RegisterScanner(TsardBlockComment_Scanner);
+    scanLineComment := RegisterScanner(TsardLineComment_Scanner);
+    scanOperator := RegisterScanner(TsardOperator_Scanner);//Register it after comment because comment take /*
   end;
-  FOffScanner := prcIdentifier;
+  FOffScanner := scanIdentifier;
 end;
 
 { TsardNumberScanner }
