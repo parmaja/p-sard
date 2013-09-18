@@ -51,19 +51,6 @@ type
 
   TsardScript = class(TsardFeeder)
   private
-    //       <--------- i don't know why i save it in variables, so it is temporary solution
-    scanStart: Integer;
-    scanHeader: Integer;
-    scanWhiteSpace: Integer;
-    scanIdentifier: Integer;
-    scanNumber: Integer;
-    scanBracket: Integer;
-    scanOperator: Integer;
-    scanControl: Integer;
-    scanSQString: Integer;
-    scanDQString: Integer;
-    scanBlockComment: Integer;
-    scanLineComment: Integer;
   protected
     function CreateParser: TsardParser; override;
   public
@@ -268,20 +255,20 @@ begin
 
   with Scanners do
   begin
-    scanStart := RegisterScanner(TsardStart_Scanner);
-    scanHeader := RegisterScanner(TsardHeader_Scanner);
-    scanWhiteSpace := RegisterScanner(TsardWhitespace_Scanner);
-    scanIdentifier := RegisterScanner(TsardIdentifier_Scanner);
-    scanNumber := RegisterScanner(TsardNumber_Scanner);
-    scanBracket := RegisterScanner(TsardBracket_Scanner);
-    scanControl := RegisterScanner(TsardControl_Scanner);
-    scanSQString := RegisterScanner(TsardSQString_Scanner);
-    scanDQString := RegisterScanner(TsardDQString_Scanner);
-    scanBlockComment := RegisterScanner(TsardBlockComment_Scanner);
-    scanLineComment := RegisterScanner(TsardLineComment_Scanner);
-    scanOperator := RegisterScanner(TsardOperator_Scanner);//Register it after comment because comment take /*
+    RegisterScanner(TsardStart_Scanner);
+    RegisterScanner(TsardHeader_Scanner);
+    RegisterScanner(TsardWhitespace_Scanner);
+    RegisterScanner(TsardIdentifier_Scanner);
+    RegisterScanner(TsardNumber_Scanner);
+    RegisterScanner(TsardBracket_Scanner);
+    RegisterScanner(TsardControl_Scanner);
+    RegisterScanner(TsardSQString_Scanner);
+    RegisterScanner(TsardDQString_Scanner);
+    RegisterScanner(TsardBlockComment_Scanner);
+    RegisterScanner(TsardLineComment_Scanner);
+    RegisterScanner(TsardOperator_Scanner);//Register it after comment because comment take /*
   end;
-  FOffScanner := scanIdentifier;
+  //FOffScanner := scanIdentifier;
 end;
 
 { TsardNumberScanner }
