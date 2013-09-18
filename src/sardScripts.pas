@@ -49,7 +49,7 @@ type
 
 { TsardScanner }
 
-  TsardScript = class(TsardCustomScanner)
+  TsardScript = class(TsardFeeder)
   private
     //       <--------- i don't know why i save it in variables, so it is temporary solution
     prcStart: Integer;

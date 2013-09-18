@@ -49,7 +49,7 @@ type
   TsardProcessID = type Integer;
 
   TsardProcesses = class;
-  TsardCustomScanner = class;
+  TsardFeeder = class;
   TsardProcessClass = class of TsardProcess;
   TsardParser = class;
 
@@ -84,20 +84,20 @@ type
 
   TsardProcesses = class(TObjectList)
   private
-    FScanner: TsardCustomScanner;
+    FFeeder: TsardFeeder;
     function GetItem(Index: Integer): TsardProcess;
   public
-    constructor Create(vScanner: TsardCustomScanner; FreeObjects: boolean = True); virtual;
+    constructor Create(vFeeder: TsardFeeder; FreeObjects: boolean = True); virtual;
     function ChooseProcess(const Text: string; var Column: Integer; const Line: Integer): Integer;
     function Find(const ProcessClass: TsardProcessClass): TsardProcess;
     function RegisterProcess(ProcessClass: TsardProcessClass): TsardProcessID;
     property Items[Index: Integer]: TsardProcess read GetItem; default;
-    property Scanner: TsardCustomScanner read FScanner;
+    property Feeder: TsardFeeder read FFeeder;
   end;
 
-  { TsardCustomScanner }
+  { TsardFeeder }
 
-  TsardCustomScanner = class(TObject)
+  TsardFeeder = class(TObject)
   private
     FActive: Boolean;
     FVersion: string;
@@ -222,22 +222,22 @@ end;
 
 procedure TsardProcess.Open(vBracket: sardBracketKind);
 begin
-  Processes.Scanner.Parser.Open(vBracket);
+  Processes.Feeder.Parser.Open(vBracket);
 end;
 
 procedure TsardProcess.Close(vBracket: sardBracketKind);
 begin
-  Processes.Scanner.Parser.Close(vBracket);
+  Processes.Feeder.Parser.Close(vBracket);
 end;
 
 procedure TsardProcess.Terminate;
 begin
-  Processes.Scanner.Parser.Terminate;
+  Processes.Feeder.Parser.Terminate;
 end;
 
 procedure TsardProcess.Push(Token: String; TokenID: Integer);
 begin
-  Processes.Scanner.Parser.Push(Token, TokenID);
+  Processes.Feeder.Parser.Push(Token, TokenID);
 end;
 
 function TsardProcess.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -252,12 +252,12 @@ end;
 
 procedure TsardProcess.ChangeProcess(NextProcess: TsardProcessID);
 begin
-  Processes.Scanner.ChangeProcess(NextProcess);
+  Processes.Feeder.ChangeProcess(NextProcess);
 end;
 
 procedure TsardProcess.SelectProcess(ProcessClass: TsardProcessClass);
 begin
-  Processes.Scanner.SelectProcess(ProcessClass);
+  Processes.Feeder.SelectProcess(ProcessClass);
 end;
 
 constructor TsardProcess.Create(vProcesses: TsardProcesses);
@@ -278,9 +278,9 @@ begin
   Result := inherited Items[Index] as TsardProcess;
 end;
 
-constructor TsardProcesses.Create(vScanner: TsardCustomScanner; FreeObjects: boolean);
+constructor TsardProcesses.Create(vFeeder: TsardFeeder; FreeObjects: boolean);
 begin
-  FScanner := vScanner;
+  FFeeder := vFeeder;
   inherited Create(FreeObjects);
 end;
 
@@ -288,7 +288,7 @@ function TsardProcesses.ChooseProcess(const Text: string; var Column: Integer; c
 var
   i: Integer;
 begin
-  Result := -1;//Scanner.FOffProcess;
+  Result := -1;//Feeder.FOffProcess;
   for i := 0 to Count - 1 do
   begin
     if (Items[i].Index <> Result) and Items[i].Accept(Text, Column, Line) then
@@ -299,7 +299,7 @@ begin
   end;
   if Result < 0 then
     raise EsardException.Create('Process not found:' + Text[Column]);
-  Scanner.ChangeProcess(Result);
+  Feeder.ChangeProcess(Result);
 end;
 
 function TsardProcesses.Find(const ProcessClass: TsardProcessClass): TsardProcess;
@@ -326,7 +326,7 @@ begin
   aProcess.Index := Result;
 end;
 
-procedure TsardCustomScanner.Stop;
+procedure TsardFeeder.Stop;
 begin
   if not FActive then
     raise EsardException.Create('File already closed');
@@ -335,7 +335,7 @@ begin
 end;
 
 
-procedure TsardCustomScanner.Start;
+procedure TsardFeeder.Start;
 begin
   if FActive then
     raise EsardException.Create('File already opened');
@@ -343,23 +343,23 @@ begin
   DoStart;
 end;
 
-{ TsardCustomScanner }
+{ TsardFeeder }
 
-procedure TsardCustomScanner.SetParser(AValue: TsardParser);
+procedure TsardFeeder.SetParser(AValue: TsardParser);
 begin
   if FParser = AValue then Exit;
   FParser := AValue;
 end;
 
-procedure TsardCustomScanner.DoStart;
+procedure TsardFeeder.DoStart;
 begin
 end;
 
-procedure TsardCustomScanner.DoStop;
+procedure TsardFeeder.DoStop;
 begin
 end;
 
-procedure TsardCustomScanner.ChangeProcess(NextProcess: TsardProcessID);
+procedure TsardFeeder.ChangeProcess(NextProcess: TsardProcessID);
 begin
   if FProcess <> NextProcess then
   begin
@@ -369,7 +369,7 @@ begin
   end;
 end;
 
-procedure TsardCustomScanner.SelectProcess(ProcessClass: TsardProcessClass);
+procedure TsardFeeder.SelectProcess(ProcessClass: TsardProcessClass);
 var
   aProcess: TsardProcess;
 begin
@@ -379,7 +379,7 @@ begin
   ChangeProcess(aProcess.Index);
 end;
 
-constructor TsardCustomScanner.Create;
+constructor TsardFeeder.Create;
 begin
   inherited Create;
   FHeader := TStringList.Create;
@@ -393,21 +393,21 @@ begin
   Parser := CreateParser;
 end;
 
-destructor TsardCustomScanner.Destroy;
+destructor TsardFeeder.Destroy;
 begin
   FHeader.Free;
   FreeAndNil(FProcesses);
   inherited Destroy;
 end;
 
-procedure TsardCustomScanner.ScanLine(const Text: string; const Line: Integer);
+procedure TsardFeeder.ScanLine(const Text: string; const Line: Integer);
 var
   Column, OldColumn: Integer;
   OldProcess: TsardProcessID;
   l: Integer;
 begin
   if not Active then
-    raise EsardException.Create('Scanner not started');
+    raise EsardException.Create('Feeder not started');
   Column := 1; //start of pascal string is 1
   l := Length(Text);
   while (Column <= l) do
@@ -416,11 +416,11 @@ begin
     OldProcess := FProcess;
     Processes[FProcess].Scan(Text, Column, Line);
     if (OldColumn = Column) and (OldProcess = FProcess) then
-      raise EsardException.Create('Scanner in loop with: ' + Processes[FProcess].ClassName);
+      raise EsardException.Create('Feeder in loop with: ' + Processes[FProcess].ClassName);
   end;
 end;
 
-procedure TsardCustomScanner.Scan(const Lines: TStrings);
+procedure TsardFeeder.Scan(const Lines: TStrings);
 var
   i: Integer;
 begin
