@@ -42,9 +42,10 @@ type
 
   EsardParserException = class(EsardException);
 
-  TsardControl = (ctlDeclare, ctlAssign, ctlOpenParenthesis, ctlCloseParenthesis, ctlOpenBracket, ctlCloseBracket, ctlOpen, ctlClose, ctlLink, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
-  TsardBracketKind = (brParenthesis, brSquare, brCurly);// and (), [], {} or maybe <>
+  TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpen, ctlClose, ctlLink, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
+  TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
+  TsardOperator = (opAdd, opMinus, opMuliple, opDivided);//no level until now
 
   TsardScannerID = type Integer;
 
@@ -148,24 +149,26 @@ type
 
   TsardStackItem = class(TObject)
   public
-    Parser: TsardParser;
+    AnObject: TObject;
     Owner: TsardStack;
     Prior: TsardStackItem;
   end;
+
+  { TsardStack }
 
   TsardStack = class(TObject)
   private
     FCount: Integer;
     FCurrent: TsardStackItem;
-    function GetCurrent: TsardParser;
-    procedure SetCurrent(const AValue: TsardParser);
+    function GetCurrent: TObject;
+    procedure SetCurrent(const AValue: TObject);
   public
     function IsEmpty: Boolean;
-    procedure Push(vParser: TsardParser);
+    procedure Push(vObject: TObject);
     function Pop: TObject;
     procedure Delete;
     function Peek: TObject;
-    property Current: TsardParser read GetCurrent write SetCurrent;
+    property Current: TObject read GetCurrent write SetCurrent;
     property Count: Integer read FCount;
   end;
 
@@ -183,23 +186,23 @@ end;
 procedure TsardStack.Delete;
 var
   aNode: TsardStackItem;
-  aParser: TsardParser;
+  aObject: TObject;
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
-  aParser := FCurrent.Parser;
+  aObject := FCurrent.AnObject;
   aNode := FCurrent;
   FCurrent := aNode.Prior;
   Dec(FCount);
   aNode.Free;
-  aParser.Free;
+  aObject.Free;
 end;
 
-function TsardStack.GetCurrent: TsardParser;
+function TsardStack.GetCurrent: TObject;
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
-  Result := FCurrent.Parser;
+  Result := FCurrent.AnObject;
 end;
 
 function TsardStack.IsEmpty: Boolean;
@@ -211,7 +214,7 @@ function TsardStack.Peek: TObject;
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
-  Result := FCurrent.Parser;
+  Result := FCurrent.AnObject;
 end;
 
 function TsardStack.Pop: TObject;
@@ -220,30 +223,30 @@ var
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
-  Result := FCurrent.Parser;
+  Result := FCurrent.AnObject;
   aNode := FCurrent;
   FCurrent := aNode.Prior;
   aNode.Free;
   Dec(FCount);
 end;
 
-procedure TsardStack.Push(vParser: TsardParser);
+procedure TsardStack.Push(vObject: TObject);
 var
   aNode: TsardStackItem;
 begin
   aNode := TsardStackItem.Create;
-  aNode.Parser := vParser;
+  aNode.AnObject := vObject;
   aNode.Prior := FCurrent;
   aNode.Owner := Self;
   FCurrent := aNode;
   Inc(FCount);
 end;
 
-procedure TsardStack.SetCurrent(const AValue: TsardParser);
+procedure TsardStack.SetCurrent(const AValue: TObject);
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
-  FCurrent.Parser := AValue;
+  FCurrent.AnObject := AValue;
 end;
 
 { EmnXMLException }

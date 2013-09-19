@@ -32,7 +32,7 @@ unit sardObjects;
 interface
 
 uses
-  Classes, SysUtils, Contnrs;
+  Classes, SysUtils, Contnrs, sardClasses;
 
 type
   { TsardObject }
@@ -46,7 +46,10 @@ type
     constructor Create(AParent: TsardObject); virtual;
     property Parent: TsardObject read FParent;
     property Name: string read FName write SetName;
-    //functio DoOperator(WithObject: TsardObject; AnOperator:TsardOperator): Boolean;
+    function DoOperator(WithObject: TsardObject; AnOperator: TsardOperator): Boolean;
+    //function ConvertToString(out oValue):Boolean;
+    //ConvertToFloat
+    //ConvertToInteger
   end;
 
   { TsardObjects }
@@ -103,6 +106,11 @@ constructor TsardObject.Create(AParent: TsardObject);
 begin
   inherited Create;
   FParent := AParent;
+end;
+
+function TsardObject.DoOperator(WithObject: TsardObject; AnOperator: TsardOperator): Boolean;
+begin
+  Result := False;
 end;
 
 end.

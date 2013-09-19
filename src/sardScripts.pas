@@ -213,13 +213,13 @@ var
 begin
   b := Text[Column];
   if b = '(' then //TODO need to improve it, my brain is off
-    Open(brParenthesis)
+    Open(brBracket)
   else if b = '[' then
     Open(brSquare)
   else if b = '{' then
     Open(brCurly)
   else if b = ')' then
-    Close(brParenthesis)
+    Close(brBracket)
   else if b = ']' then
     Close(brSquare)
   else if b = '}' then
