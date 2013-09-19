@@ -58,9 +58,13 @@ type
 
   TsardBlock = class(TObjectList)
   private
+    function GetCurrent: TsardStatement;
     function GetItem(Index: Integer): TsardStatement;
   public
+    function Add(AStatement: TsardStatement): Integer;
+    function New: TsardStatement;
     property Items[Index: Integer]: TsardStatement read GetItem; default;
+    property Current: TsardStatement read GetCurrent;
   end;
 
   { TsardObjects }
@@ -82,7 +86,8 @@ type
     procedure SetName(AValue: string);
     procedure SetStatement(AValue: TsardStatement);
   public
-    constructor Create(AParent: TsardObject); virtual;
+    constructor Create(AParent: TsardObject); overload;
+    constructor Create(AOperator:TsardOperator; AStatment:TsardStatement); overload;
     function DoOperator(WithObject: TsardObject; AnOperator: TsardOperator): Boolean;
     property Parent: TsardObject read FParent;
     property Name: string read FName write SetName;
@@ -146,9 +151,25 @@ implementation
 
 { TsardBlock }
 
+function TsardBlock.GetCurrent: TsardStatement;
+begin
+  Result := Last as TsardStatement;
+end;
+
 function TsardBlock.GetItem(Index: Integer): TsardStatement;
 begin
   Result := inherited Items[Index] as TsardStatement;
+end;
+
+function TsardBlock.Add(AStatement: TsardStatement): Integer;
+begin
+  Result := inherited Add(AStatement);
+end;
+
+function TsardBlock.New: TsardStatement;
+begin
+  Result := TsardStatement.Create;
+  Add(Result);
 end;
 
 { TsardStatement }
@@ -218,6 +239,13 @@ constructor TsardObject.Create(AParent: TsardObject);
 begin
   inherited Create;
   FParent := AParent;
+end;
+
+constructor TsardObject.Create(AOperator: TsardOperator; AStatment: TsardStatement);
+begin
+  inherited Create;
+  AStatment.Add(AOperator, Self);
+  FStatement := AStatment;
 end;
 
 function TsardObject.DoOperator(WithObject: TsardObject; AnOperator: TsardOperator): Boolean;

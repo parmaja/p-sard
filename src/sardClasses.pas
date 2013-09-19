@@ -65,10 +65,6 @@ type
     function ScanText(S: string; const Text: string; var Column: Integer): Boolean;
     procedure ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer); virtual; abstract;
-    procedure Open(vBracket: TsardBracketKind); virtual;
-    procedure Close(vBracket: TsardBracketKind); virtual;
-    procedure Control(AControl: TsardControl); virtual;
-    procedure Push(Token: String; TokenID: Integer); virtual;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; virtual;
     function DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
     procedure SwitchScanner(AScannerID: TsardScannerID);
@@ -86,9 +82,11 @@ type
 
   TsardScanners = class(TObjectList)
   private
+    FParser: TsardParser;
     FScannerID: TsardScannerID;
     FFeeder: TsardFeeder;
     function GetItem(Index: Integer): TsardScanner;
+    procedure SetParser(AValue: TsardParser);
   public
     constructor Create(vFeeder: TsardFeeder; FreeObjects: boolean = True); virtual;
     function DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
@@ -100,6 +98,7 @@ type
     property Items[Index: Integer]: TsardScanner read GetItem; default;
     property ScannerID: TsardScannerID read FScannerID;
     property Feeder: TsardFeeder read FFeeder;
+    property Parser: TsardParser read FParser write SetParser;
   end;
 
   { TsardFeeder }
@@ -109,16 +108,11 @@ type
     FActive: Boolean;
     FVersion: string;
     FCharset: string;
-    FParser: TsardParser;//TODO use stacker
     FScanners: TsardScanners;//TODO use stacker
-    procedure SetParser(AValue: TsardParser);
   protected
     procedure DoStart; virtual;
     procedure DoStop; virtual;
 
-    function CreateParser:TsardParser; virtual; abstract;
-    property Scanners: TsardScanners read FScanners;
-    property Parser: TsardParser read FParser write SetParser;
   public
     constructor Create; virtual;
     destructor Destroy; override;
@@ -133,16 +127,19 @@ type
     property Active: Boolean read FActive write FActive;
     property Version: string read FVersion write FVersion;
     property Charset: string read FCharset write FCharset;
+    property Scanners: TsardScanners read FScanners;
   end;
 
   { TsardParser }
 
   TsardParser = class(TObject)
   protected
+  public
     procedure Open(vBracket: TsardBracketKind); virtual; abstract;
-    procedure Push(Token: String; TokenID: Integer); virtual; abstract;
     procedure Close(vBracket: TsardBracketKind); virtual; abstract;
-    procedure Control(AControl: TsardControl); virtual;
+    procedure AddToken(Token: String; TokenID: Integer); virtual; abstract;
+    procedure AddOperator(AOperator: TsardOperator); virtual; abstract;
+    procedure AddControl(AControl: TsardControl); virtual;
   end;
 
   TsardStack = class;
@@ -179,7 +176,7 @@ uses
 
 { TsardParser }
 
-procedure TsardParser.Control(AControl: TsardControl);
+procedure TsardParser.AddControl(AControl: TsardControl);
 begin
 end;
 
@@ -319,26 +316,6 @@ begin
   end;
 end;
 
-procedure TsardScanner.Open(vBracket: TsardBracketKind);
-begin
-  Scanners.Feeder.Parser.Open(vBracket);
-end;
-
-procedure TsardScanner.Close(vBracket: TsardBracketKind);
-begin
-  Scanners.Feeder.Parser.Close(vBracket);
-end;
-
-procedure TsardScanner.Control(AControl: TsardControl);
-begin
-  Scanners.Feeder.Parser.Control(AControl);
-end;
-
-procedure TsardScanner.Push(Token: String; TokenID: Integer);
-begin
-  Scanners.Feeder.Parser.Push(Token, TokenID);
-end;
-
 function TsardScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := False;
@@ -375,6 +352,14 @@ end;
 function TsardScanners.GetItem(Index: Integer): TsardScanner;
 begin
   Result := inherited Items[Index] as TsardScanner;
+end;
+
+procedure TsardScanners.SetParser(AValue: TsardParser);
+begin
+  if FParser = AValue then Exit;
+  if Feeder.Active then
+    raise EsardException.Create('You can'' set a parser while it is active!');
+  FParser := AValue;
 end;
 
 constructor TsardScanners.Create(vFeeder: TsardFeeder; FreeObjects: boolean);
@@ -443,12 +428,6 @@ begin
   DoStart;
 end;
 
-procedure TsardFeeder.SetParser(AValue: TsardParser);
-begin
-  if FParser = AValue then Exit;
-  FParser := AValue;
-end;
-
 procedure TsardFeeder.DoStart;
 begin
 end;
@@ -485,7 +464,6 @@ begin
   FCharset := 'iso-8859-1';
   {$endif}
   FScanners := TsardScanners.Create(Self);
-  Parser := CreateParser;
 end;
 
 destructor TsardFeeder.Destroy;

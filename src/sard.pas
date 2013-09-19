@@ -24,14 +24,14 @@ type
 
   TmyParser = class(TsardScriptParser)
   protected
-    procedure Push(Token: String; TokenID: Integer); override;
+  public
+    procedure AddToken(Token: String; TokenID: Integer); override;
   end;
 
   { TmyScript }
 
   TmyScript = class(TsardScript)
   protected
-    function CreateParser: TsardParser; override;
   end;
 
 function Execute(Lines: TStrings): Boolean;
@@ -41,14 +41,7 @@ implementation
 
 { TmyScript }
 
-function TmyScript.CreateParser: TsardParser;
-begin
-  Result := TmyParser.Create;
-end;
-
-{ TmyScanner }
-
-procedure TmyParser.Push(Token: String; TokenID: Integer);
+procedure TmyParser.AddToken(Token: String; TokenID: Integer);
 begin
   inherited;
   WriteLn(Token);
@@ -57,16 +50,21 @@ end;
 function Execute(Lines: TStrings): Boolean;
 var
   Scanner: TmyScript;
-//  Element: TsardElement;
+  Parser: TsardScriptParser;
+  Block: TsardBlock;
 begin
   Scanner := TmyScript.Create;
-  //Element:= TsardElement.Create(nil);
   try
-    //Scanner.IntoElement := Element;
+    Block := TsardBlock.Create;
+    Block.New;
+    Parser := TmyParser.Create(Block);
+    Scanner.Scanners.Parser := Parser;
     Scanner.Scan(Lines);
+    Scanner.Scanners.Parser := nil;
+    FreeAndNil(Parser);
+    FreeAndNil(Block);
   finally
-    //Element.Free;
-    Scanner.Free;
+    FreeAndNil(Scanner);
   end;
   Result := True;
 end;

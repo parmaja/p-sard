@@ -53,7 +53,6 @@ type
   TsardScript = class(TsardFeeder)
   private
   protected
-    function CreateParser: TsardParser; override;
   public
     constructor Create; override;
   end;
@@ -63,9 +62,13 @@ type
   TsardScriptParser = class(TsardParser)
   protected
     Block: TsardBlock;
+    CurrentOperator: TsardOperator;
+    constructor Create(ABlock: TsardBlock);
     procedure Open(vBracket: TsardBracketKind); override;
     procedure Close(vBracket: TsardBracketKind); override;
-    procedure Push(Token: String; TokenID: Integer); override;
+    procedure AddToken(Token: String; TokenID: Integer); override;
+    procedure AddControl(AControl: TsardControl); override;
+    procedure AddOperator(AOperator: TsardOperator); override;
   end;
 
   { TsardStartScanner }
@@ -173,6 +176,12 @@ end;
 
 { TsardScriptParser }
 
+constructor TsardScriptParser.Create(ABlock: TsardBlock);
+begin
+  inherited Create;
+  Block := ABlock;
+end;
+
 procedure TsardScriptParser.Open(vBracket: TsardBracketKind);
 begin
 end;
@@ -181,25 +190,33 @@ procedure TsardScriptParser.Close(vBracket: TsardBracketKind);
 begin
 end;
 
-procedure TsardScriptParser.Push(Token: String; TokenID: Integer);
-  procedure AddObject(AnObject: TsardObject);
+procedure TsardScriptParser.AddToken(Token: String; TokenID: Integer);
+  procedure AddIt(AnObject: TsardObject);
   begin
-
+    //Block.Current.Add()
   end;
 begin
   case TsardTokenKinds(TokenID) of
     tknNumber:
     begin
       if pos('.', Token) > 0 then
-        TsardFloatObject.Create(nil).Value := StrToFloat(Token)
+        TsardFloatObject.Create(CurrentOperator, Block.Current).Value := StrToFloat(Token)
       else
-        TsardIntegerObject.Create(nil).Value := StrToInt64(Token);//check it
+        TsardIntegerObject.Create(CurrentOperator,Block.Current).Value := StrToInt64(Token);//check it
     end;
     tknString:
     begin
-      TsardStringObject.Create(nil).Value := Token;
+      TsardStringObject.Create(CurrentOperator, Block.Current).Value := Token;
     end;
   end;
+end;
+
+procedure TsardScriptParser.AddControl(AControl: TsardControl);
+begin
+end;
+
+procedure TsardScriptParser.AddOperator(AOperator: TsardOperator);
+begin
 end;
 
 { TsardControlScanner }
@@ -210,13 +227,13 @@ var
 begin
   b := Text[Column];
   if b = ';' then //TODO need to improve it
-    Control(ctlFinish)
+    Scanners.Parser.AddControl(ctlFinish)
   else if b = ',' then
-    Control(ctlSplit)
+    Scanners.Parser.AddControl(ctlSplit)
   else if b = ':' then
-    Control(ctlDeclare)
+    Scanners.Parser.AddControl(ctlDeclare)
   else if b = '~' then
-    Control(ctlLink);
+    Scanners.Parser.AddControl(ctlLink);
   Inc(Column);
 end;
 
@@ -233,17 +250,17 @@ var
 begin
   b := Text[Column];
   if b = '(' then //TODO need to improve it, my brain is off
-    Open(brBracket)
+    Scanners.Parser.Open(brBracket)
   else if b = '[' then
-    Open(brSquare)
+    Scanners.Parser.Open(brSquare)
   else if b = '{' then
-    Open(brCurly)
+    Scanners.Parser.Open(brCurly)
   else if b = ')' then
-    Close(brBracket)
+    Scanners.Parser.Close(brBracket)
   else if b = ']' then
-    Close(brSquare)
+    Scanners.Parser.Close(brSquare)
   else if b = '}' then
-    Close(brCurly);
+    Scanners.Parser.Close(brCurly);
   Inc(Column);
 end;
 
@@ -253,11 +270,6 @@ begin
 end;
 
 { TsardScript }
-
-function TsardScript.CreateParser: TsardParser;
-begin
-  Result := TsardScriptParser.Create;
-end;
 
 constructor TsardScript.Create;
 begin
@@ -290,7 +302,7 @@ begin
   l := Length(Text);
   while (Column <= l) and (Text[Column] in NUMBER_CHARS) do
     Inc(Column);
-  Push(MidStr(Text, c, Column - c), Ord(tknNumber));
+  Scanners.Parser.AddToken(MidStr(Text, c, Column - c), Ord(tknNumber));
 end;
 
 function TsardNumber_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -307,7 +319,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and (IsOperator(Text[Column])) do //operator is multi char here
     Inc(Column);
-  Push(MidStr(Text, c, Column - c), Ord(tknOperator));
+  //Scanners.Parser.AddOperator(MidStr(Text, c, Column - c), Ord(tknOperator));
 end;
 
 function TsardOperator_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -324,7 +336,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
     Inc(Column);
-  Push(MidStr(Text, c, Column - c), Ord(tknIdentifier));
+  Scanners.Parser.AddToken(MidStr(Text, c, Column - c), Ord(tknIdentifier));
 end;
 
 function TsardIdentifier_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -341,7 +353,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
-  Push(MidStr(Text, c, Column - c), Ord(tknString));
+  Scanners.Parser.AddToken(MidStr(Text, c, Column - c), Ord(tknString));
 end;
 
 function TsardDQString_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -358,7 +370,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
-  Push(MidStr(Text, c, Column - c), Ord(tknString));
+  Scanners.Parser.AddToken(MidStr(Text, c, Column - c), Ord(tknString));
 end;
 
 function TsardSQString_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -392,7 +404,7 @@ procedure TsardLineComment_Scanner.Scan(const Text: string; var Column: Integer;
 begin
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
-  //Push(MidStr(Text, c, Column - c)); ignore comment
+  //Scanners.Parser.AddToken(MidStr(Text, c, Column - c)); ignore comment
 end;
 
 function TsardLineComment_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
