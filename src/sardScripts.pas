@@ -33,7 +33,9 @@ const
   IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
   IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
   NUMBER_OPEN_CHARS = ['0'..'9'];
-  NUMBER_CHARS = NUMBER_OPEN_CHARS + ['.','E'];
+  NUMBER_CHARS = NUMBER_OPEN_CHARS + ['.', 'x', 'h', 'a'..'f'];
+  COLOR_OPEN_CHARS = ['#'];
+  COLOR_CHARS = COLOR_OPEN_CHARS + ['0'..'9', 'a'..'f'];
   OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&', '|', '!', '='];
   OPERATOR_CHARS = OPERATOR_OPEN_CHARS {+ ['']};
   SYMBOL_CHARS = ['$', '#', '@', '!', '\'];
@@ -44,7 +46,7 @@ const
   CONTROLS_CHARS = CONTROLS_OPEN_CHARS + ['='];
 
 type
-  TsardTokenKinds = (tknOperator, tknControl, tknBracket, tknIdentifier, tknString, tknNumber, tknComment);
+  TsardTokenKinds = (tknOperator, tknControl, tknBracket, tknIdentifier, tknString, tknNumber, tknColor, tknComment);
 
   { TsardScript }
 
@@ -60,6 +62,7 @@ type
 
   TsardScriptParser = class(TsardParser)
   protected
+    Block: TsardBlock;
     procedure Open(vBracket: TsardBracketKind); override;
     procedure Close(vBracket: TsardBracketKind); override;
     procedure Push(Token: String; TokenID: Integer); override;
@@ -179,7 +182,24 @@ begin
 end;
 
 procedure TsardScriptParser.Push(Token: String; TokenID: Integer);
+  procedure AddObject(AnObject: TsardObject);
+  begin
+
+  end;
 begin
+  case TsardTokenKinds(TokenID) of
+    tknNumber:
+    begin
+      if pos('.', Token) > 0 then
+        TsardFloatObject.Create(nil).Value := StrToFloat(Token)
+      else
+        TsardIntegerObject.Create(nil).Value := StrToInt64(Token);//check it
+    end;
+    tknString:
+    begin
+      TsardStringObject.Create(nil).Value := Token;
+    end;
+  end;
 end;
 
 { TsardControlScanner }
