@@ -2,7 +2,7 @@ unit sardClasses;
 {**
  *  This file is part of the "SARD"
  *
- * @license   Apache License Version 2.0 (modified of http://www.gnu.org/licenses/lgpl.html)
+ * @license   Apache License Version 2.0
  *            included in this distribution,
  * @author    Zaher Dirkey <zaher at parmaja dot com>
  *}
@@ -16,23 +16,6 @@ unit sardClasses;
   Check S is not empty before push
   Push with the scanner class and id
 }
-
-(*
-
-  o1: {
-    o2: {
-    }
-    fn1;
-    fn2;
-  }
-
- o1;
- fn1;
- fn2;
- o1.o2;
-
- o3 := 10+5;
-*)
 
 interface
 
@@ -102,14 +85,19 @@ type
 
   TsardScanners = class(TObjectList)
   private
+    FScannerID: TsardScannerID;
     FFeeder: TsardFeeder;
     function GetItem(Index: Integer): TsardScanner;
   public
     constructor Create(vFeeder: TsardFeeder; FreeObjects: boolean = True); virtual;
     function DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
+    procedure SwitchScanner(NextScanner: TsardScannerID);
+    procedure SelectScanner(ScannerClass: TsardScannerClass);
     function Find(const ScannerClass: TsardScannerClass): TsardScanner;
+    procedure ScanLine(const Text: string; const Line: Integer);
     function RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
     property Items[Index: Integer]: TsardScanner read GetItem; default;
+    property ScannerID: TsardScannerID read FScannerID;
     property Feeder: TsardFeeder read FFeeder;
   end;
 
@@ -119,21 +107,13 @@ type
   private
     FActive: Boolean;
     FVersion: string;
-    FHeader: TStringList;
     FCharset: string;
-    FStandalone: Boolean;
-    FParser: TsardParser;
-    FScanner: TsardScannerID;
-    FScanners: TsardScanners;
+    FParser: TsardParser;//TODO use stacker
+    FScanners: TsardScanners;//TODO use stacker
     procedure SetParser(AValue: TsardParser);
   protected
-    FDefaultScanner: TsardScannerID; //Default Scanner
-    FOffScanner: TsardScannerID; //Fall off into it when no one accept it
     procedure DoStart; virtual;
     procedure DoStop; virtual;
-
-    procedure SwitchScanner(NextScanner: TsardScannerID);
-    procedure SelectScanner(ScannerClass: TsardScannerClass);
 
     function CreateParser:TsardParser; virtual; abstract;
     property Scanners: TsardScanners read FScanners;
@@ -150,8 +130,6 @@ type
     procedure Start;
     procedure Stop;
     property Active: Boolean read FActive write FActive;
-    property Header: TStringList read FHeader write FHeader;
-    property Standalone: Boolean read FStandalone write FStandalone;
     property Version: string read FVersion write FVersion;
     property Charset: string read FCharset write FCharset;
   end;
@@ -191,52 +169,6 @@ type
     property Count: Integer read FCount;
   end;
 
-  { TsardObject }
-
-  TsardObject = class(TObject)
-  private
-    FLink: TsardObject;
-    FName: string;
-    FParent: TsardObject;
-    procedure SetName(AValue: string);
-  public
-    constructor Create(AParent: TsardObject); virtual;
-    property Parent: TsardObject read FParent;
-    property Link: TsardObject read FLink;
-    property Name: string read FName write SetName;
-  end;
-
-  { TsardObjects }
-
-  TsardObjects = class(TObjectList)
-  private
-    function GetItem(Index: Integer): TsardObject;
-  public
-    property Items[Index: Integer]: TsardObject read GetItem; default;
-  end;
-
-  TsardElements = class;
-
-  TsardElement = class(TsardObject)
-  private
-    FElements: TsardElements;
-    FLinkOperator: string;
-  public
-    constructor Create(AParent: TsardObject); override;
-    destructor Destroy; override;
-    property Elements: TsardElements read FElements;
-    property LinkOperator: string read FLinkOperator;
-  end;
-
-  { TsardElements }
-
-  TsardElements = class(TsardObjects)
-  private
-    function GetItem(Index: Integer): TsardElement;
-  public
-    property Items[Index: Integer]: TsardElement read GetItem; default;
-  end;
-
 implementation
 
 uses
@@ -246,27 +178,6 @@ uses
 
 procedure TsardParser.Control(AControl: TsardControl);
 begin
-end;
-
-{ TsardElements }
-
-function TsardElements.GetItem(Index: Integer): TsardElement;
-begin
-  Result := inherited Items[Index] as TsardElement;
-end;
-
-{ TsardElement }
-
-constructor TsardElement.Create(AParent: TsardObject);
-begin
-  inherited Create(AParent);
-  FElements := TsardElements.Create;
-end;
-
-destructor TsardElement.Destroy;
-begin
-  FreeAndNil(FElements);
-  inherited Destroy;
 end;
 
 procedure TsardStack.Delete;
@@ -333,30 +244,6 @@ begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
   FCurrent.Parser := AValue;
-end;
-
-{ TsardObjects }
-
-function TsardObjects.GetItem(Index: Integer): TsardObject;
-begin
-  Result := inherited Items[Index] as TsardObject;
-end;
-
-{ TsardObject }
-
-procedure TsardObject.SetName(AValue: string);
-begin
-  if FName <> AValue then
-  begin
-    //CheckUniqe; TODO
-    FName := AValue;
-  end;
-end;
-
-constructor TsardObject.Create(AParent: TsardObject);
-begin
-  inherited Create;
-  FParent := AParent;
 end;
 
 { EmnXMLException }
@@ -461,12 +348,12 @@ end;
 
 procedure TsardScanner.SwitchScanner(AScannerID: TsardScannerID);
 begin
-  Scanners.Feeder.SwitchScanner(AScannerID);
+  Scanners.SwitchScanner(AScannerID);
 end;
 
 procedure TsardScanner.SelectScanner(AScannerClass: TsardScannerClass);
 begin
-  Scanners.Feeder.SelectScanner(AScannerClass);
+  Scanners.SelectScanner(AScannerClass);
 end;
 
 constructor TsardScanner.Create(vScanners: TsardScanners);
@@ -497,7 +384,7 @@ function TsardScanners.DetectScanner(const Text: string; var Column: Integer; co
 var
   i: Integer;
 begin
-  Result := -1;//Feeder.FOffScanner;
+  Result := -1;
   for i := 0 to Count - 1 do
   begin
     if (Items[i].Index <> Result) and Items[i].Accept(Text, Column, Line) then
@@ -509,7 +396,7 @@ begin
   end;
   if Result < 0 then
     raise EsardException.Create('Scanner not found:' + Text[Column]);
-  Feeder.SwitchScanner(Result);
+  SwitchScanner(Result);
 end;
 
 function TsardScanners.Find(const ScannerClass: TsardScannerClass): TsardScanner;
@@ -567,21 +454,19 @@ procedure TsardFeeder.DoStop;
 begin
 end;
 
-procedure TsardFeeder.SwitchScanner(NextScanner: TsardScannerID);
+procedure TsardScanners.SwitchScanner(NextScanner: TsardScannerID);
 begin
-  if FScanner <> NextScanner then
+  if FScannerID <> NextScanner then
   begin
-    if NextScanner = 0 then
-      FScanner := FScanner;
-    FScanner := NextScanner;
+    FScannerID := NextScanner;
   end;
 end;
 
-procedure TsardFeeder.SelectScanner(ScannerClass: TsardScannerClass);
+procedure TsardScanners.SelectScanner(ScannerClass: TsardScannerClass);
 var
   aScanner: TsardScanner;
 begin
-  aScanner := Scanners.Find(ScannerClass);
+  aScanner := Find(ScannerClass);
   if aScanner = nil then
     raise EsardException.Create('Scanner not found');
   SwitchScanner(aScanner.Index);
@@ -590,7 +475,6 @@ end;
 constructor TsardFeeder.Create;
 begin
   inherited Create;
-  FHeader := TStringList.Create;
   FVersion := '1.0';
   {$ifdef FPC}
   FCharset := 'utf-8';
@@ -603,32 +487,36 @@ end;
 
 destructor TsardFeeder.Destroy;
 begin
-  FHeader.Free;
   FreeAndNil(FScanners);
   inherited Destroy;
 end;
 
 procedure TsardFeeder.ScanLine(const Text: string; const Line: Integer);
+begin
+  if not Active then
+    raise EsardException.Create('Feeder not started');
+  Scanners.ScanLine(Text, Line);
+end;
+
+procedure TsardScanners.ScanLine(const Text: string; const Line: Integer);
 var
   Column, OldColumn: Integer;
   OldScanner: TsardScannerID;
   l: Integer;
 begin
-  if not Active then
-    raise EsardException.Create('Feeder not started');
   Column := 1; //start of pascal string is 1
   l := Length(Text);
   while (Column <= l) do
   begin
     OldColumn := Column;
-    OldScanner := FScanner;
+    OldScanner := FScannerID;
 
-    Scanners[FScanner].Scan(Text, Column, Line);
+    Items[ScannerID].Scan(Text, Column, Line);
     if Column <= Length(Text) then
-      Scanners.DetectScanner(Text, Column, Line);
+      DetectScanner(Text, Column, Line);
 
-    if (OldColumn = Column) and (OldScanner = FScanner) then
-      raise EsardException.Create('Feeder in loop with: ' + Scanners[FScanner].ClassName);
+    if (OldColumn = Column) and (OldScanner = FScannerID) then
+      raise EsardException.Create('Feeder in loop with: ' + Items[FScannerID].ClassName);
   end;
 end;
 

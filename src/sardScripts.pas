@@ -2,7 +2,7 @@ unit sardScripts;
 {**
  *  This file is part of the "SARD"
  *
- * @license   Apache License Version 2.0 (modified of http://www.gnu.org/licenses/lgpl.html)
+ * @license   Apache License Version 2.0
  *            included in this distribution
  * @author    Zaher Dirkey <zaher at parmaja dot com>
  *}
@@ -27,7 +27,7 @@ interface
 
 uses
   Classes, SysUtils,
-  sardClasses;
+  sardClasses, sardObjects;
 
 const
   IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
@@ -50,12 +50,10 @@ type
 
   TsardScript = class(TsardFeeder)
   private
-    FIntoElement: TsardElement;
   protected
     function CreateParser: TsardParser; override;
   public
     constructor Create; override;
-    property IntoElement: TsardElement read FIntoElement write FIntoElement;
   end;
 
   { TsardScriptParser }
