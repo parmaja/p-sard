@@ -42,10 +42,15 @@ type
 
   EsardParserException = class(EsardException);
 
+  //Base classes
+
+  TsardObject = class(TObject);
+  TsardObjectList = class(TObjectList);
+
   TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpen, ctlClose, ctlLink, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
   TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
-  TsardOperator = (opNone, opAdd, opMinus, opMuliple, opDivided, opNot, opSeprator);//no level until now
+  TsardOperator = (opNone, opAdd, opMinus, opMuliple, opDivided, opNot, opSeprator);//no level until now //Move to sardObjects
 
   TsardScannerID = type Integer;
 
@@ -57,7 +62,7 @@ type
 
   { TsardScanner }
 
-  TsardScanner = class(TObject)
+  TsardScanner = class(TsardObject)
   private
     FScanners: TsardScanners;
   protected
@@ -80,7 +85,7 @@ type
 
   { TsardScanners }
 
-  TsardScanners = class(TObjectList)
+  TsardScanners = class(TsardObjectList)
   private
     FParser: TsardParser;
     FScannerID: TsardScannerID;
@@ -103,7 +108,7 @@ type
 
   { TsardFeeder }
 
-  TsardFeeder = class(TObject)
+  TsardFeeder = class(TsardObject)
   private
     FActive: Boolean;
     FVersion: string;
@@ -132,7 +137,7 @@ type
 
   { TsardParser }
 
-  TsardParser = class(TObject)
+  TsardParser = class(TsardObject)
   protected
   public
     procedure Open(vBracket: TsardBracketKind); virtual; abstract;
@@ -144,28 +149,28 @@ type
 
   TsardStack = class;
 
-  TsardStackItem = class(TObject)
+  TsardStackItem = class(TsardObject)
   public
-    AnObject: TObject;
+    AnObject: TsardObject;
     Owner: TsardStack;
     Prior: TsardStackItem;
   end;
 
   { TsardStack }
 
-  TsardStack = class(TObject)
+  TsardStack = class(TsardObject)
   private
     FCount: Integer;
     FCurrent: TsardStackItem;
-    function GetCurrent: TObject;
-    procedure SetCurrent(const AValue: TObject);
+    function GetCurrent: TsardObject;
+    procedure SetCurrent(const AValue: TsardObject);
   public
     function IsEmpty: Boolean;
-    procedure Push(vObject: TObject);
-    function Pop: TObject;
+    procedure Push(vObject: TsardObject);
+    function Pop: TsardObject;
     procedure Delete;
-    function Peek: TObject;
-    property Current: TObject read GetCurrent write SetCurrent;
+    function Peek: TsardObject;
+    property Current: TsardObject read GetCurrent write SetCurrent;
     property Count: Integer read FCount;
   end;
 
@@ -183,7 +188,7 @@ end;
 procedure TsardStack.Delete;
 var
   aNode: TsardStackItem;
-  aObject: TObject;
+  aObject: TsardObject;
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
@@ -195,7 +200,7 @@ begin
   aObject.Free;
 end;
 
-function TsardStack.GetCurrent: TObject;
+function TsardStack.GetCurrent: TsardObject;
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
@@ -207,14 +212,14 @@ begin
   Result := FCurrent = nil;
 end;
 
-function TsardStack.Peek: TObject;
+function TsardStack.Peek: TsardObject;
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
   Result := FCurrent.AnObject;
 end;
 
-function TsardStack.Pop: TObject;
+function TsardStack.Pop: TsardObject;
 var
   aNode: TsardStackItem;
 begin
@@ -227,7 +232,7 @@ begin
   Dec(FCount);
 end;
 
-procedure TsardStack.Push(vObject: TObject);
+procedure TsardStack.Push(vObject: TsardObject);
 var
   aNode: TsardStackItem;
 begin
@@ -239,7 +244,7 @@ begin
   Inc(FCount);
 end;
 
-procedure TsardStack.SetCurrent(const AValue: TObject);
+procedure TsardStack.SetCurrent(const AValue: TsardObject);
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');

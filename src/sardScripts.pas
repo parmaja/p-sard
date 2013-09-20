@@ -62,9 +62,9 @@ type
   TsardScriptParser = class(TsardParser)
   protected
   public
-    CurrentBlock: TsardBlock;
+    CurrentBlock: TsrdoBlock;
     CurrentOperator: TsardOperator;
-    constructor Create(ABlock: TsardBlock);
+    constructor Create(ABlock: TsrdoBlock);
     procedure Open(vBracket: TsardBracketKind); override;
     procedure Close(vBracket: TsardBracketKind); override;
     procedure AddToken(Token: String; TokenID: Integer); override;
@@ -138,7 +138,7 @@ type
 
   { TsardBlockCommentScanner }
 
-  TsardBlockComment_Scanner = class(TsardScanner)
+  TsrdoBlockComment_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; override;
@@ -190,7 +190,7 @@ end;
 
 { TsardScriptParser }
 
-constructor TsardScriptParser.Create(ABlock: TsardBlock);
+constructor TsardScriptParser.Create(ABlock: TsrdoBlock);
 begin
   inherited Create;
   CurrentBlock := ABlock;
@@ -205,28 +205,24 @@ begin
 end;
 
 procedure TsardScriptParser.AddToken(Token: String; TokenID: Integer);
-  procedure AddIt(AnObject: TsardObject);
-  begin
-    //Block.Current.Add()
-  end;
 begin
   case TsardTokenKinds(TokenID) of
     tknNumber:
     begin
       if pos('.', Token) > 0 then
       begin
-        TsardFloatObject.Create(CurrentOperator, CurrentBlock.Current).Value := StrToFloat(Token);
-        CurrentOperator := opNone;//<--bad idea use Stack
+        TsrdoFloat.Create(CurrentOperator, CurrentBlock.Current).Value := StrToFloat(Token);
+        CurrentOperator := opNone;//<--bad idea, use Stack
       end
       else
       begin
-        TsardIntegerObject.Create(CurrentOperator,CurrentBlock.Current).Value := StrToInt64(Token);//check it
+        TsrdoInteger.Create(CurrentOperator,CurrentBlock.Current).Value := StrToInt64(Token);//check it
         CurrentOperator := opNone;
       end;
     end;
     tknString:
     begin
-      TsardStringObject.Create(CurrentOperator, CurrentBlock.Current).Value := Token;
+      TsrdoString.Create(CurrentOperator, CurrentBlock.Current).Value := Token;
       CurrentOperator := opNone;
     end;
   end;
@@ -309,7 +305,7 @@ begin
     RegisterScanner(TsardControl_Scanner);
     RegisterScanner(TsardSQString_Scanner);
     RegisterScanner(TsardDQString_Scanner);
-    RegisterScanner(TsardBlockComment_Scanner);
+    RegisterScanner(TsrdoBlockComment_Scanner);
     RegisterScanner(TsardLineComment_Scanner);
     RegisterScanner(TsardOperator_Scanner); //Register it after comment because comment take /*
   end;
@@ -410,7 +406,7 @@ end;
 
 { TsardBlockCommentScanner }
 
-procedure TsardBlockComment_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
+procedure TsrdoBlockComment_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 begin
   while (Column <= Length(Text)) do
   begin
@@ -423,7 +419,7 @@ begin
   end;
 end;
 
-function TsardBlockComment_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsrdoBlockComment_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := CheckText('/*', Text, Column);
 end;

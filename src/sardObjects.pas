@@ -32,195 +32,294 @@ unit sardObjects;
 interface
 
 uses
-  Classes, SysUtils, Contnrs, sardClasses;
+  Classes, SysUtils, sardClasses;
 
 type
-  TsardObject = class;
 
-  TsardStatementItem = class(TObject)
+  TsrdoObjectType = (otUnkown, otInteger, otFloat, otBoolean, otString, otObject, otClass);
+
+  TsrdoDebug = class(TsardObject)
+  public
+    Line: Int64;
+    Column: Integer;
+    FileName: string;
+    BreakPoint: Boolean; //not sure do not laugh
+  end;
+
+  TsrdoObject = class;
+
+  TsrdoStatementItem = class(TsardObject)
   public
     AnOperator: TsardOperator;
-    AnObject: TsardObject;
+    AnObject: TsrdoObject;
   end;
 
-  { TsardStatement }
+  { TsrdoStatement }
 
-  TsardStatement = class(TObjectList)
+  TsrdoStatement = class(TsardObjectList)
   private
-    function GetItem(Index: Integer): TsardStatementItem;
+    FDebug: TsrdoDebug;
+    function GetItem(Index: Integer): TsrdoStatementItem;
+    procedure SetDebug(AValue: TsrdoDebug);
   public
-    function Add(AObject: TsardStatementItem): Integer;
-    function Add(AOperator:TsardOperator; AObject:TsardObject): TsardStatementItem;
-    property Items[Index: Integer]: TsardStatementItem read GetItem; default;
+    function Add(AObject: TsrdoStatementItem): Integer;
+    function Add(AOperator:TsardOperator; AObject:TsrdoObject): TsrdoStatementItem;
+    property Items[Index: Integer]: TsrdoStatementItem read GetItem; default;
+    property Debug: TsrdoDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
 
-  { TsardBlock }
+  { TsrdoBlock }
 
-  TsardBlock = class(TObjectList)
+  TsrdoBlock = class(TsardObjectList)
   private
-    function GetCurrent: TsardStatement;
-    function GetItem(Index: Integer): TsardStatement;
+    function GetCurrent: TsrdoStatement;
+    function GetItem(Index: Integer): TsrdoStatement;
   public
-    function Add(AStatement: TsardStatement): Integer;
-    function New: TsardStatement;
-    property Items[Index: Integer]: TsardStatement read GetItem; default;
-    property Current: TsardStatement read GetCurrent;
+    function Add(AStatement: TsrdoStatement): Integer;
+    function New: TsrdoStatement;
+    property Items[Index: Integer]: TsrdoStatement read GetItem; default;
+    property Current: TsrdoStatement read GetCurrent;
   end;
 
-  { TsardObjects }
+  { TsrdoObjects }
 
-  TsardObjects = class(TObjectList)
+  TsrdoObjects = class(TsardObjectList)
   private
-    function GetItem(Index: Integer): TsardObject;
+    function GetItem(Index: Integer): TsrdoObject;
   public
-    property Items[Index: Integer]: TsardObject read GetItem; default;
+    property Items[Index: Integer]: TsrdoObject read GetItem; default;
   end;
 
-  { TsardObject }
+  { TsrdoObject }
 
-  TsardObject = class(TObject)
+  TsrdoObject = class(TsardObject)
   private
     FName: string; //if name is '' then the object cant change the value
-    FParent: TsardObject;
-    FStatement: TsardStatement;
+    FParent: TsrdoObject;
+    FStatement: TsrdoStatement;
     procedure SetName(AValue: string);
-    procedure SetStatement(AValue: TsardStatement);
+    procedure SetStatement(AValue: TsrdoStatement);
+  protected
+    FObjectType: TsrdoObjectType;
+    procedure Created; virtual;
   public
-    constructor Create(AParent: TsardObject); overload;
-    constructor Create(AOperator:TsardOperator; AStatment:TsardStatement); overload;
-    function DoOperator(WithObject: TsardObject; AnOperator: TsardOperator): Boolean;
-    property Parent: TsardObject read FParent;
+    constructor Create(AParent: TsrdoObject); overload;
+    constructor Create(AOperator:TsardOperator; AStatment:TsrdoStatement); overload;
+    function DoOperator(WithObject: TsrdoObject; AnOperator: TsardOperator): Boolean;
+    property Parent: TsrdoObject read FParent;
     property Name: string read FName write SetName;
-    property Statement: TsardStatement read FStatement write SetStatement;
+    property Statement: TsrdoStatement read FStatement write SetStatement;
+    property ObjectType: TsrdoObjectType read FObjectType;
     //function ConvertToString(out oValue):Boolean;
     //ConvertToFloat
     //ConvertToInteger
   end;
 
-  TsardClass = class(TsardObject)
+  { TsrdoClass }
+
+  TsrdoClass = class(TsrdoObject)
+  public
+    procedure Created; override;
   end;
 
-  TsardInstance = class(TsardObject)
-  end;
+  { TsrdoInstance }
 
+  TsrdoInstance = class(TsrdoObject)
+  public
+    Value: TsrdoObject;
+    procedure Created; override;
+  end;
 
 (**** Common Objects *****)
 
-  TsardNoneObject = class(TsardObject) //None it is not Null, it is an initial value we sart it
+  { TsrdoNone }
+
+  TsrdoNone = class(TsrdoObject) //None it is not Null, it is an initial value we sart it
   public
     //Do operator
     //Convert to 0 or ''
   end;
 
-  TsardNumberObject = class(TsardObject) //abstract
+  { TsrdoNumber }
+
+  TsrdoNumber = class(TsrdoObject) //abstract
   public
     //Assign
     //Do operator
   end;
 
-  TsardIntegerObject = class(TsardNumberObject)
+  { TsrdoInteger }
+
+  TsrdoInteger = class(TsrdoNumber)
   public
     Value: Int64;
+    procedure Created; override;
   end;
 
-  TsardFloatObject = class(TsardNumberObject)
+  { TsrdoFloat }
+
+  TsrdoFloat = class(TsrdoNumber)
   public
     Value: extended;
+    procedure Created; override;
   end;
 
-  TsardStringObject = class(TsardObject)
+  { TsrdoBoolean }
+
+  TsrdoBoolean = class(TsrdoNumber)
+  public
+    Value: Byte;
+    procedure Created; override;
+  end;
+
+  { TsrdoString }
+
+  TsrdoString = class(TsrdoObject)
   public
     Value: string;
+    procedure Created; override;
   end;
 
-(******************************
-*****                     *****
-*******************************)
+{* Run Time Engine *}
 
-  { TsardRun }
+  { TsrdoRun }
 
-  TsardRun = class(TObject)
+  TsrdoRun = class(TsardObject)
   public
     Stack: TsardStack;
     constructor Create;
     destructor Destroy; override;
-    function Run(AnObject: TsardObject):Boolean; virtual;
+    function Run(AnObject: TsrdoObject):Boolean; virtual;
   end;
 
 implementation
 
-{ TsardBlock }
+{ TsrdoClass }
 
-function TsardBlock.GetCurrent: TsardStatement;
+procedure TsrdoClass.Created;
 begin
-  Result := Last as TsardStatement;
+  inherited Created;
+  FObjectType := otClass;
 end;
 
-function TsardBlock.GetItem(Index: Integer): TsardStatement;
+{ TsrdoInstance }
+
+procedure TsrdoInstance.Created;
 begin
-  Result := inherited Items[Index] as TsardStatement;
+  inherited Created;
+  FObjectType := otObject;
 end;
 
-function TsardBlock.Add(AStatement: TsardStatement): Integer;
+{ TsrdoBoolean }
+
+procedure TsrdoBoolean.Created;
+begin
+  inherited Created;
+  FObjectType := otBoolean;
+end;
+
+{ TsrdoString }
+
+procedure TsrdoString.Created;
+begin
+  inherited Created;
+  FObjectType := otString;
+end;
+
+{ TsrdoFloat }
+
+procedure TsrdoFloat.Created;
+begin
+  inherited Created;
+  FObjectType := otFloat;
+end;
+
+{ TsrdoInteger }
+
+procedure TsrdoInteger.Created;
+begin
+  inherited Created;
+  FObjectType := otInteger;
+end;
+
+{ TsrdoBlock }
+
+function TsrdoBlock.GetCurrent: TsrdoStatement;
+begin
+  Result := Last as TsrdoStatement;
+end;
+
+function TsrdoBlock.GetItem(Index: Integer): TsrdoStatement;
+begin
+  Result := inherited Items[Index] as TsrdoStatement;
+end;
+
+function TsrdoBlock.Add(AStatement: TsrdoStatement): Integer;
 begin
   Result := inherited Add(AStatement);
 end;
 
-function TsardBlock.New: TsardStatement;
+function TsrdoBlock.New: TsrdoStatement;
 begin
-  Result := TsardStatement.Create;
+  Result := TsrdoStatement.Create;
   Add(Result);
 end;
 
-{ TsardStatement }
+{ TsrdoStatement }
 
-function TsardStatement.GetItem(Index: Integer): TsardStatementItem;
+function TsrdoStatement.GetItem(Index: Integer): TsrdoStatementItem;
 begin
-  Result := inherited Items[Index] as TsardStatementItem;
+  Result := inherited Items[Index] as TsrdoStatementItem;
 end;
 
-function TsardStatement.Add(AObject: TsardStatementItem): Integer;
+procedure TsrdoStatement.SetDebug(AValue: TsrdoDebug);
+begin
+  if FDebug =AValue then Exit;
+  FDebug :=AValue;
+end;
+
+function TsrdoStatement.Add(AObject: TsrdoStatementItem): Integer;
 begin
   Result := inherited Add(AObject);
 end;
 
-function TsardStatement.Add(AOperator: TsardOperator; AObject: TsardObject): TsardStatementItem;
+function TsrdoStatement.Add(AOperator: TsardOperator; AObject: TsrdoObject): TsrdoStatementItem;
 begin
-  Result := TsardStatementItem.Create;
+  Result := TsrdoStatementItem.Create;
   Result.AnOperator := AOperator;
   Result.AnObject := AObject;
   Add(Result);
 end;
 
-{ TsardRun }
+{ TsrdoRun }
 
-constructor TsardRun.Create;
+constructor TsrdoRun.Create;
 begin
   inherited Create;
   Stack := TsardStack.Create;
 end;
 
-destructor TsardRun.Destroy;
+destructor TsrdoRun.Destroy;
 begin
   FreeAndNil(Stack);
   inherited Destroy;
 end;
 
-function TsardRun.Run(AnObject: TsardObject): Boolean;
+function TsrdoRun.Run(AnObject: TsrdoObject): Boolean;
 begin
 
 end;
 
-{ TsardObjects }
+{ TsrdoObjects }
 
-function TsardObjects.GetItem(Index: Integer): TsardObject;
+function TsrdoObjects.GetItem(Index: Integer): TsrdoObject;
 begin
-  Result := inherited Items[Index] as TsardObject;
+  Result := inherited Items[Index] as TsrdoObject;
 end;
 
-{ TsardObject }
+{ TsrdoObject }
 
-procedure TsardObject.SetName(AValue: string);
+procedure TsrdoObject.SetName(AValue: string);
 begin
   if FName <> AValue then
   begin
@@ -229,26 +328,30 @@ begin
   end;
 end;
 
-procedure TsardObject.SetStatement(AValue: TsardStatement);
+procedure TsrdoObject.SetStatement(AValue: TsrdoStatement);
 begin
   if FStatement =AValue then Exit;
   FStatement :=AValue;
 end;
 
-constructor TsardObject.Create(AParent: TsardObject);
+procedure TsrdoObject.Created;
+begin
+end;
+
+constructor TsrdoObject.Create(AParent: TsrdoObject);
 begin
   inherited Create;
   FParent := AParent;
 end;
 
-constructor TsardObject.Create(AOperator: TsardOperator; AStatment: TsardStatement);
+constructor TsrdoObject.Create(AOperator: TsardOperator; AStatment: TsrdoStatement);
 begin
   inherited Create;
   AStatment.Add(AOperator, Self);
   FStatement := AStatment;
 end;
 
-function TsardObject.DoOperator(WithObject: TsardObject; AnOperator: TsardOperator): Boolean;
+function TsrdoObject.DoOperator(WithObject: TsrdoObject; AnOperator: TsardOperator): Boolean;
 begin
   Result := False;
 end;

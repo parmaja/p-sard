@@ -16,7 +16,7 @@ interface
 
 uses
   Classes, SysUtils,
-  sardClasses, sardObjects, sardScripts;
+  sardObjects, sardScripts;
 
 type
 
@@ -51,11 +51,11 @@ function Execute(Lines: TStrings): Boolean;
 var
   Scanner: TmyScript;
   Parser: TsardScriptParser;
-  Block: TsardBlock;
+  Block: TsrdoBlock;
 begin
   Scanner := TmyScript.Create;
   try
-    Block := TsardBlock.Create;
+    Block := TsrdoBlock.Create;
     Block.New;
     Parser := TmyParser.Create(Block);
     Scanner.Scanners.Parser := Parser;
