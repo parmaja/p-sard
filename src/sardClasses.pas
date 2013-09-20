@@ -45,7 +45,7 @@ type
   TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpen, ctlClose, ctlLink, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
   TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
-  TsardOperator = (opNone, opAdd, opMinus, opMuliple, opDivided, opSeprator);//no level until now
+  TsardOperator = (opNone, opAdd, opMinus, opMuliple, opDivided, opNot, opSeprator);//no level until now
 
   TsardScannerID = type Integer;
 

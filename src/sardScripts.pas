@@ -36,9 +36,9 @@ const
   NUMBER_CHARS = NUMBER_OPEN_CHARS + ['.', 'x', 'h', 'a'..'f'];
   COLOR_OPEN_CHARS = ['#'];
   COLOR_CHARS = COLOR_OPEN_CHARS + ['0'..'9', 'a'..'f'];
-  OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&', '|', '!', '='];
+  OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&', '|', '!', '=']; //<--Stupid idea, need to make it as array
   OPERATOR_CHARS = OPERATOR_OPEN_CHARS {+ ['']};
-  SYMBOL_CHARS = ['$', '#', '@', '!', '\'];
+  SYMBOL_CHARS = ['$', '#', '@', '\'];
   BRACKET_OPEN_CHARS = ['(', '[', '{'];
   BRACKET_CLOSE_CHARS= [')', ']', '}'];
   BRACKET_CHARS = BRACKET_OPEN_CHARS + BRACKET_CLOSE_CHARS;
@@ -61,7 +61,8 @@ type
 
   TsardScriptParser = class(TsardParser)
   protected
-    Block: TsardBlock;
+  public
+    CurrentBlock: TsardBlock;
     CurrentOperator: TsardOperator;
     constructor Create(ABlock: TsardBlock);
     procedure Open(vBracket: TsardBracketKind); override;
@@ -174,12 +175,25 @@ begin
   Result := vChar in OPERATOR_CHARS;
 end;
 
+function StrToOperator(S: string): TsardOperator;
+begin
+  case S of
+    '+': Result := opAdd;
+    '-': Result := opMinus;
+    '/': Result := opDivided;
+    '*': Result := opMuliple;
+    '!': Result := opNot;
+  else
+    Result := opNone;
+  end;
+end;
+
 { TsardScriptParser }
 
 constructor TsardScriptParser.Create(ABlock: TsardBlock);
 begin
   inherited Create;
-  Block := ABlock;
+  CurrentBlock := ABlock;
 end;
 
 procedure TsardScriptParser.Open(vBracket: TsardBracketKind);
@@ -200,13 +214,20 @@ begin
     tknNumber:
     begin
       if pos('.', Token) > 0 then
-        TsardFloatObject.Create(CurrentOperator, Block.Current).Value := StrToFloat(Token)
+      begin
+        TsardFloatObject.Create(CurrentOperator, CurrentBlock.Current).Value := StrToFloat(Token);
+        CurrentOperator := opNone;//<--bad idea use Stack
+      end
       else
-        TsardIntegerObject.Create(CurrentOperator,Block.Current).Value := StrToInt64(Token);//check it
+      begin
+        TsardIntegerObject.Create(CurrentOperator,CurrentBlock.Current).Value := StrToInt64(Token);//check it
+        CurrentOperator := opNone;
+      end;
     end;
     tknString:
     begin
-      TsardStringObject.Create(CurrentOperator, Block.Current).Value := Token;
+      TsardStringObject.Create(CurrentOperator, CurrentBlock.Current).Value := Token;
+      CurrentOperator := opNone;
     end;
   end;
 end;
@@ -217,6 +238,9 @@ end;
 
 procedure TsardScriptParser.AddOperator(AOperator: TsardOperator);
 begin
+  if CurrentOperator <> opNone then
+    raise EsardException.Create('Operator already set');
+  CurrentOperator := AOperator;
 end;
 
 { TsardControlScanner }
@@ -315,11 +339,17 @@ end;
 procedure TsardOperator_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
   c: Integer;
+  s: string;
+  o: TsardOperator;
 begin
   c := Column;
   while (Column <= Length(Text)) and (IsOperator(Text[Column])) do //operator is multi char here
     Inc(Column);
-  //Scanners.Parser.AddOperator(MidStr(Text, c, Column - c), Ord(tknOperator));
+  s := MidStr(Text, c, Column - c);
+  o := StrToOperator(s);
+  if o = opNone then
+    raise EsardException.Create('Unkown operator: ' + s);
+  Scanners.Parser.AddOperator(o);
 end;
 
 function TsardOperator_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
