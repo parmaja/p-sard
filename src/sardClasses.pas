@@ -22,6 +22,9 @@ interface
 uses
   Classes, SysUtils, Contnrs;
 
+type
+  Float = type Extended;
+
 const
   sEOL = [#0, #13, #10];
   sWhitespace = [' ', #9, #13, #10];
@@ -50,7 +53,7 @@ type
   TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpen, ctlClose, ctlLink, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
   TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
-  TsardOperator = (opNone, opAdd, opMinus, opMuliple, opDivided, opNot, opSeprator);//no level until now //Move to sardObjects
+  TsardOperator = (opNone, opPlus, opMinus, opMultiply, opDivision, opNot, opSeprator);//no level until now //Move to sardObjects
 
   TsardScannerID = type Integer;
 

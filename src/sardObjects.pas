@@ -48,10 +48,19 @@ type
 
   TsrdoObject = class;
 
+  { TsrdoResult }
+
+  TsrdoResult = class(TsardObject)
+    AnObject: TsrdoObject;
+  end;
+
+  { TsrdoStatementItem }
+
   TsrdoStatementItem = class(TsardObject)
   public
     AnOperator: TsardOperator;
     AnObject: TsrdoObject;
+    function Execute(var vResult: TsrdoResult): Boolean;
   end;
 
   { TsrdoStatement }
@@ -72,13 +81,13 @@ type
 
   TsrdoBlock = class(TsardObjectList)
   private
-    function GetCurrent: TsrdoStatement;
+    function GetStatement: TsrdoStatement;
     function GetItem(Index: Integer): TsrdoStatement;
   public
     function Add(AStatement: TsrdoStatement): Integer;
     function New: TsrdoStatement;
     property Items[Index: Integer]: TsrdoStatement read GetItem; default;
-    property Current: TsrdoStatement read GetCurrent;
+    property Statement: TsrdoStatement read GetStatement;
   end;
 
   { TsrdoObjects }
@@ -95,7 +104,6 @@ type
   TsrdoObject = class(TsardObject)
   private
     FName: string; //if name is '' then the object cant change the value
-    FParent: TsrdoObject;
     FStatement: TsrdoStatement;
     procedure SetName(AValue: string);
     procedure SetStatement(AValue: TsrdoStatement);
@@ -103,16 +111,21 @@ type
     FObjectType: TsrdoObjectType;
     procedure Created; virtual;
   public
-    constructor Create(AParent: TsrdoObject); overload;
-    constructor Create(AOperator:TsardOperator; AStatment:TsrdoStatement); overload;
-    function DoOperator(WithObject: TsrdoObject; AnOperator: TsardOperator): Boolean;
-    property Parent: TsrdoObject read FParent;
+    constructor Create(AOperator:TsardOperator; AStatment:TsrdoStatement); overload; deprecated;
+    function This: TsrdoObject; //return the same object, stupid but save some code :P
+    function Execute(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean; virtual;
     property Name: string read FName write SetName;
+    procedure Assign(FromObject: TsrdoObject); virtual;
+    function Clone: TsrdoObject; virtual;
     property Statement: TsrdoStatement read FStatement write SetStatement;
     property ObjectType: TsrdoObjectType read FObjectType;
-    //function ConvertToString(out oValue):Boolean;
-    //ConvertToFloat
-    //ConvertToInteger
+    function ToString: String; reintroduce;
+    function ToFloat: Float;
+    function ToInteger: Int64;
+    function ConvertToBoolean(out outValue: Boolean): Boolean; virtual;
+    function ConvertToString(out outValue: string): Boolean; virtual;
+    function ConvertToFloat(out outValue: Float): Boolean; virtual;
+    function ConvertToInteger(out outValue: Int64): Boolean; virtual;
   end;
 
   { TsrdoClass }
@@ -154,14 +167,23 @@ type
   public
     Value: Int64;
     procedure Created; override;
+    function Clone: TsrdoObject; override;
+    procedure Assign(FromObject: TsrdoObject); override;
+    function Execute(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean; override;
+    function ConvertToString(out outValue: string): Boolean; override;
+    function ConvertToFloat(out outValue: Float): Boolean; override;
+    function ConvertToInteger(out outValue: Int64): Boolean; override;
   end;
 
   { TsrdoFloat }
 
   TsrdoFloat = class(TsrdoNumber)
   public
-    Value: extended;
+    Value: Float;
     procedure Created; override;
+    function ConvertToString(out outValue: string): Boolean; override;
+    function ConvertToFloat(out outValue: Float): Boolean; override;
+    function ConvertToInteger(out outValue: Int64): Boolean; override;
   end;
 
   { TsrdoBoolean }
@@ -170,6 +192,9 @@ type
   public
     Value: Byte;
     procedure Created; override;
+    function ConvertToString(out outValue: string): Boolean; override;
+    function ConvertToFloat(out outValue: Float): Boolean; override;
+    function ConvertToInteger(out outValue: Int64): Boolean; override;
   end;
 
   { TsrdoString }
@@ -178,6 +203,9 @@ type
   public
     Value: string;
     procedure Created; override;
+    function ConvertToString(out outValue: string): Boolean; override;
+    function ConvertToFloat(out outValue: Float): Boolean; override;
+    function ConvertToInteger(out outValue: Int64): Boolean; override;
   end;
 
 {* Run Time Engine *}
@@ -189,10 +217,19 @@ type
     Stack: TsardStack;
     constructor Create;
     destructor Destroy; override;
-    function Run(AnObject: TsrdoObject):Boolean; virtual;
+    function Execute(var vResult: TsrdoResult; AStatement: TsrdoStatement):Boolean; overload;
+    function Execute(var vResult: TsrdoResult; ABlock: TsrdoBlock):Boolean; overload;
+    function Execute(ABlock: TsrdoBlock):Boolean; overload;
   end;
 
 implementation
+
+{ TsrdoStatementItem }
+
+function TsrdoStatementItem.Execute(var vResult: TsrdoResult): Boolean;
+begin
+  Result := AnObject.Execute(vResult, AnOperator);
+end;
 
 { TsrdoClass }
 
@@ -218,12 +255,42 @@ begin
   FObjectType := otBoolean;
 end;
 
+function TsrdoBoolean.ConvertToString(out outValue: string): Boolean;
+begin
+  Result :=inherited ConvertToString(outValue);
+end;
+
+function TsrdoBoolean.ConvertToFloat(out outValue: Float): Boolean;
+begin
+  Result :=inherited ConvertToFloat(outValue);
+end;
+
+function TsrdoBoolean.ConvertToInteger(out outValue: Int64): Boolean;
+begin
+  Result :=inherited ConvertToInteger(outValue);
+end;
+
 { TsrdoString }
 
 procedure TsrdoString.Created;
 begin
   inherited Created;
   FObjectType := otString;
+end;
+
+function TsrdoString.ConvertToString(out outValue: string): Boolean;
+begin
+  Result :=inherited ConvertToString(outValue);
+end;
+
+function TsrdoString.ConvertToFloat(out outValue: Float): Boolean;
+begin
+  Result :=inherited ConvertToFloat(outValue);
+end;
+
+function TsrdoString.ConvertToInteger(out outValue: Int64): Boolean;
+begin
+  Result :=inherited ConvertToInteger(outValue);
 end;
 
 { TsrdoFloat }
@@ -234,6 +301,21 @@ begin
   FObjectType := otFloat;
 end;
 
+function TsrdoFloat.ConvertToString(out outValue: string): Boolean;
+begin
+  Result :=inherited ConvertToString(outValue);
+end;
+
+function TsrdoFloat.ConvertToFloat(out outValue: Float): Boolean;
+begin
+  Result :=inherited ConvertToFloat(outValue);
+end;
+
+function TsrdoFloat.ConvertToInteger(out outValue: Int64): Boolean;
+begin
+  Result :=inherited ConvertToInteger(outValue);
+end;
+
 { TsrdoInteger }
 
 procedure TsrdoInteger.Created;
@@ -242,9 +324,64 @@ begin
   FObjectType := otInteger;
 end;
 
+function TsrdoInteger.Clone: TsrdoObject;
+begin
+  Result := TsrdoInteger.Create;
+  Result.Assign(Self);
+end;
+
+procedure TsrdoInteger.Assign(FromObject: TsrdoObject);
+begin
+  if FromObject <> nil then
+  begin
+    if FromObject is TsrdoInteger then
+      Value := (FromObject as TsrdoInteger).Value
+    else
+      Value := FromObject.ToInteger;
+  end;
+end;
+
+function TsrdoInteger.Execute(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean;
+begin
+  Result := True;
+  if vResult.AnObject = nil then
+  begin
+    vResult.AnObject := Clone;
+  end
+  else if vResult.AnObject is TsrdoInteger then
+  begin
+    case AnOperator of
+      opPlus: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value + Value;
+      opMinus: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value - Value;
+      opMultiply: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value * Value;
+      opDivision: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value div Value;
+      {else //TODO
+      }
+    end;
+  end;
+end;
+
+function TsrdoInteger.ConvertToString(out outValue: string): Boolean;
+begin
+  Result := True;
+  outValue := IntToStr(Value);
+end;
+
+function TsrdoInteger.ConvertToFloat(out outValue: Float): Boolean;
+begin
+  Result := True;
+  outValue := Value;
+end;
+
+function TsrdoInteger.ConvertToInteger(out outValue: Int64): Boolean;
+begin
+  Result := True;
+  outValue := Value;
+end;
+
 { TsrdoBlock }
 
-function TsrdoBlock.GetCurrent: TsrdoStatement;
+function TsrdoBlock.GetStatement: TsrdoStatement;
 begin
   Result := Last as TsrdoStatement;
 end;
@@ -305,9 +442,40 @@ begin
   inherited Destroy;
 end;
 
-function TsrdoRun.Run(AnObject: TsrdoObject): Boolean;
+function TsrdoRun.Execute(var vResult: TsrdoResult; AStatement: TsrdoStatement): Boolean;
+var
+  i: Integer;
 begin
+  Result := AStatement.Count > 0;
+  for i := 0 to AStatement.Count -1 do
+  begin
+    Result := Result and AStatement[i].Execute(vResult);
+  end;
+end;
 
+function TsrdoRun.Execute(var vResult: TsrdoResult; ABlock: TsrdoBlock): Boolean;
+var
+  i: Integer;
+begin
+  Result := ABlock.Count > 0;
+  for i := 0 to ABlock.Count -1 do
+  begin
+    Result := Result and Execute(vResult, ABlock[i]);
+  end;
+end;
+
+
+function TsrdoRun.Execute(ABlock: TsrdoBlock): Boolean;
+var
+  R: TsrdoResult;
+begin
+  R := TsrdoResult.Create;
+  try
+    Result := Execute(R, ABlock);
+    Writeln(R.AnObject.ToString)
+  finally
+    R.Free;
+  end;
 end;
 
 { TsrdoObjects }
@@ -338,12 +506,6 @@ procedure TsrdoObject.Created;
 begin
 end;
 
-constructor TsrdoObject.Create(AParent: TsrdoObject);
-begin
-  inherited Create;
-  FParent := AParent;
-end;
-
 constructor TsrdoObject.Create(AOperator: TsardOperator; AStatment: TsrdoStatement);
 begin
   inherited Create;
@@ -351,10 +513,74 @@ begin
   FStatement := AStatment;
 end;
 
-function TsrdoObject.DoOperator(WithObject: TsrdoObject; AnOperator: TsardOperator): Boolean;
+function TsrdoObject.This: TsrdoObject;
+begin
+  Result := Self;
+end;
+
+function TsrdoObject.Execute(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean;
+begin
+  Result := False;
+end;
+
+procedure TsrdoObject.Assign(FromObject: TsrdoObject);
+begin
+  //Nothing to do
+end;
+
+function TsrdoObject.Clone: TsrdoObject;
+begin
+  Result := TsrdoObject.Create;
+end;
+
+function TsrdoObject.ToString: String;
+var
+  o: string;
+begin
+  if ConvertToString(o) then
+    Result := o
+  else
+    Result := '';
+end;
+
+function TsrdoObject.ToFloat: Float;
+var
+  o: Float;
+begin
+  if ConvertToFloat(o) then
+    Result := o
+  else
+    Result := 0;
+end;
+
+function TsrdoObject.ToInteger: Int64;
+var
+  o: Int64;
+begin
+  if ConvertToInteger(o) then
+    Result := o
+  else
+    Result := 0;
+end;
+
+function TsrdoObject.ConvertToBoolean(out outValue: Boolean): Boolean;
+begin
+  Result := False;
+end;
+
+function TsrdoObject.ConvertToString(out outValue: string): Boolean;
+begin
+  Result := False;
+end;
+
+function TsrdoObject.ConvertToFloat(out outValue: Float): Boolean;
+begin
+  Result := False;
+end;
+
+function TsrdoObject.ConvertToInteger(out outValue: Int64): Boolean;
 begin
   Result := False;
 end;
 
 end.
-

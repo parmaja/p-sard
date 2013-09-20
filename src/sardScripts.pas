@@ -178,10 +178,10 @@ end;
 function StrToOperator(S: string): TsardOperator;
 begin
   case S of
-    '+': Result := opAdd;
+    '+': Result := opPlus;
     '-': Result := opMinus;
-    '/': Result := opDivided;
-    '*': Result := opMuliple;
+    '*': Result := opMultiply;
+    '/': Result := opDivision;
     '!': Result := opNot;
   else
     Result := opNone;
@@ -211,18 +211,30 @@ begin
     begin
       if pos('.', Token) > 0 then
       begin
-        TsrdoFloat.Create(CurrentOperator, CurrentBlock.Current).Value := StrToFloat(Token);
+        with TsrdoFloat.Create do
+        begin
+          CurrentBlock.Statement.Add(CurrentOperator, This);
+          Value := StrToFloat(Token);
+        end;
         CurrentOperator := opNone;//<--bad idea, use Stack
       end
       else
       begin
-        TsrdoInteger.Create(CurrentOperator,CurrentBlock.Current).Value := StrToInt64(Token);//check it
+        with TsrdoInteger.Create do
+        begin
+          CurrentBlock.Statement.Add(CurrentOperator, This);
+          Value := StrToInt64(Token);
+        end;
         CurrentOperator := opNone;
       end;
     end;
     tknString:
     begin
-      TsrdoString.Create(CurrentOperator, CurrentBlock.Current).Value := Token;
+      with TsrdoString.Create do
+      begin
+        CurrentBlock.Statement.Add(CurrentOperator, This);
+        Value := Token;
+      end;
       CurrentOperator := opNone;
     end;
   end;

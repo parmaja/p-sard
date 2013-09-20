@@ -1,11 +1,11 @@
 unit sard;
 {**
- *  This file is part of the "SARD"
- *
- * @license   Apache License Version 2.0
- *            included in this distribution
- * @author    Zaher Dirkey <zaher at parmaja dot com>
- *}
+*  This file is part of the "SARD"
+*
+* @license   Apache License Version 2.0
+*            included in this distribution
+* @author    Zaher Dirkey <zaher at parmaja dot com>
+*}
 
 {$IFDEF FPC}
 {$mode objfpc}
@@ -52,6 +52,7 @@ var
   Scanner: TmyScript;
   Parser: TsardScriptParser;
   Block: TsrdoBlock;
+  Run: TsrdoRun;
 begin
   Scanner := TmyScript.Create;
   try
@@ -61,6 +62,10 @@ begin
     Scanner.Scanners.Parser := Parser;
     Scanner.Scan(Lines);
     Scanner.Scanners.Parser := nil;
+
+    Run := TsrdoRun.Create;
+    Run.Execute(Block);
+
     FreeAndNil(Parser);
     FreeAndNil(Block);
   finally
@@ -74,4 +79,3 @@ begin
 end;
 
 end.
-
