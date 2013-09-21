@@ -23,6 +23,21 @@ object: {
 
 *)
 
+{TODO
+
+  IsWhiteSpace
+else
+  IsControl
+else
+  IsSymbol
+else
+  IsNumber
+else
+  so it is Identifier
+
+Any Symbol it is an open for operator
+}
+
 interface
 
 uses
@@ -30,20 +45,28 @@ uses
   sardClasses, sardObjects;
 
 const
+  sEOL = [#0, #13, #10];
+  sWhitespace = sEOL + [' ', #9];
+
+  sNumberOpenChars = ['0'..'9'];
+  sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a'..'f'];
+
+  sColorOpenChars = ['#'];
+  sColorChars = sColorOpenChars + ['0'..'9', 'a'..'f'];
+
+  sBracketOpoenChars = ['(', '[', '{'];
+  sBracketCloseChars = [')', ']', '}'];
+  sBracketChars = sBracketOpoenChars + sBracketCloseChars;
+
+  aControlsOpenChars = [':', '~', ',', ';'] + sBracketChars;
+  sControlsChars = aControlsOpenChars + ['='];
+
+  sSynbolChars = ['$', '#', '@', '\'];
+
+  sOperatorOpenChars = ['+', '-', '*', '/', '^', '&', '|', '!', '=']; //<--Stupid idea, need to make it as array
+
   IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
   IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
-  NUMBER_OPEN_CHARS = ['0'..'9'];
-  NUMBER_CHARS = NUMBER_OPEN_CHARS + ['.', 'x', 'h', 'a'..'f'];
-  COLOR_OPEN_CHARS = ['#'];
-  COLOR_CHARS = COLOR_OPEN_CHARS + ['0'..'9', 'a'..'f'];
-  OPERATOR_OPEN_CHARS = ['+', '-', '*', '/', '^', '&', '|', '!', '=']; //<--Stupid idea, need to make it as array
-  OPERATOR_CHARS = OPERATOR_OPEN_CHARS {+ ['']};
-  SYMBOL_CHARS = ['$', '#', '@', '\'];
-  BRACKET_OPEN_CHARS = ['(', '[', '{'];
-  BRACKET_CLOSE_CHARS= [')', ']', '}'];
-  BRACKET_CHARS = BRACKET_OPEN_CHARS + BRACKET_CLOSE_CHARS;
-  CONTROLS_OPEN_CHARS = [':', '~', ';', ','];
-  CONTROLS_CHARS = CONTROLS_OPEN_CHARS + ['='];
 
 type
   TsardTokenKinds = (tknOperator, tknControl, tknBracket, tknIdentifier, tknString, tknNumber, tknColor, tknComment);
@@ -65,11 +88,11 @@ type
     CurrentBlock: TsrdoBlock;
     CurrentOperator: TsardOperator;
     constructor Create(ABlock: TsrdoBlock);
-    procedure Open(vBracket: TsardBracketKind); override;
-    procedure Close(vBracket: TsardBracketKind); override;
-    procedure AddToken(Token: String; TokenID: Integer); override;
-    procedure AddControl(AControl: TsardControl); override;
-    procedure AddOperator(AOperator: TsardOperator); override;
+    procedure TriggerOpen(vBracket: TsardBracketKind); override;
+    procedure TriggerClose(vBracket: TsardBracketKind); override;
+    procedure TriggerToken(Token: String; TokenID: Integer); override;
+    procedure TriggerControl(AControl: TsardControl); override;
+    procedure TriggerOperator(AOperator: TsardOperator); override;
   end;
 
   { TsardStartScanner }
@@ -104,15 +127,7 @@ type
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
   end;
 
-  { TsardBracketScanner }
-
-  TsardBracket_Scanner = class(TsardScanner)
-  protected
-    procedure Scan(const Text: string; var Column: Integer; const Line: Integer);  override;
-    function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;  override;
-  end;
-
-  { TsardTerminalScanner }
+  { TsardControl_Scanner }
 
   TsardControl_Scanner = class(TsardScanner)
   protected
@@ -172,20 +187,7 @@ end;
 
 function IsOperator(vChar: AnsiChar): Boolean;
 begin
-  Result := vChar in OPERATOR_CHARS;
-end;
-
-function StrToOperator(S: string): TsardOperator;
-begin
-  case S of
-    '+': Result := opPlus;
-    '-': Result := opMinus;
-    '*': Result := opMultiply;
-    '/': Result := opDivision;
-    '!': Result := opNot;
-  else
-    Result := opNone;
-  end;
+  Result := vChar in sOperatorOpenChars;
 end;
 
 { TsardScriptParser }
@@ -196,15 +198,15 @@ begin
   CurrentBlock := ABlock;
 end;
 
-procedure TsardScriptParser.Open(vBracket: TsardBracketKind);
+procedure TsardScriptParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
 end;
 
-procedure TsardScriptParser.Close(vBracket: TsardBracketKind);
+procedure TsardScriptParser.TriggerClose(vBracket: TsardBracketKind);
 begin
 end;
 
-procedure TsardScriptParser.AddToken(Token: String; TokenID: Integer);
+procedure TsardScriptParser.TriggerToken(Token: String; TokenID: Integer);
 begin
   case TsardTokenKinds(TokenID) of
     tknNumber:
@@ -216,7 +218,7 @@ begin
           CurrentBlock.Statement.Add(CurrentOperator, This);
           Value := StrToFloat(Token);
         end;
-        CurrentOperator := opNone;//<--bad idea, use Stack
+        CurrentOperator := nil;//<--bad idea, use Stack
       end
       else
       begin
@@ -225,7 +227,7 @@ begin
           CurrentBlock.Statement.Add(CurrentOperator, This);
           Value := StrToInt64(Token);
         end;
-        CurrentOperator := opNone;
+        CurrentOperator := nil;
       end;
     end;
     tknString:
@@ -235,18 +237,18 @@ begin
         CurrentBlock.Statement.Add(CurrentOperator, This);
         Value := Token;
       end;
-      CurrentOperator := opNone;
+      CurrentOperator := nil;
     end;
   end;
 end;
 
-procedure TsardScriptParser.AddControl(AControl: TsardControl);
+procedure TsardScriptParser.TriggerControl(AControl: TsardControl);
 begin
 end;
 
-procedure TsardScriptParser.AddOperator(AOperator: TsardOperator);
+procedure TsardScriptParser.TriggerOperator(AOperator: TsardOperator);
 begin
-  if CurrentOperator <> opNone then
+  if CurrentOperator <> nil then
     raise EsardException.Create('Operator already set');
   CurrentOperator := AOperator;
 end;
@@ -258,47 +260,32 @@ var
   b: AnsiChar;
 begin
   b := Text[Column];
-  if b = ';' then //TODO need to improve it
-    Scanners.Parser.AddControl(ctlFinish)
+  if b = '(' then //TODO need to improve it, my brain is off
+    Scanners.Parser.TriggerOpen(brBracket)
+  else if b = '[' then
+    Scanners.Parser.TriggerOpen(brSquare)
+  else if b = '{' then
+    Scanners.Parser.TriggerOpen(brCurly)
+  else if b = ')' then
+    Scanners.Parser.TriggerClose(brBracket)
+  else if b = ']' then
+    Scanners.Parser.TriggerClose(brSquare)
+  else if b = '}' then
+    Scanners.Parser.TriggerClose(brCurly)
+  else if b = ';' then
+    Scanners.Parser.TriggerControl(ctlFinish)
   else if b = ',' then
-    Scanners.Parser.AddControl(ctlSplit)
+    Scanners.Parser.TriggerControl(ctlSplit)
   else if b = ':' then
-    Scanners.Parser.AddControl(ctlDeclare)
+    Scanners.Parser.TriggerControl(ctlDeclare)
   else if b = '~' then
-    Scanners.Parser.AddControl(ctlLink);
+    Scanners.Parser.TriggerControl(ctlLink);
   Inc(Column);
 end;
 
 function TsardControl_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
-  Result := Text[Column] in CONTROLS_OPEN_CHARS;
-end;
-
-{ TsardBracketScanner }
-
-procedure TsardBracket_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
-var
-  b: AnsiChar;
-begin
-  b := Text[Column];
-  if b = '(' then //TODO need to improve it, my brain is off
-    Scanners.Parser.Open(brBracket)
-  else if b = '[' then
-    Scanners.Parser.Open(brSquare)
-  else if b = '{' then
-    Scanners.Parser.Open(brCurly)
-  else if b = ')' then
-    Scanners.Parser.Close(brBracket)
-  else if b = ']' then
-    Scanners.Parser.Close(brSquare)
-  else if b = '}' then
-    Scanners.Parser.Close(brCurly);
-  Inc(Column);
-end;
-
-function TsardBracket_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
-begin
-  Result := Text[Column] in BRACKET_CHARS;
+  Result := Text[Column] in aControlsOpenChars;
 end;
 
 { TsardScript }
@@ -311,15 +298,14 @@ begin
   begin
     RegisterScanner(TsardStart_Scanner);
     RegisterScanner(TsardWhitespace_Scanner);
-    RegisterScanner(TsardIdentifier_Scanner);
-    RegisterScanner(TsardNumber_Scanner);
-    RegisterScanner(TsardBracket_Scanner);
-    RegisterScanner(TsardControl_Scanner);
-    RegisterScanner(TsardSQString_Scanner);
-    RegisterScanner(TsardDQString_Scanner);
     RegisterScanner(TsrdoBlockComment_Scanner);
     RegisterScanner(TsardLineComment_Scanner);
+    RegisterScanner(TsardNumber_Scanner);
+    RegisterScanner(TsardSQString_Scanner);
+    RegisterScanner(TsardDQString_Scanner);
+    RegisterScanner(TsardControl_Scanner);
     RegisterScanner(TsardOperator_Scanner); //Register it after comment because comment take /*
+    RegisterScanner(TsardIdentifier_Scanner);//Last one
   end;
   //FOffScanner := scanIdentifier;
 end;
@@ -332,14 +318,14 @@ var
 begin
   c := Column;
   l := Length(Text);
-  while (Column <= l) and (Text[Column] in NUMBER_CHARS) do
+  while (Column <= l) and (Text[Column] in sNumberChars) do
     Inc(Column);
-  Scanners.Parser.AddToken(MidStr(Text, c, Column - c), Ord(tknNumber));
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknNumber));
 end;
 
 function TsardNumber_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
-  Result := Text[Column] in NUMBER_OPEN_CHARS;//need to improve to accept unicode chars
+  Result := Text[Column] in sNumberOpenChars;//need to improve to accept unicode chars
 end;
 
 { TsardOperatorScanner }
@@ -354,10 +340,10 @@ begin
   while (Column <= Length(Text)) and (IsOperator(Text[Column])) do //operator is multi char here
     Inc(Column);
   s := MidStr(Text, c, Column - c);
-  o := StrToOperator(s);
-  if o = opNone then
+  //o := StrToOperator(s);TODO
+  if o = nil then
     raise EsardException.Create('Unkown operator: ' + s);
-  Scanners.Parser.AddOperator(o);
+  Scanners.Parser.TriggerOperator(o);
 end;
 
 function TsardOperator_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -374,7 +360,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
     Inc(Column);
-  Scanners.Parser.AddToken(MidStr(Text, c, Column - c), Ord(tknIdentifier));
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknIdentifier));
 end;
 
 function TsardIdentifier_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -391,7 +377,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
-  Scanners.Parser.AddToken(MidStr(Text, c, Column - c), Ord(tknString));
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknString));
 end;
 
 function TsardDQString_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -408,7 +394,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
-  Scanners.Parser.AddToken(MidStr(Text, c, Column - c), Ord(tknString));
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknString));
 end;
 
 function TsardSQString_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
@@ -442,7 +428,7 @@ procedure TsardLineComment_Scanner.Scan(const Text: string; var Column: Integer;
 begin
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
-  //Scanners.Parser.AddToken(MidStr(Text, c, Column - c)); ignore comment
+  //Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c)); ignore comment
 end;
 
 function TsardLineComment_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;

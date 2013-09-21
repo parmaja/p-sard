@@ -15,6 +15,8 @@ unit sardClasses;
 {TODO:
   Check S is not empty before push
   Push with the scanner class and id
+
+  Result := Integer + Float <-- it convert to float or not, hmmm not sure
 }
 
 interface
@@ -24,10 +26,6 @@ uses
 
 type
   Float = type Extended;
-
-const
-  sEOL = [#0, #13, #10];
-  sWhitespace = [' ', #9, #13, #10];
 
 type
   EsardException = class(Exception)
@@ -53,7 +51,7 @@ type
   TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpen, ctlClose, ctlLink, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
   TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
-  TsardOperator = (opNone, opPlus, opMinus, opMultiply, opDivision, opNot, opSeprator);//no level until now //Move to sardObjects
+//  TsardOperator = (opNone, opPlus, opMinus, opMultiply, opDivision, opNot, opSeprator);//no level until now //Move to sardObjects
 
   TsardScannerID = type Integer;
 
@@ -71,7 +69,7 @@ type
   protected
     function CheckText(S: string; const Text: string; const Column: Integer): Boolean;
     function ScanText(S: string; const Text: string; var Column: Integer): Boolean;
-    procedure ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
+    //procedure ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer); virtual; abstract;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; virtual;
     function DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
@@ -138,16 +136,42 @@ type
     property Scanners: TsardScanners read FScanners;
   end;
 
+  { TsardOperator }
+
+  TsardOperator = class(TsardObject)
+  public
+    Code: string;
+    Name: string;
+    Description: string;
+    Level: Integer;
+    {L: Left, R: Right objects}
+    function Operate(var vResult: TsardObject; vObject: TsardObject): Boolean; virtual;
+    constructor Create; virtual;
+  end;
+
+  { TsardOperators }
+
+  TsardOperators = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TsardOperator;
+  protected
+    function CheckBeforeRegister(AOperator: TsardOperator): Boolean; virtual;
+  public
+    function Find(const Code: string): TsardOperator;
+    function RegisterOperator(AOperator: TsardOperator): Boolean; virtual;
+    property Items[Index: Integer]: TsardOperator read GetItem; default;
+  end;
+
   { TsardParser }
 
   TsardParser = class(TsardObject)
   protected
   public
-    procedure Open(vBracket: TsardBracketKind); virtual; abstract;
-    procedure Close(vBracket: TsardBracketKind); virtual; abstract;
-    procedure AddToken(Token: String; TokenID: Integer); virtual; abstract;
-    procedure AddOperator(AOperator: TsardOperator); virtual; abstract;
-    procedure AddControl(AControl: TsardControl); virtual;
+    procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
+    procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;
+    procedure TriggerToken(Token: String; TokenID: Integer); virtual; abstract;
+    procedure TriggerOperator(AOperator: TsardOperator); virtual; abstract;
+    procedure TriggerControl(AControl: TsardControl); virtual;
   end;
 
   TsardStack = class;
@@ -177,14 +201,90 @@ type
     property Count: Integer read FCount;
   end;
 
+  { TsardCustomEngine }
+
+  TsardCustomEngine = class(TsardObject)
+  private
+    FOperators: TsardOperators;
+  protected
+    procedure Created; virtual;
+    function CreateOperators: TsardOperators; virtual;
+  public
+    property Operators: TsardOperators read FOperators;
+    constructor Create; virtual;
+  end;
+
 implementation
 
 uses
   StrUtils;
 
+{ TsardOperator }
+
+function TsardOperator.Operate(var vResult: TsardObject; vObject: TsardObject): Boolean;
+begin
+  Result := False;
+end;
+
+constructor TsardOperator.Create;
+begin
+  inherited Create;
+end;
+
+{ TsardCustomEngine }
+
+procedure TsardCustomEngine.Created;
+begin
+end;
+
+function TsardCustomEngine.CreateOperators: TsardOperators;
+begin
+  Result := TsardOperators.Create;
+end;
+
+constructor TsardCustomEngine.Create;
+begin
+  inherited Create;
+  FOperators := CreateOperators;
+  Created;
+end;
+
+{ TsardOperators }
+
+function TsardOperators.GetItem(Index: Integer): TsardOperator;
+begin
+  Result := inherited Items[Index] as TsardOperator;
+end;
+
+function TsardOperators.CheckBeforeRegister(AOperator: TsardOperator): Boolean;
+begin
+  Result := True;
+end;
+
+function TsardOperators.Find(const Code: string): TsardOperator;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if Code = Items[i].Code then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+function TsardOperators.RegisterOperator(AOperator: TsardOperator): Boolean;
+begin
+  if CheckBeforeRegister(AOperator) then
+    Add(AOperator);
+end;
+
 { TsardParser }
 
-procedure TsardParser.AddControl(AControl: TsardControl);
+procedure TsardParser.TriggerControl(AControl: TsardControl);
 begin
 end;
 
@@ -285,7 +385,7 @@ begin
   if Result then
     Column := Column + Length(S);
 end;
-
+(*
 procedure TsardScanner.ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer);
 var
   p: integer;
@@ -323,7 +423,7 @@ begin
     SwitchScanner(Scanner);
   end;
 end;
-
+*)
 function TsardScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
   Result := False;

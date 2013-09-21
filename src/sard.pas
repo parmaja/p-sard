@@ -7,6 +7,7 @@ unit sard;
 * @author    Zaher Dirkey <zaher at parmaja dot com>
 *}
 
+
 {$IFDEF FPC}
 {$mode objfpc}
 {$ENDIF}
@@ -25,7 +26,7 @@ type
   TmyParser = class(TsardScriptParser)
   protected
   public
-    procedure AddToken(Token: String; TokenID: Integer); override;
+    procedure TriggerToken(Token: String; TokenID: Integer); override;
   end;
 
   { TmyScript }
@@ -41,7 +42,7 @@ implementation
 
 { TmyScript }
 
-procedure TmyParser.AddToken(Token: String; TokenID: Integer);
+procedure TmyParser.TriggerToken(Token: String; TokenID: Integer);
 begin
   inherited;
   WriteLn(Token);

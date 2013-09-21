@@ -222,7 +222,84 @@ type
     function Execute(ABlock: TsrdoBlock):Boolean; overload;
   end;
 
+  { TsrdoOperator }
+
+  TsrdoOperator = class(TsardOperator)
+  protected
+    {L: Left, R: Right objects}
+    function DoOperate(var vResult: TsrdoObject; vObject: TsrdoObject): Boolean; virtual;
+  public
+    function Operate(var vResult: TsardObject; vObject: TsardObject): Boolean; override; final;
+  end;
+
+  { TsrdoOperators }
+
+  TsrdoOperators = class(TsardOperators)
+  protected
+    function CheckBeforeRegister(AOperator:TsardOperator): Boolean; override;
+  public
+  end;
+
+  { TopPlus }
+
+  TopPlus = class(TsrdoOperator)
+  public
+    function DoOperate(var vResult: TsrdoObject; vObject: TsrdoObject): Boolean; override;
+  end;
+
+  { TsrdoEngine }
+
+  TsrdoEngine = class(TsardCustomEngine)
+  protected
+    procedure Created; override;
+    function CreateOperators: TsardOperators; override;
+  public
+  end;
+
+var
+  sardEngine: TsrdoEngine = nil;
+
 implementation
+
+{ TopPlus }
+
+function TopPlus.DoOperate(var vResult: TsrdoObject; vObject: TsrdoObject): Boolean;
+begin
+
+end;
+
+{ TsrdoOperators }
+
+function TsrdoOperators.CheckBeforeRegister(AOperator: TsardOperator): Boolean;
+begin
+  Result := True;
+end;
+
+{ TsrdoOperator }
+
+function TsrdoOperator.DoOperate(var vResult: TsrdoObject; vObject: TsrdoObject): Boolean;
+begin
+  Result := False;
+end;
+
+function TsrdoOperator.Operate(var vResult: TsardObject; vObject: TsardObject): Boolean;
+begin
+  Result := DoOperate(TsrdoObject(vResult), vObject as TsrdoObject);
+end;
+
+{ TsrdoEngine }
+
+procedure TsrdoEngine.Created;
+begin
+  inherited;
+  Operators.RegisterOperator(TopPlus.Create);
+end;
+
+function TsrdoEngine.CreateOperators: TsardOperators;
+begin
+  Result := TsrdoOperators.Create;
+  //TsardOperator = (opPlus, opMinus, opMultiply, opDivision, opNot, opSeprator);//no level until now //Move to sardObjects
+end;
 
 { TsrdoStatementItem }
 
@@ -350,14 +427,12 @@ begin
   end
   else if vResult.AnObject is TsrdoInteger then
   begin
-    case AnOperator of
+{    case AnOperator of
       opPlus: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value + Value;
       opMinus: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value - Value;
       opMultiply: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value * Value;
       opDivision: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value div Value;
-      {else //TODO
-      }
-    end;
+    end;}
   end;
 end;
 
