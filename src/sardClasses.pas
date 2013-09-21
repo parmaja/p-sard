@@ -136,6 +136,9 @@ type
     property Scanners: TsardScanners read FScanners;
   end;
 
+  TsardResult = class(TsardObject)
+  end;
+
   { TsardOperator }
 
   TsardOperator = class(TsardObject)
@@ -145,7 +148,7 @@ type
     Description: string;
     Level: Integer;
     {L: Left, R: Right objects}
-    function Operate(var vResult: TsardObject; vObject: TsardObject): Boolean; virtual;
+    function Operate(vResult: TsardResult; vObject: TsardObject): Boolean; virtual;
     constructor Create; virtual;
   end;
 
@@ -158,6 +161,7 @@ type
     function CheckBeforeRegister(AOperator: TsardOperator): Boolean; virtual;
   public
     function Find(const Code: string): TsardOperator;
+    function FindByName(const vName: string): TsardOperator;
     function RegisterOperator(AOperator: TsardOperator): Boolean; virtual;
     property Items[Index: Integer]: TsardOperator read GetItem; default;
   end;
@@ -221,7 +225,7 @@ uses
 
 { TsardOperator }
 
-function TsardOperator.Operate(var vResult: TsardObject; vObject: TsardObject): Boolean;
+function TsardOperator.Operate(vResult: TsardResult; vObject: TsardObject): Boolean;
 begin
   Result := False;
 end;
@@ -276,9 +280,25 @@ begin
   end;
 end;
 
+function TsardOperators.FindByName(const vName: string): TsardOperator;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if vName = Items[i].Name then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
 function TsardOperators.RegisterOperator(AOperator: TsardOperator): Boolean;
 begin
-  if CheckBeforeRegister(AOperator) then
+  Result := CheckBeforeRegister(AOperator);
+  if Result then
     Add(AOperator);
 end;
 

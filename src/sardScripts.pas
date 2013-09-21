@@ -341,6 +341,7 @@ begin
     Inc(Column);
   s := MidStr(Text, c, Column - c);
   //o := StrToOperator(s);TODO
+  o := sardEngine.Operators.Find(s);
   if o = nil then
     raise EsardException.Create('Unkown operator: ' + s);
   Scanners.Parser.TriggerOperator(o);

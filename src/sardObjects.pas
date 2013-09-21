@@ -50,7 +50,7 @@ type
 
   { TsrdoResult }
 
-  TsrdoResult = class(TsardObject)
+  TsrdoResult = class(TsardResult)
     AnObject: TsrdoObject;
   end;
 
@@ -113,7 +113,7 @@ type
   public
     constructor Create(AOperator:TsardOperator; AStatment:TsrdoStatement); overload; deprecated;
     function This: TsrdoObject; //return the same object, stupid but save some code :P
-    function Execute(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean; virtual;
+    function Operate(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean; virtual;
     property Name: string read FName write SetName;
     procedure Assign(FromObject: TsrdoObject); virtual;
     function Clone: TsrdoObject; virtual;
@@ -169,7 +169,7 @@ type
     procedure Created; override;
     function Clone: TsrdoObject; override;
     procedure Assign(FromObject: TsrdoObject); override;
-    function Execute(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean; override;
+    function Operate(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean; override;
     function ConvertToString(out outValue: string): Boolean; override;
     function ConvertToFloat(out outValue: Float): Boolean; override;
     function ConvertToInteger(out outValue: Int64): Boolean; override;
@@ -227,9 +227,9 @@ type
   TsrdoOperator = class(TsardOperator)
   protected
     {L: Left, R: Right objects}
-    function DoOperate(var vResult: TsrdoObject; vObject: TsrdoObject): Boolean; virtual;
+    function DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean; virtual;
   public
-    function Operate(var vResult: TsardObject; vObject: TsardObject): Boolean; override; final;
+    function Operate(vResult: TsardResult; vObject: TsardObject): Boolean; override; final;
   end;
 
   { TsrdoOperators }
@@ -244,7 +244,8 @@ type
 
   TopPlus = class(TsrdoOperator)
   public
-    function DoOperate(var vResult: TsrdoObject; vObject: TsrdoObject): Boolean; override;
+    function DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean; override;
+    constructor Create; override;
   end;
 
   { TsrdoEngine }
@@ -263,9 +264,22 @@ implementation
 
 { TopPlus }
 
-function TopPlus.DoOperate(var vResult: TsrdoObject; vObject: TsrdoObject): Boolean;
+function TopPlus.DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
 begin
+  Result := vObject.Operate(vResult, Self);
+  if Result then
+  begin
+    //Ok let me do it. : the TopPlus said
+  end;
+end;
 
+constructor TopPlus.Create;
+begin
+  inherited Create;
+  Code := '+';
+  Name := 'Plus';
+  Description := 'Add object to another object';
+  Level := 0;
 end;
 
 { TsrdoOperators }
@@ -277,14 +291,14 @@ end;
 
 { TsrdoOperator }
 
-function TsrdoOperator.DoOperate(var vResult: TsrdoObject; vObject: TsrdoObject): Boolean;
+function TsrdoOperator.DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
 begin
   Result := False;
 end;
 
-function TsrdoOperator.Operate(var vResult: TsardObject; vObject: TsardObject): Boolean;
+function TsrdoOperator.Operate(vResult: TsardResult; vObject: TsardObject): Boolean;
 begin
-  Result := DoOperate(TsrdoObject(vResult), vObject as TsrdoObject);
+  Result := DoOperate(vResult as TsrdoResult, vObject as TsrdoObject);
 end;
 
 { TsrdoEngine }
@@ -305,7 +319,7 @@ end;
 
 function TsrdoStatementItem.Execute(var vResult: TsrdoResult): Boolean;
 begin
-  Result := AnObject.Execute(vResult, AnOperator);
+  Result := AnObject.Operate(vResult, AnOperator);
 end;
 
 { TsrdoClass }
@@ -418,7 +432,7 @@ begin
   end;
 end;
 
-function TsrdoInteger.Execute(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean;
+function TsrdoInteger.Operate(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean;
 begin
   Result := True;
   if vResult.AnObject = nil then
@@ -593,7 +607,7 @@ begin
   Result := Self;
 end;
 
-function TsrdoObject.Execute(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean;
+function TsrdoObject.Operate(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean;
 begin
   Result := False;
 end;
