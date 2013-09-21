@@ -222,7 +222,63 @@ type
     function Execute(ABlock: TsrdoBlock):Boolean; overload;
   end;
 
+  { TsrdoOperator }
+
+  TsrdoOperator = class(TsardOperator)
+  protected
+    {L: Left, R: Right objects}
+    function DoOperate(L, R: TsrdoObject): Boolean; virtual;
+  public
+    function Operate(L, R: TsardObject): Boolean; override;
+  end;
+
+  { TsrdoOperators }
+
+  TsrdoOperators = class(TsardOperators)
+  protected
+    function CheckBeforeRegister(AOperator:TsardOperator): Boolean; override;
+  public
+  end;
+
+  { TsardEngine }
+
+  TsrdoEngine = class(TsardCustomEngine)
+  protected
+    function CreateOperators: TsardOperators; override;
+  public
+  end;
+
+var
+  sardEngine: TsrdoEngine = nil;
+
 implementation
+
+{ TsrdoOperators }
+
+function TsrdoOperators.CheckBeforeRegister(AOperator: TsardOperator): Boolean;
+begin
+  Result := True;
+end;
+
+{ TsrdoOperator }
+
+function TsrdoOperator.DoOperate(L, R: TsrdoObject): Boolean;
+begin
+
+end;
+
+function TsrdoOperator.Operate(L, R: TsardObject): Boolean;
+begin
+  Result := DoOperate(L as TsrdoObject, R as TsrdoObject);
+end;
+
+{ TsrdoEngine }
+
+function TsrdoEngine.CreateOperators: TsardOperators;
+begin
+  Result := TsrdoOperators.Create;
+  //TsardOperator = (opPlus, opMinus, opMultiply, opDivision, opNot, opSeprator);//no level until now //Move to sardObjects
+end;
 
 { TsrdoStatementItem }
 
@@ -350,14 +406,12 @@ begin
   end
   else if vResult.AnObject is TsrdoInteger then
   begin
-    case AnOperator of
+{    case AnOperator of
       opPlus: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value + Value;
       opMinus: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value - Value;
       opMultiply: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value * Value;
       opDivision: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value div Value;
-      {else //TODO
-      }
-    end;
+    end;}
   end;
 end;
 
