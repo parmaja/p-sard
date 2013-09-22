@@ -61,15 +61,13 @@ const
   aControlsOpenChars = [':', '~', ',', ';'] + sBracketChars;
   sControlsChars = aControlsOpenChars + ['='];
 
-  sSynbolChars = ['$', '#', '@', '\'];
-
-  sOperatorOpenChars = ['+', '-', '*', '/', '^', '&', '|', '!', '=']; //<--Stupid idea, need to make it as array
+  sOperatorOpenChars = ['+', '-', '*', '/', '^', '&', '|', '!', '=', '$', '@']; //<--Stupid idea, need to make it as array
 
   IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
   IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
 
 type
-  TsardTokenKinds = (tknOperator, tknControl, tknBracket, tknIdentifier, tknString, tknNumber, tknColor, tknComment);
+  TsardTokenKinds = (tknOperator, tknControl, tknIdentifier, tknString, tknNumber, tknColor, tknComment);
 
   { TsardScript }
 
@@ -179,16 +177,6 @@ implementation
 
 uses
   StrUtils;
-
-function IsIdentifier(vChar: AnsiChar): Boolean;
-begin
-  Result := vChar in IDENTIFIER_CHARS;
-end;
-
-function IsOperator(vChar: AnsiChar): Boolean;
-begin
-  Result := vChar in sOperatorOpenChars;
-end;
 
 { TsardScriptParser }
 
@@ -337,7 +325,7 @@ var
   o: TsardOperator;
 begin
   c := Column;
-  while (Column <= Length(Text)) and (IsOperator(Text[Column])) do //operator is multi char here
+  while (Column <= Length(Text)) and (sardEngine.IsOperator(Text[Column])) do //operator is multi char here
     Inc(Column);
   s := MidStr(Text, c, Column - c);
   //o := StrToOperator(s);TODO
@@ -349,7 +337,7 @@ end;
 
 function TsardOperator_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
-  Result := IsOperator(Text[Column]);
+  Result := sardEngine.IsOperator(Text[Column]);
 end;
 
 { TsardIdentifierScanner }

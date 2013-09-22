@@ -242,6 +242,8 @@ type
 
   { TopPlus }
 
+  //opPlus, opMinus, opMultiply, opDivision, opNot, opSeprator
+
   TopPlus = class(TsrdoOperator)
   public
     function DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean; override;
@@ -255,22 +257,36 @@ type
     procedure Created; override;
     function CreateOperators: TsardOperators; override;
   public
+    function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+    function IsControl(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+    function IsOperator(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+    function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+    function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
   end;
 
-var
-  sardEngine: TsrdoEngine = nil;
+
+function sardEngine: TsrdoEngine;
 
 implementation
+
+uses
+  sardScripts;
+
+var
+  FsardEngine: TsrdoEngine = nil;
+
+function sardEngine: TsrdoEngine;
+begin
+  if FsardEngine = nil then
+    FsardEngine := TsrdoEngine.Create;
+  Result := FsardEngine;
+end;
 
 { TopPlus }
 
 function TopPlus.DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
 begin
-  Result := vObject.Operate(vResult, Self);
-  if Result then
-  begin
-    //Ok let me do it. : the TopPlus said
-  end;
+  //hmmm... thinking
 end;
 
 constructor TopPlus.Create;
@@ -298,7 +314,14 @@ end;
 
 function TsrdoOperator.Operate(vResult: TsardResult; vObject: TsardObject): Boolean;
 begin
-  Result := DoOperate(vResult as TsrdoResult, vObject as TsrdoObject);
+  if not (vResult is TsrdoResult) then
+    raise EsardException.Create('vResult need to be TsrdoResult');
+  Result := (vObject as TsrdoObject).Operate(TsrdoResult(vResult), Self);
+  if not Result then
+  begin
+    Result := DoOperate(vResult as TsrdoResult, vObject as TsrdoObject);
+    //Ok let me do it. : the TopPlus said
+  end;
 end;
 
 { TsrdoEngine }
@@ -312,8 +335,39 @@ end;
 function TsrdoEngine.CreateOperators: TsardOperators;
 begin
   Result := TsrdoOperators.Create;
-  //TsardOperator = (opPlus, opMinus, opMultiply, opDivision, opNot, opSeprator);//no level until now //Move to sardObjects
 end;
+
+function TsrdoEngine.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  Result := vChar in sWhitespace;
+end;
+
+function TsrdoEngine.IsControl(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  if vOpen then
+    Result := vChar in aControlsOpenChars
+  else
+    Result := vChar in sControlsChars;
+end;
+
+function TsrdoEngine.IsOperator(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  Result := vChar in sOperatorOpenChars;
+end;
+
+function TsrdoEngine.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  if vOpen then
+    Result := vChar in sNumberOpenChars
+  else
+    Result := vChar in sNumberChars;
+end;
+
+function TsrdoEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  Result := inherited IsIdentifier(vChar, vOpen);
+end;
+
 
 { TsrdoStatementItem }
 

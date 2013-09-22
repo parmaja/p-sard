@@ -216,6 +216,15 @@ type
   public
     property Operators: TsardOperators read FOperators;
     constructor Create; virtual;
+    {
+      Open mean first char in it, like Numbers must start with number 0..9 but can contain a..z
+        or Identifier start a..z or _ but can contain numbers
+    }
+    function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
+    function IsControl(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
+    function IsOperator(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
+    function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
+    function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual;
   end;
 
 implementation
@@ -251,6 +260,13 @@ begin
   inherited Create;
   FOperators := CreateOperators;
   Created;
+end;
+
+function TsardCustomEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  Result := not IsWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar, vOpen);
+  if vOpen then
+    Result := Result and not IsNumber(vChar, vOpen);
 end;
 
 { TsardOperators }
