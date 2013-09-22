@@ -84,13 +84,13 @@ type
   protected
   public
     CurrentBlock: TsrdoBlock;
-    CurrentOperator: TsardOperator;
+    CurrentOperator: TsrdoOperator;
     constructor Create(ABlock: TsrdoBlock);
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
     procedure TriggerToken(Token: String; TokenID: Integer); override;
     procedure TriggerControl(AControl: TsardControl); override;
-    procedure TriggerOperator(AOperator: TsardOperator); override;
+    procedure TriggerOperator(AOperator: TsardObject); override;
   end;
 
   { TsardStartScanner }
@@ -234,11 +234,11 @@ procedure TsardScriptParser.TriggerControl(AControl: TsardControl);
 begin
 end;
 
-procedure TsardScriptParser.TriggerOperator(AOperator: TsardOperator);
+procedure TsardScriptParser.TriggerOperator(AOperator: TsardObject);
 begin
   if CurrentOperator <> nil then
     raise EsardException.Create('Operator already set');
-  CurrentOperator := AOperator;
+  CurrentOperator := AOperator as TsrdoOperator;
 end;
 
 { TsardControlScanner }
@@ -322,7 +322,7 @@ procedure TsardOperator_Scanner.Scan(const Text: string; var Column: Integer; co
 var
   c: Integer;
   s: string;
-  o: TsardOperator;
+  o: TsrdoOperator;
 begin
   c := Column;
   while (Column <= Length(Text)) and (sardEngine.IsOperator(Text[Column])) do //operator is multi char here

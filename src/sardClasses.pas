@@ -51,7 +51,6 @@ type
   TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpen, ctlClose, ctlLink, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
   TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
-//  TsardOperator = (opNone, opPlus, opMinus, opMultiply, opDivision, opNot, opSeprator);//no level until now //Move to sardObjects
 
   TsardScannerID = type Integer;
 
@@ -136,36 +135,6 @@ type
     property Scanners: TsardScanners read FScanners;
   end;
 
-  TsardResult = class(TsardObject)
-  end;
-
-  { TsardOperator }
-
-  TsardOperator = class(TsardObject)
-  public
-    Code: string;
-    Name: string;
-    Description: string;
-    Level: Integer;
-    {L: Left, R: Right objects}
-    function Operate(vResult: TsardResult; vObject: TsardObject): Boolean; virtual;
-    constructor Create; virtual;
-  end;
-
-  { TsardOperators }
-
-  TsardOperators = class(TsardObjectList)
-  private
-    function GetItem(Index: Integer): TsardOperator;
-  protected
-    function CheckBeforeRegister(AOperator: TsardOperator): Boolean; virtual;
-  public
-    function Find(const Code: string): TsardOperator;
-    function FindByName(const vName: string): TsardOperator;
-    function RegisterOperator(AOperator: TsardOperator): Boolean; virtual;
-    property Items[Index: Integer]: TsardOperator read GetItem; default;
-  end;
-
   { TsardParser }
 
   TsardParser = class(TsardObject)
@@ -174,7 +143,7 @@ type
     procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
     procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;
     procedure TriggerToken(Token: String; TokenID: Integer); virtual; abstract;
-    procedure TriggerOperator(AOperator: TsardOperator); virtual; abstract;
+    procedure TriggerOperator(AOperator: TsardObject); virtual; abstract; //TsardoOperator
     procedure TriggerControl(AControl: TsardControl); virtual;
   end;
 
@@ -209,13 +178,10 @@ type
 
   TsardCustomEngine = class(TsardObject)
   private
-    FOperators: TsardOperators;
   protected
     procedure Created; virtual;
-    function CreateOperators: TsardOperators; virtual;
   public
-    property Operators: TsardOperators read FOperators;
-    constructor Create; virtual;
+    procedure AfterConstruction; override;
     {
       Open mean first char in it, like Numbers must start with number 0..9 but can contain a..z
         or Identifier start a..z or _ but can contain numbers
@@ -232,33 +198,15 @@ implementation
 uses
   StrUtils;
 
-{ TsardOperator }
-
-function TsardOperator.Operate(vResult: TsardResult; vObject: TsardObject): Boolean;
-begin
-  Result := False;
-end;
-
-constructor TsardOperator.Create;
-begin
-  inherited Create;
-end;
-
 { TsardCustomEngine }
 
 procedure TsardCustomEngine.Created;
 begin
 end;
 
-function TsardCustomEngine.CreateOperators: TsardOperators;
+procedure TsardCustomEngine.AfterConstruction;
 begin
-  Result := TsardOperators.Create;
-end;
-
-constructor TsardCustomEngine.Create;
-begin
-  inherited Create;
-  FOperators := CreateOperators;
+  inherited AfterConstruction;
   Created;
 end;
 
@@ -267,55 +215,6 @@ begin
   Result := not IsWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar, vOpen);
   if vOpen then
     Result := Result and not IsNumber(vChar, vOpen);
-end;
-
-{ TsardOperators }
-
-function TsardOperators.GetItem(Index: Integer): TsardOperator;
-begin
-  Result := inherited Items[Index] as TsardOperator;
-end;
-
-function TsardOperators.CheckBeforeRegister(AOperator: TsardOperator): Boolean;
-begin
-  Result := True;
-end;
-
-function TsardOperators.Find(const Code: string): TsardOperator;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if Code = Items[i].Code then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
-function TsardOperators.FindByName(const vName: string): TsardOperator;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if vName = Items[i].Name then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
-function TsardOperators.RegisterOperator(AOperator: TsardOperator): Boolean;
-begin
-  Result := CheckBeforeRegister(AOperator);
-  if Result then
-    Add(AOperator);
 end;
 
 { TsardParser }

@@ -47,10 +47,11 @@ type
   end;
 
   TsrdoObject = class;
+  TsrdoOperator = class;
 
   { TsrdoResult }
 
-  TsrdoResult = class(TsardResult)
+  TsrdoResult = class(TsardObject)
     AnObject: TsrdoObject;
   end;
 
@@ -58,7 +59,7 @@ type
 
   TsrdoStatementItem = class(TsardObject)
   public
-    AnOperator: TsardOperator;
+    AnOperator: TsrdoOperator;
     AnObject: TsrdoObject;
     function Execute(var vResult: TsrdoResult): Boolean;
   end;
@@ -72,7 +73,7 @@ type
     procedure SetDebug(AValue: TsrdoDebug);
   public
     function Add(AObject: TsrdoStatementItem): Integer;
-    function Add(AOperator:TsardOperator; AObject:TsrdoObject): TsrdoStatementItem;
+    function Add(AOperator:TsrdoOperator; AObject:TsrdoObject): TsrdoStatementItem;
     property Items[Index: Integer]: TsrdoStatementItem read GetItem; default;
     property Debug: TsrdoDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
@@ -111,9 +112,10 @@ type
     FObjectType: TsrdoObjectType;
     procedure Created; virtual;
   public
-    constructor Create(AOperator:TsardOperator; AStatment:TsrdoStatement); overload; deprecated;
+    constructor Create(AOperator:TsrdoOperator; AStatment:TsrdoStatement); overload; deprecated;
+    procedure AfterConstruction; override;
     function This: TsrdoObject; //return the same object, stupid but save some code :P
-    function Operate(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean; virtual;
+    function Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean; virtual;
     property Name: string read FName write SetName;
     procedure Assign(FromObject: TsrdoObject); virtual;
     function Clone: TsrdoObject; virtual;
@@ -169,7 +171,7 @@ type
     procedure Created; override;
     function Clone: TsrdoObject; override;
     procedure Assign(FromObject: TsrdoObject); override;
-    function Operate(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean; override;
+    function Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean; override;
     function ConvertToString(out outValue: string): Boolean; override;
     function ConvertToFloat(out outValue: Float): Boolean; override;
     function ConvertToInteger(out outValue: Int64): Boolean; override;
@@ -222,22 +224,33 @@ type
     function Execute(ABlock: TsrdoBlock):Boolean; overload;
   end;
 
+
   { TsrdoOperator }
 
-  TsrdoOperator = class(TsardOperator)
+  TsrdoOperator = class(TsardObject)
   protected
-    {L: Left, R: Right objects}
     function DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean; virtual;
   public
-    function Operate(vResult: TsardResult; vObject: TsardObject): Boolean; override; final;
+    Code: string;
+    Name: string;
+    Level: Integer;
+    Description: string;
+    function Operate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean; virtual;
+    constructor Create; virtual;
   end;
 
   { TsrdoOperators }
 
-  TsrdoOperators = class(TsardOperators)
+  TsrdoOperators = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TsrdoOperator;
   protected
-    function CheckBeforeRegister(AOperator:TsardOperator): Boolean; override;
+    function CheckBeforeRegister(AOperator: TsrdoOperator): Boolean; virtual;
   public
+    function Find(const Code: string): TsrdoOperator;
+    function FindByName(const vName: string): TsrdoOperator;
+    function RegisterOperator(AOperator: TsrdoOperator): Boolean; virtual;
+    property Items[Index: Integer]: TsrdoOperator read GetItem; default;
   end;
 
   { TopPlus }
@@ -246,7 +259,27 @@ type
 
   TopPlus = class(TsrdoOperator)
   public
-    function DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean; override;
+    constructor Create; override;
+  end;
+
+  { TopMinus }
+
+  TopMinus = class(TsrdoOperator)
+  public
+    constructor Create; override;
+  end;
+
+  { TopMultiply }
+
+  TopMultiply = class(TsrdoOperator)
+  public
+    constructor Create; override;
+  end;
+
+  { TopDivision }
+
+  TopDivision = class(TsrdoOperator)
+  public
     constructor Create; override;
   end;
 
@@ -254,16 +287,19 @@ type
 
   TsrdoEngine = class(TsardCustomEngine)
   protected
+    FOperators: TsrdoOperators;
     procedure Created; override;
-    function CreateOperators: TsardOperators; override;
+    function CreateOperators: TsrdoOperators;
   public
+    constructor Create;
     function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsControl(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsOperator(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
-  end;
 
+    property Operators: TsrdoOperators read FOperators;
+  end;
 
 function sardEngine: TsrdoEngine;
 
@@ -282,27 +318,37 @@ begin
   Result := FsardEngine;
 end;
 
-{ TopPlus }
+{ TopDivision }
 
-function TopPlus.DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
-begin
-  //hmmm... thinking
-end;
-
-constructor TopPlus.Create;
+constructor TopDivision.Create;
 begin
   inherited Create;
-  Code := '+';
-  Name := 'Plus';
-  Description := 'Add object to another object';
-  Level := 0;
+  Code := '/';
+  Name := 'Divition';
+  Level := 1;
+  Description := '';
 end;
 
-{ TsrdoOperators }
+{ TopMultiply }
 
-function TsrdoOperators.CheckBeforeRegister(AOperator: TsardOperator): Boolean;
+constructor TopMultiply.Create;
 begin
-  Result := True;
+  inherited Create;
+  Code := '*';
+  Name := 'Multiply';
+  Level := 1;
+  Description := '';
+end;
+
+{ TopMinus }
+
+constructor TopMinus.Create;
+begin
+  inherited Create;
+  Code := '-';
+  Name := 'Minus';
+  Level := 0;
+  Description := 'Sub object to another object';
 end;
 
 { TsrdoOperator }
@@ -312,16 +358,80 @@ begin
   Result := False;
 end;
 
-function TsrdoOperator.Operate(vResult: TsardResult; vObject: TsardObject): Boolean;
+function TsrdoOperator.Operate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
 begin
-  if not (vResult is TsrdoResult) then
-    raise EsardException.Create('vResult need to be TsrdoResult');
-  Result := (vObject as TsrdoObject).Operate(TsrdoResult(vResult), Self);
+  Result := vObject.Operate(vResult, Self);
   if not Result then
   begin
-    Result := DoOperate(vResult as TsrdoResult, vObject as TsrdoObject);
+    DoOperate(vResult, vObject);
     //Ok let me do it. : the TopPlus said
   end;
+end;
+
+constructor TsrdoOperator.Create;
+begin
+  inherited Create;
+end;
+
+function TsrdoOperators.Find(const Code: string): TsrdoOperator;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if Code = Items[i].Code then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+function TsrdoOperators.FindByName(const vName: string): TsrdoOperator;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if vName = Items[i].Name then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+function TsrdoOperators.RegisterOperator(AOperator: TsrdoOperator): Boolean;
+begin
+  Result := CheckBeforeRegister(AOperator);
+  if Result then
+    Add(AOperator);
+end;
+
+
+{ TopPlus }
+
+constructor TopPlus.Create;
+begin
+  inherited Create;
+  Code := '+';
+  Name := 'Plus';
+  Level := 0;
+  Description := 'Add object to another object';
+end;
+
+{ TsrdoOperators }
+
+function TsrdoOperators.GetItem(Index: Integer): TsrdoOperator;
+begin
+  Result := inherited Items[Index] as TsrdoOperator;
+end;
+
+function TsrdoOperators.CheckBeforeRegister(AOperator: TsrdoOperator): Boolean;
+begin
+  Result := True;
 end;
 
 { TsrdoEngine }
@@ -332,9 +442,15 @@ begin
   Operators.RegisterOperator(TopPlus.Create);
 end;
 
-function TsrdoEngine.CreateOperators: TsardOperators;
+function TsrdoEngine.CreateOperators: TsrdoOperators;
 begin
   Result := TsrdoOperators.Create;
+end;
+
+constructor TsrdoEngine.Create;
+begin
+  inherited Create;
+  FOperators := CreateOperators;
 end;
 
 function TsrdoEngine.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
@@ -352,7 +468,10 @@ end;
 
 function TsrdoEngine.IsOperator(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
-  Result := vChar in sOperatorOpenChars;
+  if vOpen then
+    Result := vChar in sOperatorOpenChars
+  else
+    Result := not IsWhiteSpace(vChar, False) and not IsNumber(vChar, False) and not IsControl(vChar, False); //Can be any thing except those
 end;
 
 function TsrdoEngine.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
@@ -486,7 +605,7 @@ begin
   end;
 end;
 
-function TsrdoInteger.Operate(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean;
+function TsrdoInteger.Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean;
 begin
   Result := True;
   if vResult.AnObject = nil then
@@ -495,12 +614,12 @@ begin
   end
   else if vResult.AnObject is TsrdoInteger then
   begin
-{    case AnOperator of
-      opPlus: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value + Value;
-      opMinus: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value - Value;
-      opMultiply: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value * Value;
-      opDivision: TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value div Value;
-    end;}
+    case AnOperator.Code of
+      '+': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value + Value;
+      '-': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value - Value;
+      '*': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value * Value;
+      '/': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value div Value;
+    end;
   end;
 end;
 
@@ -563,7 +682,7 @@ begin
   Result := inherited Add(AObject);
 end;
 
-function TsrdoStatement.Add(AOperator: TsardOperator; AObject: TsrdoObject): TsrdoStatementItem;
+function TsrdoStatement.Add(AOperator: TsrdoOperator; AObject: TsrdoObject): TsrdoStatementItem;
 begin
   Result := TsrdoStatementItem.Create;
   Result.AnOperator := AOperator;
@@ -649,11 +768,17 @@ procedure TsrdoObject.Created;
 begin
 end;
 
-constructor TsrdoObject.Create(AOperator: TsardOperator; AStatment: TsrdoStatement);
+constructor TsrdoObject.Create(AOperator: TsrdoOperator; AStatment: TsrdoStatement);
 begin
   inherited Create;
   AStatment.Add(AOperator, Self);
   FStatement := AStatment;
+end;
+
+procedure TsrdoObject.AfterConstruction;
+begin
+  inherited AfterConstruction;
+  Created;
 end;
 
 function TsrdoObject.This: TsrdoObject;
@@ -661,7 +786,7 @@ begin
   Result := Self;
 end;
 
-function TsrdoObject.Operate(var vResult: TsrdoResult; AnOperator: TsardOperator): Boolean;
+function TsrdoObject.Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean;
 begin
   Result := False;
 end;
