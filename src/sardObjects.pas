@@ -277,6 +277,7 @@ type
     constructor Create; virtual;
   end;
 
+  TsrdoOperatorClass = class of TsrdoOperator;
   { TsrdoOperators }
 
   TsrdoOperators = class(TsardObjectList)
@@ -287,7 +288,8 @@ type
   public
     function Find(const Code: string): TsrdoOperator;
     function FindByName(const vName: string): TsrdoOperator;
-    function RegisterOperator(AOperator: TsrdoOperator): Boolean; virtual;
+    function RegisterOperator(AOperator: TsrdoOperator): Boolean;
+    function RegisterOperator(AOperatorClass: TsrdoOperatorClass): Boolean;
     property Items[Index: Integer]: TsrdoOperator read GetItem; default;
   end;
 
@@ -612,6 +614,10 @@ begin
     Add(AOperator);
 end;
 
+function TsrdoOperators.RegisterOperator(AOperatorClass: TsrdoOperatorClass): Boolean;
+begin
+  Result := RegisterOperator(AOperatorClass.Create);
+end;
 
 { TopPlus }
 
@@ -641,7 +647,24 @@ end;
 procedure TsrdoEngine.Created;
 begin
   inherited;
-  Operators.RegisterOperator(TopPlus.Create);
+  with Operators do
+  begin
+    Operators.RegisterOperator(TopPlus);
+    Operators.RegisterOperator(TopMinus);
+    Operators.RegisterOperator(TopMultiply);
+    Operators.RegisterOperator(TopDivide);
+
+    Operators.RegisterOperator(TopEqual);
+    Operators.RegisterOperator(TopNotEqual);
+    Operators.RegisterOperator(TopAnd);
+    Operators.RegisterOperator(TopOr);
+    Operators.RegisterOperator(TopNot);
+
+    Operators.RegisterOperator(TopGreater);
+    Operators.RegisterOperator(TopLesser);
+
+    Operators.RegisterOperator(TopPower);
+  end;
 end;
 
 function TsrdoEngine.CreateOperators: TsrdoOperators;

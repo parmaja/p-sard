@@ -18,6 +18,7 @@ type
     InputEdit: TSynEdit;
     SynCssSyn1: TSynCssSyn;
     procedure Button1Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { private declarations }
   public
@@ -36,6 +37,11 @@ implementation
 procedure TForm1.Button1Click(Sender: TObject);
 begin
   Execute(InputEdit.Lines);
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  InputEdit.Lines.Text := ' 10 + { 5 * 2 }';
 end;
 
 end.
