@@ -49,10 +49,27 @@ unit sardScripts;
    }
 *)
 
+(*
+  With:
+    object.{     <-not shure
+    }
+
+  Escape char is outside the string there is no escape inside it. sorry for that.
+  "test " \" " and"
+  it equal to "test " and"
+*)
+
 {TODO
   check not add object if there is no operator in curOperator
+  do not allow to add empty statment
 }
 
+{
+  Scope
+  Block
+  Statment
+  Expression
+}
 
 interface
 
@@ -79,8 +96,8 @@ const
 
   sOperatorOpenChars = ['+', '-', '*', '/', '<', '>', '^', '&', '|', '!', '=', '$', '@']; //<--Stupid idea, need to make it as array
 
-  IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
-  IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
+//  IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
+//  IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
 
 type
   TsardTokenKinds = (tknWhitespace, tknOperator, tknControl, tknNumber, tknColor, tknString, tknIdentifier, tknComment);
@@ -99,12 +116,12 @@ type
 
   { TsardScriptParser }
 
-  TsardScriptParser = class(TsardParser)
+  TsardScanParser = class(TsardParser)
   protected
-    FStack: TStatementsStack;
+    FStack: TBlockStack;
   public
     curOperator: TsrdoOperator;
-    constructor Create(AStatements: TsrdoStatements);
+    constructor Create(ABlock: TsrdoBlock);
     destructor Destroy; override;
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
@@ -112,7 +129,7 @@ type
     procedure TriggerControl(AControl: TsardControl); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
 
-    property Stack: TStatementsStack read FStack;
+    property Stack: TBlockStack read FStack;
   end;
 
   { TsardStartScanner }
@@ -200,40 +217,40 @@ implementation
 uses
   StrUtils;
 
-{ TsardScriptParser }
+{ TsardScanParser }
 
-constructor TsardScriptParser.Create(AStatements: TsrdoStatements);
+constructor TsardScanParser.Create(ABlock: TsrdoBlock);
 begin
   inherited Create;
-  FStack := TStatementsStack.Create;
-  if AStatements <> nil then
-    FStack.Push(AStatements)
+  FStack := TBlockStack.Create;
+  if ABlock <> nil then
+    FStack.Push(ABlock)
 end;
 
-destructor TsardScriptParser.Destroy;
+destructor TsardScanParser.Destroy;
 begin
   FreeAndNil(FStack);
   inherited Destroy;
 end;
 
-procedure TsardScriptParser.TriggerOpen(vBracket: TsardBracketKind);
+procedure TsardScanParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
-  with TsrdoBlock.Create do
+  with TsrdoBranch.Create do
   begin
     Stack.Current.Statement.Add(curOperator, This);
-    Stack.Push(Statements);
+    Stack.Push(Block);
   end;
   //Stack.Push(Stack.Current.New);//<--
 end;
 
-procedure TsardScriptParser.TriggerClose(vBracket: TsardBracketKind);
+procedure TsardScanParser.TriggerClose(vBracket: TsardBracketKind);
 begin
   if Stack.IsEmpty then
     raise EsardException.Create('There is no opened block!');
   Stack.Pop;
 end;
 
-procedure TsardScriptParser.TriggerToken(Token: String; TokenID: Integer);
+procedure TsardScanParser.TriggerToken(Token: String; TokenID: Integer);
 begin
   case TsardTokenKinds(TokenID) of
     tknNumber:
@@ -269,14 +286,14 @@ begin
   end;
 end;
 
-procedure TsardScriptParser.TriggerControl(AControl: TsardControl);
+procedure TsardScanParser.TriggerControl(AControl: TsardControl);
 begin
   case AControl of
     ctlSemicolon: Stack.Current.New;
   end;
 end;
 
-procedure TsardScriptParser.TriggerOperator(AOperator: TsardObject);
+procedure TsardScanParser.TriggerOperator(AOperator: TsardObject);
 begin
   if curOperator <> nil then
     raise EsardException.Create('Operator already set');
@@ -287,9 +304,16 @@ end;
 
 procedure TsardControl_Scanner.Scan(const Text: string; var Column: Integer; const Line: Integer);
 var
-  b: AnsiChar;
+  b: string;
+  l, c: Integer;
 begin
-  b := Text[Column];
+  c := Column;
+  l := Length(Text);
+  while (Column <= l) and (sardEngine.IsControl(Text[Column], False)) do
+    Inc(Column);
+
+  b := MidStr(Text, c, Column - c);
+
   if b = '(' then //TODO need to improve it, my brain is off
     Scanners.Parser.TriggerOpen(brBracket)
   else if b = '[' then
@@ -308,6 +332,8 @@ begin
     Scanners.Parser.TriggerControl(ctlSplit)
   else if b = ':' then
     Scanners.Parser.TriggerControl(ctlDeclare)
+  else if b = ':=' then
+    Scanners.Parser.TriggerControl(ctlAssign)
   else if b = '~' then
     Scanners.Parser.TriggerControl(ctlPointer);
   Inc(Column);
@@ -315,7 +341,7 @@ end;
 
 function TsardControl_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
-  Result := Text[Column] in aControlsOpenChars;
+  Result := sardEngine.IsControl(Text[Column], True);
 end;
 
 { TsardScript }
@@ -348,14 +374,14 @@ var
 begin
   c := Column;
   l := Length(Text);
-  while (Column <= l) and (Text[Column] in sNumberChars) do
+  while (Column <= l) and (sardEngine.IsNumber(Text[Column], False)) do
     Inc(Column);
   Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknNumber));
 end;
 
 function TsardNumber_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
-  Result := Text[Column] in sNumberOpenChars;//need to improve to accept unicode chars
+  Result := sardEngine.IsNumber(Text[Column], True);//need to improve to accept unicode chars
 end;
 
 { TsardOperatorScanner }
@@ -370,7 +396,7 @@ begin
   while (Column <= Length(Text)) and (sardEngine.IsOperator(Text[Column])) do //operator is multi char here
     Inc(Column);
   s := MidStr(Text, c, Column - c);
-  //o := StrToOperator(s);TODO
+
   o := sardEngine.Operators.Find(s);
   if o = nil then
     raise EsardException.Create('Unkown operator: ' + s);
@@ -389,14 +415,14 @@ var
   c: Integer;
 begin
   c := Column;
-  while (Column <= Length(Text)) and (Text[Column] in IDENTIFIER_CHARS) do
+  while (Column <= Length(Text)) and (sardEngine.IsIdentifier(Text[Column], False)) do
     Inc(Column);
   Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknIdentifier));
 end;
 
 function TsardIdentifier_Scanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
 begin
-  Result := Text[Column] in IDENTIFIER_OPEN_CHARS;//need to improve to accept unicode chars
+  Result := sardEngine.IsIdentifier(Text[Column], True);//need to improve to accept unicode chars
 end;
 
 { TsardDQStringScanner }

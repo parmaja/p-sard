@@ -23,7 +23,7 @@ type
 
   { TmyScanner }
 
-  TmyParser = class(TsardScriptParser)
+  TmyParser = class(TsardScanParser)
   protected
   public
     procedure TriggerToken(Token: String; TokenID: Integer); override;
@@ -45,30 +45,31 @@ implementation
 procedure TmyParser.TriggerToken(Token: String; TokenID: Integer);
 begin
   inherited;
-  WriteLn(Token);
+  //WriteLn(Token);
 end;
 
 function Execute(Lines: TStrings): Boolean;
 var
   Scanner: TmyScript;
-  Parser: TsardScriptParser;
-  Statements: TsrdoStatements;
+  Parser: TsardScanParser;
+  Block: TsrdoBlock;
   Run: TsrdoRun;
 begin
+  //sardEngine.Run(Lines);
   Scanner := TmyScript.Create;
   try
-    Statements := TsrdoStatements.Create;
-    Statements.New;
-    Parser := TmyParser.Create(Statements);
+    Block := TsrdoBlock.Create;
+    Block.New;
+    Parser := TmyParser.Create(Block);
     Scanner.Scanners.Parser := Parser;
     Scanner.Scan(Lines);
     Scanner.Scanners.Parser := nil;
 
     Run := TsrdoRun.Create;
-    Run.Execute(Statements);
+    Run.Execute(Block);
 
     FreeAndNil(Parser);
-    FreeAndNil(Statements);
+    FreeAndNil(Block);
   finally
     FreeAndNil(Scanner);
   end;

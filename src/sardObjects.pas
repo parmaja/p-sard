@@ -82,9 +82,9 @@ type
     property Debug: TsrdoDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
 
-  { TsrdoStatements }
+  { TsrdoBlock }
 
-  TsrdoStatements = class(TsardObjectList)
+  TsrdoBlock = class(TsardObjectList)
   private
     function GetStatement: TsrdoStatement;
     function GetItem(Index: Integer): TsrdoStatement;
@@ -97,13 +97,13 @@ type
     function Execute(var vResult: TsrdoResult): Boolean;
   end;
 
-  { TStatementsStack }
+  { TBlockStack }
 
-  TStatementsStack = class(TsardStack)
+  TBlockStack = class(TsardStack)
   private
-    function GetCurrent: TsrdoStatements;
+    function GetCurrent: TsrdoBlock;
   public
-    property Current: TsrdoStatements read GetCurrent;
+    property Current: TsrdoBlock read GetCurrent;
   end;
 
   IsrdoObject = interface['{9FD9AEE0-507E-4EEA-88A8-AE686E6A1D98}']
@@ -132,6 +132,7 @@ type
   protected
     FObjectType: TsrdoObjectType;
     procedure Created; virtual;
+    function GetCanExecute: Boolean; virtual;//TODO not sure
   public
     constructor Create; virtual;
     procedure AfterConstruction; override;
@@ -142,6 +143,7 @@ type
     procedure Assign(FromObject: TsrdoObject); virtual;
     function Clone: TsrdoObject; virtual;
     property ObjectType: TsrdoObjectType read FObjectType;
+    property CanExecute: Boolean read GetCanExecute;
     function AsString: String;
     function AsFloat: Float;
     function AsInteger: int;
@@ -176,15 +178,15 @@ type
     procedure Created; override;
   end;
 
-  TsrdoBlock = class(TsrdoObject, IsrdoBlock)
+  TsrdoBranch = class(TsrdoObject, IsrdoBlock)
   protected
-    FStatements: TsrdoStatements;
+    FBlock: TsrdoBlock;
     procedure Created; override;
   public
     constructor Create; override;
     destructor Destroy; override;
     function Execute(var vResult: TsrdoResult): Boolean; override;
-    property Statements: TsrdoStatements read FStatements;
+    property Block: TsrdoBlock read FBlock;
   end;
 
 (**** Common Objects *****)
@@ -264,7 +266,7 @@ type
     Stack: TsardStack;
     constructor Create;
     destructor Destroy; override;
-    function Execute(vStatements: TsrdoStatements):Boolean;
+    function Execute(vBlock: TsrdoBlock):Boolean;
   end;
 
 
@@ -415,11 +417,11 @@ begin
   Result := FsardEngine;
 end;
 
-{ TStatementsStack }
+{ TBlockStack }
 
-function TStatementsStack.GetCurrent: TsrdoStatements;
+function TBlockStack.GetCurrent: TsrdoBlock;
 begin
-  Result := (inherited GetCurrent) as TsrdoStatements;
+  Result := (inherited GetCurrent) as TsrdoBlock;
 end;
 
 { TopNot }
@@ -502,28 +504,29 @@ begin
   Level := 52;
 end;
 
-{ TsrdoBlock }
+{ TsrdoBranch }
 
-procedure TsrdoBlock.Created;
+procedure TsrdoBranch.Created;
 begin
   inherited Created;
 end;
 
-constructor TsrdoBlock.Create;
+constructor TsrdoBranch.Create;
 begin
   inherited Create;
-  FStatements := TsrdoStatements.Create;
+  FBlock := TsrdoBlock.Create;
 end;
 
-destructor TsrdoBlock.Destroy;
+destructor TsrdoBranch.Destroy;
 begin
-  FreeAndNil(FStatements);
+  FreeAndNil(FBlock);
   inherited Destroy;
 end;
 
-function TsrdoBlock.Execute(var vResult: TsrdoResult): Boolean;
+function TsrdoBranch.Execute(var vResult: TsrdoResult): Boolean;
 begin
-  Result := Statements.Execute(vResult);
+  //Just Forward
+  Result := Block.Execute(vResult);
 end;
 
 { TopDivide }
@@ -565,22 +568,34 @@ begin
 end;
 
 function TsrdoOperator.Operate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
-begin
-  if vResult.AnObject = nil then
+var
+  aResult: TsrdoResult;
+  procedure OperateNow(O: TsrdoObject);
   begin
-    vResult.AnObject := vObject.Clone;
-    Result := True;
-  end
-  else
-  begin
-    if Self = nil then
-      raise EsardException.Create('Operator not defined!');
-    Result := vObject.Operate(vResult, Self);
-    if not Result then
+    if Self = nil then //TODO: If assign
+      vResult.AnObject := O.Clone
+    else
     begin
-      DoOperate(vResult, vObject);
-      //Ok let me do it. : the TopPlus said
+      Result := DoOperate(vResult, O);
+      if not Result then
+      begin
+        Result := O.Operate(vResult, Self);
+        //Ok let me do it. : the TopPlus said
+      end;
     end;
+  end;
+begin
+  aResult := TsrdoResult.Create;
+  try
+    if vObject.Execute(aResult) then //it is a block
+    begin
+      if aResult.AnObject <> nil then
+        OperateNow(aResult.AnObject)
+    end
+    else//<-- maybe not !!!
+      OperateNow(vObject);
+  finally
+    aResult.Free;
   end;
 end;
 
@@ -733,7 +748,6 @@ begin
     raise EsardException.Create('Object not set!');
   {if AnOperator = nil then
     raise EsardException.Create('Object not set!');}
-  AnObject.Execute(vResult);
   Result := AnOperator.Operate(vResult, AnObject);//Even AnOperator is nil it will work
 end;
 
@@ -871,6 +885,7 @@ begin
   else if vResult.AnObject is TsrdoInteger then
   begin
     Result := True;
+    WriteLn(IntToStr(TsrdoInteger(vResult.AnObject).Value) + ' '+ AnOperator.Code+' ' +IntToStr(Value));
     case AnOperator.Code of
       '+': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value + Value;
       '-': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value - Value;
@@ -906,37 +921,37 @@ begin
   Result := True;
 end;
 
-{ TsrdoStatements }
+{ TsrdoBlock }
 
-function TsrdoStatements.GetStatement: TsrdoStatement;
+function TsrdoBlock.GetStatement: TsrdoStatement;
 begin
   Check;//TODO: not sure
   Result := Last as TsrdoStatement;
 end;
 
-function TsrdoStatements.GetItem(Index: Integer): TsrdoStatement;
+function TsrdoBlock.GetItem(Index: Integer): TsrdoStatement;
 begin
   Result := inherited Items[Index] as TsrdoStatement;
 end;
 
-function TsrdoStatements.Add(AStatement: TsrdoStatement): Integer;
+function TsrdoBlock.Add(AStatement: TsrdoStatement): Integer;
 begin
   Result := inherited Add(AStatement);
 end;
 
-function TsrdoStatements.New: TsrdoStatement;
+function TsrdoBlock.New: TsrdoStatement;
 begin
   Result := TsrdoStatement.Create;
   Add(Result);
 end;
 
-procedure TsrdoStatements.Check;
+procedure TsrdoBlock.Check;
 begin
   if Count = 0  then
     New;
 end;
 
-function TsrdoStatements.Execute(var vResult: TsrdoResult): Boolean;
+function TsrdoBlock.Execute(var vResult: TsrdoResult): Boolean;
 var
   i: Integer;
 begin
@@ -998,13 +1013,13 @@ begin
   inherited Destroy;
 end;
 
-function TsrdoRun.Execute(vStatements: TsrdoStatements): Boolean;
+function TsrdoRun.Execute(vBlock: TsrdoBlock): Boolean;
 var
   R: TsrdoResult;
 begin
   R := TsrdoResult.Create;
   try
-    Result := vStatements.Execute(R);
+    Result := vBlock.Execute(R);
     Writeln(R.AnObject.AsString)
   finally
     R.Free;
@@ -1029,6 +1044,11 @@ begin
   end;
 end;
 
+function TsrdoObject.GetCanExecute: Boolean;
+begin
+  Result := False;
+end;
+
 procedure TsrdoObject.Created;
 begin
 end;
@@ -1051,7 +1071,7 @@ end;
 
 function TsrdoObject.Execute(var vResult: TsrdoResult): Boolean;
 begin
-  Result := True;//yes true, nothing to do, it is fine
+  Result := False;
 end;
 
 function TsrdoObject.Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean;
