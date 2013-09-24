@@ -50,6 +50,7 @@ unit sardScripts;
 *)
 
 {TODO
+  check not add object if there is no operator in curOperator
 }
 
 
@@ -100,15 +101,18 @@ type
 
   TsardScriptParser = class(TsardParser)
   protected
+    FStack: TStatementsStack;
   public
-    curStatements: TsrdoStatements;
     curOperator: TsrdoOperator;
     constructor Create(AStatements: TsrdoStatements);
+    destructor Destroy; override;
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
     procedure TriggerToken(Token: String; TokenID: Integer); override;
     procedure TriggerControl(AControl: TsardControl); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
+
+    property Stack: TStatementsStack read FStack;
   end;
 
   { TsardStartScanner }
@@ -201,15 +205,32 @@ uses
 constructor TsardScriptParser.Create(AStatements: TsrdoStatements);
 begin
   inherited Create;
-  curStatements := AStatements;
+  FStack := TStatementsStack.Create;
+  if AStatements <> nil then
+    FStack.Push(AStatements)
+end;
+
+destructor TsardScriptParser.Destroy;
+begin
+  FreeAndNil(FStack);
+  inherited Destroy;
 end;
 
 procedure TsardScriptParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
+  with TsrdoBlock.Create do
+  begin
+    Stack.Current.Statement.Add(curOperator, This);
+    Stack.Push(Statements);
+  end;
+  //Stack.Push(Stack.Current.New);//<--
 end;
 
 procedure TsardScriptParser.TriggerClose(vBracket: TsardBracketKind);
 begin
+  if Stack.IsEmpty then
+    raise EsardException.Create('There is no opened block!');
+  Stack.Pop;
 end;
 
 procedure TsardScriptParser.TriggerToken(Token: String; TokenID: Integer);
@@ -221,7 +242,7 @@ begin
       begin
         with TsrdoFloat.Create do
         begin
-          curStatements.Statement.Add(curOperator, This);
+          Stack.Current.Statement.Add(curOperator, This);
           Value := StrToFloat(Token);
         end;
         curOperator := nil;//<--bad idea, use Stack
@@ -230,7 +251,7 @@ begin
       begin
         with TsrdoInteger.Create do
         begin
-          curStatements.Statement.Add(curOperator, This);
+          Stack.Current.Statement.Add(curOperator, This);
           Value := StrToInt64(Token);
         end;
         curOperator := nil;
@@ -240,7 +261,7 @@ begin
     begin
       with TsrdoString.Create do
       begin
-        curStatements.Statement.Add(curOperator, This);
+        Stack.Current.Statement.Add(curOperator, This);
         Value := Token;
       end;
       curOperator := nil;
@@ -250,6 +271,9 @@ end;
 
 procedure TsardScriptParser.TriggerControl(AControl: TsardControl);
 begin
+  case AControl of
+    ctlSemicolon: Stack.Current.New;
+  end;
 end;
 
 procedure TsardScriptParser.TriggerOperator(AOperator: TsardObject);

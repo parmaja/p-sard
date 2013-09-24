@@ -41,7 +41,7 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  InputEdit.Lines.Text := ' 10 + { 5 * 2 }';
+  InputEdit.Lines.Text := ' 10 + { 2 * 2 }';
 end;
 
 end.

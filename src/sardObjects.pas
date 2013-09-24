@@ -82,8 +82,6 @@ type
     property Debug: TsrdoDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
 
-  { TsrdoBlock }
-
   { TsrdoStatements }
 
   TsrdoStatements = class(TsardObjectList)
@@ -93,9 +91,19 @@ type
   public
     function Add(AStatement: TsrdoStatement): Integer;
     function New: TsrdoStatement;
+    procedure Check; //Check if empty then create first statement
     property Items[Index: Integer]: TsrdoStatement read GetItem; default;
     property Statement: TsrdoStatement read GetStatement;
     function Execute(var vResult: TsrdoResult): Boolean;
+  end;
+
+  { TStatementsStack }
+
+  TStatementsStack = class(TsardStack)
+  private
+    function GetCurrent: TsrdoStatements;
+  public
+    property Current: TsrdoStatements read GetCurrent;
   end;
 
   IsrdoObject = interface['{9FD9AEE0-507E-4EEA-88A8-AE686E6A1D98}']
@@ -120,9 +128,7 @@ type
   TsrdoObject = class(TsardObject, IsrdoObject)
   private
     FName: string; //if name is '' then the object cant change the value
-    FStatement: TsrdoStatement;
     procedure SetName(AValue: string);
-    procedure SetStatement(AValue: TsrdoStatement);
   protected
     FObjectType: TsrdoObjectType;
     procedure Created; virtual;
@@ -135,7 +141,6 @@ type
     property Name: string read FName write SetName;
     procedure Assign(FromObject: TsrdoObject); virtual;
     function Clone: TsrdoObject; virtual;
-    property Statement: TsrdoStatement read FStatement write SetStatement;
     property ObjectType: TsrdoObjectType read FObjectType;
     function AsString: String;
     function AsFloat: Float;
@@ -410,6 +415,13 @@ begin
   Result := FsardEngine;
 end;
 
+{ TStatementsStack }
+
+function TStatementsStack.GetCurrent: TsrdoStatements;
+begin
+  Result := (inherited GetCurrent) as TsrdoStatements;
+end;
+
 { TopNot }
 
 constructor TopNot.Create;
@@ -511,7 +523,7 @@ end;
 
 function TsrdoBlock.Execute(var vResult: TsrdoResult): Boolean;
 begin
-  Result := Execute(vResult);
+  Result := Statements.Execute(vResult);
 end;
 
 { TopDivide }
@@ -898,6 +910,7 @@ end;
 
 function TsrdoStatements.GetStatement: TsrdoStatement;
 begin
+  Check;//TODO: not sure
   Result := Last as TsrdoStatement;
 end;
 
@@ -915,6 +928,12 @@ function TsrdoStatements.New: TsrdoStatement;
 begin
   Result := TsrdoStatement.Create;
   Add(Result);
+end;
+
+procedure TsrdoStatements.Check;
+begin
+  if Count = 0  then
+    New;
 end;
 
 function TsrdoStatements.Execute(var vResult: TsrdoResult): Boolean;
@@ -1008,12 +1027,6 @@ begin
     //CheckUniqe; TODO
     FName := AValue;
   end;
-end;
-
-procedure TsrdoObject.SetStatement(AValue: TsrdoStatement);
-begin
-  if FStatement =AValue then Exit;
-  FStatement :=AValue;
 end;
 
 procedure TsrdoObject.Created;

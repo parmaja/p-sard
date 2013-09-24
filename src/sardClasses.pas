@@ -150,7 +150,7 @@ type
 
   TsardStackItem = class(TsardObject)
   public
-    AnObject: TsardObject;
+    AnObject: TObject;
     Owner: TsardStack;
     Prior: TsardStackItem;
   end;
@@ -161,15 +161,15 @@ type
   private
     FCount: Integer;
     FCurrent: TsardStackItem;
-    function GetCurrent: TsardObject;
-    procedure SetCurrent(const AValue: TsardObject);
+  protected
+    function GetCurrent: TObject;
   public
     function IsEmpty: Boolean;
-    procedure Push(vObject: TsardObject);
-    function Pop: TsardObject;
+    procedure Push(vObject: TObject);
+    function Pop: TObject;
     procedure Delete;
-    function Peek: TsardObject;
-    property Current: TsardObject read GetCurrent write SetCurrent;
+    function Peek: TObject;
+    property Current: TObject read GetCurrent;
     property Count: Integer read FCount;
   end;
 
@@ -225,7 +225,7 @@ end;
 procedure TsardStack.Delete;
 var
   aNode: TsardStackItem;
-  aObject: TsardObject;
+  aObject: TObject;
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
@@ -237,11 +237,14 @@ begin
   aObject.Free;
 end;
 
-function TsardStack.GetCurrent: TsardObject;
+function TsardStack.GetCurrent: TObject;
 begin
+{  if FCurrent = nil then
+    raise EsardException.Create('Stack is empty');}
   if FCurrent = nil then
-    raise EsardException.Create('Stack is empty');
-  Result := FCurrent.AnObject;
+    Result := nil
+  else
+    Result := FCurrent.AnObject;
 end;
 
 function TsardStack.IsEmpty: Boolean;
@@ -249,14 +252,14 @@ begin
   Result := FCurrent = nil;
 end;
 
-function TsardStack.Peek: TsardObject;
+function TsardStack.Peek: TObject;
 begin
   if FCurrent = nil then
     raise EsardException.Create('Stack is empty');
   Result := FCurrent.AnObject;
 end;
 
-function TsardStack.Pop: TsardObject;
+function TsardStack.Pop: TObject;
 var
   aNode: TsardStackItem;
 begin
@@ -269,23 +272,18 @@ begin
   Dec(FCount);
 end;
 
-procedure TsardStack.Push(vObject: TsardObject);
+procedure TsardStack.Push(vObject: TObject);
 var
   aNode: TsardStackItem;
 begin
+  if vObject = nil then
+    raise EsardException.Create('Can''t push nil');
   aNode := TsardStackItem.Create;
   aNode.AnObject := vObject;
   aNode.Prior := FCurrent;
   aNode.Owner := Self;
   FCurrent := aNode;
   Inc(FCount);
-end;
-
-procedure TsardStack.SetCurrent(const AValue: TsardObject);
-begin
-  if FCurrent = nil then
-    raise EsardException.Create('Stack is empty');
-  FCurrent.AnObject := AValue;
 end;
 
 { EmnXMLException }
