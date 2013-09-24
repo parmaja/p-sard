@@ -273,7 +273,7 @@ type
     Name: string;
     Level: Integer;
     Description: string;
-    function Operate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean; virtual;
+    function Operate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
     constructor Create; virtual;
   end;
 
@@ -559,6 +559,8 @@ begin
   end
   else
   begin
+    if Self = nil then
+      raise EsardException.Create('Operator not defined!');
     Result := vObject.Operate(vResult, Self);
     if not Result then
     begin
@@ -694,10 +696,10 @@ function TsrdoStatementItem.Execute(var vResult: TsrdoResult): Boolean;
 begin
   if AnObject = nil then
     raise EsardException.Create('Object not set!');
-  if AnOperator = nil then
-    raise EsardException.Create('Object not set!');
+  {if AnOperator = nil then
+    raise EsardException.Create('Object not set!');}
   AnObject.Execute(vResult);
-  Result := AnOperator.Operate(vResult, AnObject);
+  Result := AnOperator.Operate(vResult, AnObject);//Even AnOperator is nil it will work
 end;
 
 { TsrdoClass }
@@ -825,18 +827,22 @@ end;
 
 function TsrdoInteger.Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean;
 begin
-  Result := True;
+  Result := False;
   if vResult.AnObject = nil then
   begin
     vResult.AnObject := Clone;
+    Result := True;
   end
   else if vResult.AnObject is TsrdoInteger then
   begin
+    Result := True;
     case AnOperator.Code of
       '+': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value + Value;
       '-': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value - Value;
       '*': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value * Value;
       '/': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value div Value;
+      else
+        Result := False;
     end;
   end;
 end;
