@@ -25,7 +25,8 @@ uses
   Classes, SysUtils, Contnrs;
 
 type
-  Float = type Extended;
+  Float = type extended;
+  Int = type Int64;
 
 type
   EsardException = class(Exception)
@@ -48,7 +49,7 @@ type
   TsardObject = class(TObject);
   TsardObjectList = class(TObjectList);
 
-  TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpen, ctlClose, ctlLink, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
+  TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpenBlock, ctlCloseBlock, ctlPoInter, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
   TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
 
@@ -68,11 +69,9 @@ type
   protected
     function CheckText(S: string; const Text: string; const Column: Integer): Boolean;
     function ScanText(S: string; const Text: string; var Column: Integer): Boolean;
-    //procedure ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer); virtual;
     procedure Scan(const Text: string; var Column: Integer; const Line: Integer); virtual; abstract;
     function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; virtual;
     function DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
-    procedure SwitchScanner(AScannerID: TsardScannerID);
     procedure SelectScanner(AScannerClass: TsardScannerClass);
   public
     Index: TsardScannerID;
@@ -323,8 +322,8 @@ end;
 (*
 procedure TsardScanner.ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer);
 var
-  p: integer;
-  l, c, i: integer;
+  p: Integer;
+  l, c, i: Integer;
 begin
   p := 0;
   c := 1;
@@ -367,11 +366,6 @@ end;
 function TsardScanner.DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
 begin
   Result := Scanners.DetectScanner(Text, Column, Line);
-end;
-
-procedure TsardScanner.SwitchScanner(AScannerID: TsardScannerID);
-begin
-  Scanners.SwitchScanner(AScannerID);
 end;
 
 procedure TsardScanner.SelectScanner(AScannerClass: TsardScannerClass);

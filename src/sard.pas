@@ -52,23 +52,23 @@ function Execute(Lines: TStrings): Boolean;
 var
   Scanner: TmyScript;
   Parser: TsardScriptParser;
-  Block: TsrdoBlock;
+  Statements: TsrdoStatements;
   Run: TsrdoRun;
 begin
   Scanner := TmyScript.Create;
   try
-    Block := TsrdoBlock.Create;
-    Block.New;
-    Parser := TmyParser.Create(Block);
+    Statements := TsrdoStatements.Create;
+    Statements.New;
+    Parser := TmyParser.Create(Statements);
     Scanner.Scanners.Parser := Parser;
     Scanner.Scan(Lines);
     Scanner.Scanners.Parser := nil;
 
     Run := TsrdoRun.Create;
-    Run.Execute(Block);
+    Run.Execute(Statements);
 
     FreeAndNil(Parser);
-    FreeAndNil(Block);
+    FreeAndNil(Statements);
   finally
     FreeAndNil(Scanner);
   end;

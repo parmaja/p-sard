@@ -12,31 +12,46 @@ unit sardScripts;
 {$ENDIF}
 {$H+}{$M+}
 
-(* Example
+(*
+  Like pascal
+    It is case insensitive
+    Declareing after the name
+    Assigning ":=", compare "=", object child "."
+    Not equal operator "<>"
 
-object: {
-  v1:=10+10;
-  v2:int=10;
-  v3:=v2-v1;
-  =proc1(v3);
-};
+    foo:{
+      bar: integer;
+      i: integer = 5; //Declare and Assign
+      method1:{
+        :=i * bar //return value
+      }
+    }
 
+    foo.bar := 10;
+
+  -----------------------------------------------------
+  Like C
+    Block { }, no more begin end
+    comments //single line and /* multiline */
+    Not "!"  or "|"
+  -----------------------------------------------------
+  Like nothing
+    Returning value
+
+   foo:{
+     := 10;
+   }
+
+   or
+
+   foo:integer{
+     := 10;
+   }
 *)
 
 {TODO
-
-  IsWhiteSpace
-else
-  IsControl
-else
-  IsSymbol
-else
-  IsNumber
-else
-  so it is Identifier
-
-Any Symbol it is an open for operator
 }
+
 
 interface
 
@@ -58,16 +73,19 @@ const
   sBracketCloseChars = [')', ']', '}'];
   sBracketChars = sBracketOpoenChars + sBracketCloseChars;
 
-  aControlsOpenChars = [':', '~', ',', ';'] + sBracketChars;
+  aControlsOpenChars = [':', '.', ',', ';', '~'] + sBracketChars;
   sControlsChars = aControlsOpenChars + ['='];
 
-  sOperatorOpenChars = ['+', '-', '*', '/', '^', '&', '|', '!', '=', '$', '@']; //<--Stupid idea, need to make it as array
+  sOperatorOpenChars = ['+', '-', '*', '/', '<', '>', '^', '&', '|', '!', '=', '$', '@']; //<--Stupid idea, need to make it as array
 
   IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
   IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
 
 type
-  TsardTokenKinds = (tknOperator, tknControl, tknIdentifier, tknString, tknNumber, tknColor, tknComment);
+  TsardTokenKinds = (tknWhitespace, tknOperator, tknControl, tknNumber, tknColor, tknString, tknIdentifier, tknComment);
+
+  TsardState = (stateIdentifier, stateDeclare, stateAssign, stateBlock);
+  TsardStates = set of TsardState;
 
   { TsardScript }
 
@@ -83,9 +101,9 @@ type
   TsardScriptParser = class(TsardParser)
   protected
   public
-    CurrentBlock: TsrdoBlock;
-    CurrentOperator: TsrdoOperator;
-    constructor Create(ABlock: TsrdoBlock);
+    curStatements: TsrdoStatements;
+    curOperator: TsrdoOperator;
+    constructor Create(AStatements: TsrdoStatements);
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
     procedure TriggerToken(Token: String; TokenID: Integer); override;
@@ -180,10 +198,10 @@ uses
 
 { TsardScriptParser }
 
-constructor TsardScriptParser.Create(ABlock: TsrdoBlock);
+constructor TsardScriptParser.Create(AStatements: TsrdoStatements);
 begin
   inherited Create;
-  CurrentBlock := ABlock;
+  curStatements := AStatements;
 end;
 
 procedure TsardScriptParser.TriggerOpen(vBracket: TsardBracketKind);
@@ -203,29 +221,29 @@ begin
       begin
         with TsrdoFloat.Create do
         begin
-          CurrentBlock.Statement.Add(CurrentOperator, This);
+          curStatements.Statement.Add(curOperator, This);
           Value := StrToFloat(Token);
         end;
-        CurrentOperator := nil;//<--bad idea, use Stack
+        curOperator := nil;//<--bad idea, use Stack
       end
       else
       begin
         with TsrdoInteger.Create do
         begin
-          CurrentBlock.Statement.Add(CurrentOperator, This);
+          curStatements.Statement.Add(curOperator, This);
           Value := StrToInt64(Token);
         end;
-        CurrentOperator := nil;
+        curOperator := nil;
       end;
     end;
     tknString:
     begin
       with TsrdoString.Create do
       begin
-        CurrentBlock.Statement.Add(CurrentOperator, This);
+        curStatements.Statement.Add(curOperator, This);
         Value := Token;
       end;
-      CurrentOperator := nil;
+      curOperator := nil;
     end;
   end;
 end;
@@ -236,9 +254,9 @@ end;
 
 procedure TsardScriptParser.TriggerOperator(AOperator: TsardObject);
 begin
-  if CurrentOperator <> nil then
+  if curOperator <> nil then
     raise EsardException.Create('Operator already set');
-  CurrentOperator := AOperator as TsrdoOperator;
+  curOperator := AOperator as TsrdoOperator;
 end;
 
 { TsardControlScanner }
@@ -267,7 +285,7 @@ begin
   else if b = ':' then
     Scanners.Parser.TriggerControl(ctlDeclare)
   else if b = '~' then
-    Scanners.Parser.TriggerControl(ctlLink);
+    Scanners.Parser.TriggerControl(ctlPointer);
   Inc(Column);
 end;
 
