@@ -100,52 +100,50 @@ const
 //  IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
 
 type
-  TsardTokenKinds = (tknWhitespace, tknOperator, tknControl, tknNumber, tknColor, tknString, tknIdentifier, tknComment);
+  TsrdTokenKinds = (tknWhitespace, tknOperator, tknControl, tknNumber, tknColor, tknString, tknIdentifier, tknComment);
 
-  TsardState = (stateIdentifier, stateDeclare, stateAssign, stateBlock);
-  TsardStates = set of TsardState;
+  TsrdState = (stateIdentifier, stateDeclare, stateAssign, stateBlock);
+  TsrdStates = set of TsrdState;
 
-  { TsardScript }
+  { TsrdScript }
 
-  TsardScript = class(TsardFeeder)
+  TsrdScript = class(TsardFeeder)
   private
   protected
   public
     constructor Create; override;
   end;
 
-  { TsardParserStackItem }
+  { TsrdParserStackItem }
 
-  TsardParserStackItem = class(TsardObject)
+  TsrdParserStackItem = class(TsardObject)
   public
-    States: TsardStates;
-    Operation: TsrdoOperator;
-    Block: TsrdoBlock;
+    States: TsrdStates;
+    Operation: TopOperator;
+    Block: TsrdBlock;
   public
-    procedure SetOperator(AOperation: TsrdoOperator);
-    procedure SetObject(AObject: TsrdoObject);
+    procedure SetOperator(AOperation: TopOperator);
+    procedure SetObject(AObject: TsoObject);
   end;
 
-  { TParserStack }
+  { TsrdParserStack }
 
-  { TsardParserStack }
-
-  TsardParserStack = class(TsardStack)
+  TsrdParserStack = class(TsardStack)
   private
-    function GetCurrent: TsardParserStackItem;
+    function GetCurrent: TsrdParserStackItem;
   public
-    procedure Push(vItem: TsardParserStackItem);
-    function New: TsardParserStackItem;
-    property Current: TsardParserStackItem read GetCurrent;
+    procedure Push(vItem: TsrdParserStackItem);
+    function New: TsrdParserStackItem;
+    property Current: TsrdParserStackItem read GetCurrent;
   end;
 
-  { TsardScriptParser }
+  { TsrdScriptParser }
 
-  TsardScanParser = class(TsardParser)
+  TsrdParser = class(TsardParser)
   protected
-    FStack: TsardParserStack;
+    FStack: TsrdParserStack;
   public
-    constructor Create(ABlock: TsrdoBlock);
+    constructor Create(ABlock: TsrdBlock);
     destructor Destroy; override;
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
@@ -153,84 +151,84 @@ type
     procedure TriggerControl(AControl: TsardControl); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
 
-    property Stack: TsardParserStack read FStack;
+    property Stack: TsrdParserStack read FStack;
   end;
 
-  { TsardStartScanner }
+  { TsrdStartScanner }
 
-  TsardStart_Scanner = class(TsardScanner)
+  TsrdStart_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
-  { TsardWhitespaceScanner }
+  { TsrdWhitespaceScanner }
 
-  TsardWhitespace_Scanner = class(TsardScanner)
+  TsrdWhitespace_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
-  { TsardIdentifierScanner }
+  { TsrdIdentifierScanner }
 
-  TsardIdentifier_Scanner = class(TsardScanner)
+  TsrdIdentifier_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
-  { TsardNumberScanner }
+  { TsrdNumberScanner }
 
-  TsardNumber_Scanner = class(TsardScanner)
+  TsrdNumber_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
-  { TsardControl_Scanner }
+  { TsrdControl_Scanner }
 
-  TsardControl_Scanner = class(TsardScanner)
+  TsrdControl_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
-  { TsardOperatorScanner }
+  { TopOperatorScanner }
 
-  TsardOperator_Scanner = class(TsardScanner)
+  TopOperator_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
-  { TsardLineCommentScanner }
+  { TsrdLineCommentScanner }
 
-  TsardLineComment_Scanner = class(TsardScanner)
+  TsrdLineComment_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
-  { TsardBlockCommentScanner }
+  { TsrdBlockCommentScanner }
 
-  TsrdoBlockComment_Scanner = class(TsardScanner)
+  TsrdBlockComment_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
-  { TsardSQStringScanner }
+  { TsrdSQStringScanner }
 
-  TsardSQString_Scanner = class(TsardScanner)
+  TsrdSQString_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
-  { TsardDQStringScanner }
+  { TsrdDQStringScanner }
 
-  TsardDQString_Scanner = class(TsardScanner)
+  TsrdDQString_Scanner = class(TsardScanner)
   protected
     procedure Scan(const Text: string; var Column: Integer);  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
@@ -241,16 +239,16 @@ implementation
 uses
   StrUtils;
 
-{ TsardParserStackItem }
+{ TsrdParserStackItem }
 
-procedure TsardParserStackItem.SetOperator(AOperation: TsrdoOperator);
+procedure TsrdParserStackItem.SetOperator(AOperation: TopOperator);
 begin
   if Operation = nil then
     raise EsardException.Create('Operator is already set');
   Operation := AOperation;
 end;
 
-procedure TsardParserStackItem.SetObject(AObject: TsrdoObject);
+procedure TsrdParserStackItem.SetObject(AObject: TsoObject);
 begin
   //  if Operation = nil then
   //   raise EsardParserException.Create('Need a operator');
@@ -258,30 +256,30 @@ begin
   Operation := nil;
 end;
 
-{ TsardParserStack }
+{ TsrdParserStack }
 
-function TsardParserStack.GetCurrent: TsardParserStackItem;
+function TsrdParserStack.GetCurrent: TsrdParserStackItem;
 begin
-  Result := (inherited GetCurrent) as TsardParserStackItem;
+  Result := (inherited GetCurrent) as TsrdParserStackItem;
 end;
 
-procedure TsardParserStack.Push(vItem: TsardParserStackItem);
+procedure TsrdParserStack.Push(vItem: TsrdParserStackItem);
 begin
   inherited Push(vItem);
 end;
 
-function TsardParserStack.New: TsardParserStackItem;
+function TsrdParserStack.New: TsrdParserStackItem;
 begin
-  Result := TsardParserStackItem.Create;
+  Result := TsrdParserStackItem.Create;
   Push(Result);
 end;
 
-{ TsardScanParser }
+{ TsrdParser }
 
-constructor TsardScanParser.Create(ABlock: TsrdoBlock);
+constructor TsrdParser.Create(ABlock: TsrdBlock);
 begin
   inherited Create;
-  FStack := TsardParserStack.Create;
+  FStack := TsrdParserStack.Create;
   if ABlock <> nil then
     with Stack.New do
     begin
@@ -289,17 +287,17 @@ begin
     end;
 end;
 
-destructor TsardScanParser.Destroy;
+destructor TsrdParser.Destroy;
 begin
   FreeAndNil(FStack);
   inherited Destroy;
 end;
 
-procedure TsardScanParser.TriggerOpen(vBracket: TsardBracketKind);
+procedure TsrdParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
   case vBracket of
     brCurly:
-      with TsrdoBranch.Create do
+      with TsoScope.Create do
       begin
         Stack.Current.SetObject(This);
         Stack.New;
@@ -308,7 +306,7 @@ begin
   end;
 end;
 
-procedure TsardScanParser.TriggerClose(vBracket: TsardBracketKind);
+procedure TsrdParser.TriggerClose(vBracket: TsardBracketKind);
 begin
   case vBracket of
     brCurly:
@@ -322,12 +320,12 @@ begin
   end;
 end;
 
-procedure TsardScanParser.TriggerToken(Token: String; TokenID: Integer);
+procedure TsrdParser.TriggerToken(Token: String; TokenID: Integer);
 begin
-  case TsardTokenKinds(TokenID) of
+  case TsrdTokenKinds(TokenID) of
     tknIdentifier:
     begin
-      with TsrdoVariable.Create do
+      with TsoVariable.Create do
       begin
         Name := Token;
         Stack.Current.SetObject(This);
@@ -337,7 +335,7 @@ begin
     begin
       if pos('.', Token) > 0 then
       begin
-        with TsrdoFloat.Create do
+        with TsoFloat.Create do
         begin
           Stack.Current.SetObject(This);
           Value := StrToFloat(Token);
@@ -345,7 +343,7 @@ begin
       end
       else
       begin
-        with TsrdoInteger.Create do
+        with TsoInteger.Create do
         begin
           Stack.Current.SetObject(This);
           Value := StrToInt64(Token);
@@ -354,7 +352,7 @@ begin
     end;
     tknString:
     begin
-      with TsrdoString.Create do
+      with TsoString.Create do
       begin
         Stack.Current.SetObject(This);
         Value := Token;
@@ -363,7 +361,7 @@ begin
   end;
 end;
 
-procedure TsardScanParser.TriggerControl(AControl: TsardControl);
+procedure TsrdParser.TriggerControl(AControl: TsardControl);
 begin
   case AControl of
     ctlSemicolon: Stack.Current.Block.New;
@@ -371,16 +369,16 @@ begin
   end;
 end;
 
-procedure TsardScanParser.TriggerOperator(AOperator: TsardObject);
+procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
   if Stack.Current.Operation <> nil then
     raise EsardException.Create('Operator already set');
-  Stack.Current.Operation := AOperator as TsrdoOperator;
+  Stack.Current.Operation := AOperator as TopOperator;
 end;
 
-{ TsardControlScanner }
+{ TsrdControlScanner }
 
-procedure TsardControl_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdControl_Scanner.Scan(const Text: string; var Column: Integer);
 var
   b: string;
   l, c: Integer;
@@ -417,36 +415,36 @@ begin
   Inc(Column);
 end;
 
-function TsardControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := sardEngine.IsControl(Text[Column], True);
 end;
 
-{ TsardScript }
+{ TsrdScript }
 
-constructor TsardScript.Create;
+constructor TsrdScript.Create;
 begin
   inherited Create;
 
   with Scanners do
   begin
-    RegisterScanner(TsardStart_Scanner);
-    RegisterScanner(TsardWhitespace_Scanner);
-    RegisterScanner(TsrdoBlockComment_Scanner);
-    RegisterScanner(TsardLineComment_Scanner);
-    RegisterScanner(TsardNumber_Scanner);
-    RegisterScanner(TsardSQString_Scanner);
-    RegisterScanner(TsardDQString_Scanner);
-    RegisterScanner(TsardControl_Scanner);
-    RegisterScanner(TsardOperator_Scanner); //Register it after comment because comment take /*
-    RegisterScanner(TsardIdentifier_Scanner);//Last one
+    RegisterScanner(TsrdStart_Scanner);
+    RegisterScanner(TsrdWhitespace_Scanner);
+    RegisterScanner(TsrdBlockComment_Scanner);
+    RegisterScanner(TsrdLineComment_Scanner);
+    RegisterScanner(TsrdNumber_Scanner);
+    RegisterScanner(TsrdSQString_Scanner);
+    RegisterScanner(TsrdDQString_Scanner);
+    RegisterScanner(TsrdControl_Scanner);
+    RegisterScanner(TopOperator_Scanner); //Register it after comment because comment take /*
+    RegisterScanner(TsrdIdentifier_Scanner);//Last one
   end;
   //FOffScanner := scanIdentifier;
 end;
 
-{ TsardNumberScanner }
+{ TsrdNumberScanner }
 
-procedure TsardNumber_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdNumber_Scanner.Scan(const Text: string; var Column: Integer);
 var
   l, c: Integer;
 begin
@@ -457,18 +455,18 @@ begin
   Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknNumber));
 end;
 
-function TsardNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := sardEngine.IsNumber(Text[Column], True);//need to improve to accept unicode chars
 end;
 
-{ TsardOperatorScanner }
+{ TopOperatorScanner }
 
-procedure TsardOperator_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TopOperator_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
   s: string;
-  o: TsrdoOperator;
+  o: TopOperator;
 begin
   c := Column;
   while (Column <= Length(Text)) and (sardEngine.IsOperator(Text[Column])) do //operator is multi char here
@@ -481,14 +479,14 @@ begin
   Scanners.Parser.TriggerOperator(o);
 end;
 
-function TsardOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TopOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := sardEngine.IsOperator(Text[Column]);
 end;
 
-{ TsardIdentifierScanner }
+{ TsrdIdentifierScanner }
 
-procedure TsardIdentifier_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdIdentifier_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
 begin
@@ -498,14 +496,14 @@ begin
   Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknIdentifier));
 end;
 
-function TsardIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := sardEngine.IsIdentifier(Text[Column], True);//need to improve to accept unicode chars
 end;
 
-{ TsardDQStringScanner }
+{ TsrdDQStringScanner }
 
-procedure TsardDQString_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdDQString_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
 begin
@@ -515,14 +513,14 @@ begin
   Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknString));
 end;
 
-function TsardDQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdDQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := CheckText('"', Text, Column);
 end;
 
-{ TsardSQStringScanner }
+{ TsrdSQStringScanner }
 
-procedure TsardSQString_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdSQString_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
 begin
@@ -532,14 +530,14 @@ begin
   Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknString));
 end;
 
-function TsardSQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdSQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := CheckText('''', Text, Column);
 end;
 
-{ TsardBlockCommentScanner }
+{ TsrdBlockCommentScanner }
 
-procedure TsrdoBlockComment_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdBlockComment_Scanner.Scan(const Text: string; var Column: Integer);
 begin
   while (Column <= Length(Text)) do
   begin
@@ -552,45 +550,45 @@ begin
   end;
 end;
 
-function TsrdoBlockComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdBlockComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := CheckText('/*', Text, Column);
 end;
 
-{ TsardLineComment_Scanner }
+{ TsrdLineComment_Scanner }
 
-procedure TsardLineComment_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdLineComment_Scanner.Scan(const Text: string; var Column: Integer);
 begin
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
   //Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c)); ignore comment
 end;
 
-function TsardLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := CheckText('//', Text, Column);
 end;
 
-{ TsardWhitespace_Scanner }
+{ TsrdWhitespace_Scanner }
 
-procedure TsardWhitespace_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdWhitespace_Scanner.Scan(const Text: string; var Column: Integer);
 begin
   while (Column <= Length(Text)) and (Text[Column] in sWhitespace) do
     Inc(Column);
 end;
 
-function TsardWhitespace_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdWhitespace_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := Text[Column] in sWhitespace;
 end;
 
-{ TsardStart_Scanner }
+{ TsrdStart_Scanner }
 
-procedure TsardStart_Scanner.Scan(const Text: string; var Column: Integer);
+procedure TsrdStart_Scanner.Scan(const Text: string; var Column: Integer);
 begin
 end;
 
-function TsardStart_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdStart_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := False;//Start not accept the scan, it is only when starting scan
 end;

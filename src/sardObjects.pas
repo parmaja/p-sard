@@ -37,10 +37,10 @@ uses
 
 type
 
-  TsrdoObjectType = (otUnkown, otInteger, otFloat, otBoolean, otString, otObject, otClass, otVariable);
-  TsrdoCompare = (cmpLess, cmpEqual, cmpGreater);
+  TsrdObjectType = (otUnkown, otInteger, otFloat, otBoolean, otString, otObject, otClass, otVariable);
+  TsrdCompare = (cmpLess, cmpEqual, cmpGreater);
 
-  TsrdoDebug = class(TsardObject)
+  TsrdDebug = class(TsardObject)
   public
     Line: Integer;
     Column: Integer;
@@ -48,128 +48,135 @@ type
     BreakPoint: Boolean; //not sure do not laugh
   end;
 
-  TsrdoObject = class;
-  TsrdoObjectClass = class of TsrdoObject;
-  TsrdoOperator = class;
+  TsoObject = class;
+  TsoObjectClass = class of TsoObject;
 
-  { TsrdoResult }
+  TopOperator = class;
 
-  TsrdoResult = class(TsardObject)
-    AnObject: TsrdoObject;
+  { TsrdResult }
+
+  TsrdResult = class(TsardObject)
+    AnObject: TsoObject;
   end;
 
-  { TsrdoStatementItem }
+  { TsrdStatementItem }
 
-  TsrdoStatementItem = class(TsardObject)
+  TsrdStatementItem = class(TsardObject)
   public
-    AnOperator: TsrdoOperator;
-    AnObject: TsrdoObject;
-    function Execute(var vResult: TsrdoResult): Boolean;
+    AnOperator: TopOperator;
+    AnObject: TsoObject;
+    function Execute(var vResult: TsrdResult): Boolean;
   end;
 
-  { TsrdoStatement }
+  { TsrdStatement }
 
-  TsrdoStatement = class(TsardObjectList)
+  TsrdStatement = class(TsardObjectList)
   private
-    FDebug: TsrdoDebug;
-    function GetItem(Index: Integer): TsrdoStatementItem;
-    procedure SetDebug(AValue: TsrdoDebug);
+    FDebug: TsrdDebug;
+    function GetItem(Index: Integer): TsrdStatementItem;
+    procedure SetDebug(AValue: TsrdDebug);
   public
-    function Add(AObject: TsrdoStatementItem): Integer;
-    function Add(AOperator:TsrdoOperator; AObject:TsrdoObject): TsrdoStatementItem;
-    function Execute(var vResult: TsrdoResult): Boolean;
-    property Items[Index: Integer]: TsrdoStatementItem read GetItem; default;
-    property Debug: TsrdoDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
+    function Add(AObject: TsrdStatementItem): Integer;
+    function Add(AOperator:TopOperator; AObject: TsoObject): TsrdStatementItem;
+    function Execute(var vResult: TsrdResult): Boolean;
+    property Items[Index: Integer]: TsrdStatementItem read GetItem; default;
+    property Debug: TsrdDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
 
-  { TsrdoBlock }
+  { TsrdBlock }
 
-  TsrdoBlock = class(TsardObjectList)
+  TsrdBlock = class(TsardObjectList)
   private
-    function GetStatement: TsrdoStatement;
-    function GetItem(Index: Integer): TsrdoStatement;
+    function GetStatement: TsrdStatement;
+    function GetItem(Index: Integer): TsrdStatement;
   public
-    function Add(AStatement: TsrdoStatement): Integer;
-    function New: TsrdoStatement;
+    function Add(AStatement: TsrdStatement): Integer;
+    function New: TsrdStatement;
     procedure Check; //Check if empty then create first statement
-    property Items[Index: Integer]: TsrdoStatement read GetItem; default;
-    property Statement: TsrdoStatement read GetStatement;
-    function Execute(var vResult: TsrdoResult): Boolean;
+    property Items[Index: Integer]: TsrdStatement read GetItem; default;
+    property Statement: TsrdStatement read GetStatement;
+    function Execute(var vResult: TsrdResult): Boolean;
   end;
 
-  { TsrdoVariable }
+  { TsrdVariable }
 
-  TsrdoVariable = class;
+  TsrdVariable = class(TsardObject)
+  private
+    FName: string;
+    procedure SetName(AValue: string);
+  public
+    property Name: string read FName write SetName;
+  end;
 
   { TsardVariables }
 
-  TsardVariables = class(TsardObjectList)
+  TsrdVariables = class(TsardObjectList)
   private
-    function GetItem(Index: Integer): TsrdoVariable;
+    function GetItem(Index: Integer): TsrdVariable;
   public
-    property Items[Index: Integer]: TsrdoVariable read GetItem; default;
-    function Find(vName: string): TsrdoVariable;
+    property Items[Index: Integer]: TsrdVariable read GetItem; default;
+    function Find(vName: string): TsrdVariable;
   end;
 
-  { TsrdoScope }
+  { TsrdScope }
 
-  TsrdoScope = class(TsrdoBlock)
+  TsrdScope = class(TsrdBlock)
   private
-    FParent: TsrdoScope;
-    FVariables: TsardVariables;
+    FParent: TsrdScope;
+    FVariables: TsrdVariables;
   public
-    constructor Create(AParent: TsrdoScope);
+    constructor Create(AParent: TsrdScope);
     destructor Destroy; override;
     //It is find it in the parents also
-    function FindVariable(const vName: string): TsrdoVariable; virtual;
-    property Variables: TsardVariables read FVariables;
-    property Parent: TsrdoScope read FParent;
+    function FindVariable(const vName: string): TsrdVariable; virtual;
+    property Variables: TsrdVariables read FVariables;
+    property Parent: TsrdScope read FParent;
   end;
 
-  { TsardBlockStack }
+  { TsrdBlockStack }
 
-  TsardBlockStack = class(TsardStack)
+  TsrdBlockStack = class(TsardStack)
   private
-    function GetCurrent: TsrdoBlock;
+    function GetCurrent: TsrdBlock;
   public
-    procedure Push(vItem: TsrdoBlock);
-    property Current: TsrdoBlock read GetCurrent;
+    procedure Push(vItem: TsrdBlock);
+    property Current: TsrdBlock read GetCurrent;
   end;
 
-  IsrdoObject = interface['{9FD9AEE0-507E-4EEA-88A8-AE686E6A1D98}']
+  IsrdObject = interface['{9FD9AEE0-507E-4EEA-88A8-AE686E6A1D98}']
   end;
 
-  IsrdoOperate = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
-    function Add(var vResult: TsrdoResult): Boolean;
-    function Sub(var vResult: TsrdoResult): Boolean;
-    function Mulpiply(var vResult: TsrdoResult): Boolean;
-    function Divide(var vResult: TsrdoResult): Boolean;
+  IsrdOperate = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
+    function Add(var vResult: TsrdResult): Boolean;
+    function Sub(var vResult: TsrdResult): Boolean;
+    function Mulpiply(var vResult: TsrdResult): Boolean;
+    function Divide(var vResult: TsrdResult): Boolean;
   end;
 
-  IsrdoCompare = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
-    function Compare(var vResult: TsrdoResult): TsrdoCompare;
+  IsrdCompare = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
+    function Compare(var vResult: TsrdResult): TsrdCompare;
   end;
 
-  IsrdoBlock = interface['{CB4C0FA1-E233-431E-8CC2-3755F62D93F2}']
-    function Execute(var vResult: TsrdoResult): Boolean;
+  IsrdBlock = interface['{CB4C0FA1-E233-431E-8CC2-3755F62D93F2}']
+    function Execute(var vResult: TsrdResult): Boolean;
   end;
-  { TsrdoObject }
+  { TsoObject }
 
-  TsrdoObject = class(TsardObject, IsrdoObject)
+  TsoObject = class(TsardObject, IsrdObject)
   private
   protected
-    FObjectType: TsrdoObjectType;
+    FObjectType: TsrdObjectType;
     procedure Created; virtual;
     function GetCanExecute: Boolean; virtual;//TODO not sure
   public
     constructor Create; virtual;
     procedure AfterConstruction; override;
-    function This: TsrdoObject; //return the same object, stupid but save some code :P
-    function Execute(var vResult: TsrdoResult): Boolean; virtual;
-    function Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean; virtual;
-    procedure Assign(FromObject: TsrdoObject); virtual;
-    function Clone: TsrdoObject; virtual;
-    property ObjectType: TsrdoObjectType read FObjectType;
+    function This: TsoObject; //return the same object, stupid but save some code :P
+    function Execute(var vResult: TsrdResult): Boolean; virtual;
+    function Operate(var vResult: TsrdResult; AnOperator: TopOperator): Boolean; virtual;
+    procedure Assign(FromObject: TsoObject); virtual;
+    function Clone: TsoObject; virtual;
+    property ObjectType: TsrdObjectType read FObjectType;
     property CanExecute: Boolean read GetCanExecute;
     function AsString: String;
     function AsFloat: Float;
@@ -181,88 +188,90 @@ type
     function ToInteger(out outValue: int): Boolean; virtual;
   end;
 
-  { TsrdoObjects }
+  { TsoObjects }
 
-  TsrdoObjects = class(TsardObjectList)
+  TsoObjects = class(TsardObjectList)
   private
-    function GetItem(Index: Integer): TsrdoObject;
+    function GetItem(Index: Integer): TsoObject;
   public
-    property Items[Index: Integer]: TsrdoObject read GetItem; default;
+    property Items[Index: Integer]: TsoObject read GetItem; default;
   end;
 
-  { TsrdoClass }
+  { TsrdClass }
 
-  TsrdoClass = class(TsrdoObject)
+  TsoClass = class(TsoObject)
   public
     procedure Created; override;
   end;
 
-  { TsrdoInstance }
+  { TsrdInstance }
 
-  TsrdoInstance = class(TsrdoObject)
+  TsoInstance = class(TsoObject)
   public
-    Value: TsrdoObject;
+    Value: TsoObject;
     procedure Created; override;
   end;
 
-  { TsrdoVariable }
+  { TsoVariable }
 
-  TsrdoVariable = class(TsrdoObject)
+  TsoVariable = class(TsoObject)
   private
     FName: string;
     procedure SetName(AValue: string);
   public
-    Value: TsrdoResult;
+    Value: TsrdResult;
     procedure Created; override;
     property Name: string read FName write SetName;
   end;
 
-  TsrdoBranch = class(TsrdoObject, IsrdoBlock)
+  { TsoBranch }
+
+  TsoScope = class(TsoObject, IsrdBlock)
   protected
-    FBlock: TsrdoScope;
+    FBlock: TsrdScope;
     procedure Created; override;
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(var vResult: TsrdoResult): Boolean; override;
-    property Block: TsrdoBlock read FBlock;
+    function Execute(var vResult: TsrdResult): Boolean; override;
+    property Block: TsrdScope read FBlock;
   end;
 
 (**** Common Objects *****)
 
-  { TsrdoNone }
+  { TsrdNone }
 
-  TsrdoNone = class(TsrdoObject) //None it is not Null, it is an initial value we sart it
+  TsoNone = class(TsoObject) //None it is not Null, it is an initial value we sart it
   public
     //Do operator
     //Convert to 0 or ''
   end;
 
-  { TsrdoNumber }
+  { TsrdNumber }
 
-  TsrdoNumber = class(TsrdoObject) //abstract
+  TsoNumber = class(TsoObject) //abstract
   public
     //Assign
     //Do operator
   end;
 
-  { TsrdoInteger }
+  { TsrdInteger }
 
-  TsrdoInteger = class(TsrdoNumber)
+  TsoInteger = class(TsoNumber)
   public
     Value: int;
     procedure Created; override;
-    procedure Assign(FromObject: TsrdoObject); override;
-    function Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean; override;
+    procedure Assign(FromObject: TsoObject); override;
+    function Operate(var vResult: TsrdResult; AnOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
     function ToInteger(out outValue: int): Boolean; override;
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-  { TsrdoFloat }
+  { TsrdFloat }
 
-  TsrdoFloat = class(TsrdoNumber)
+  TsoFloat = class(TsoNumber)
   public
     Value: Float;
     procedure Created; override;
@@ -272,9 +281,9 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-  { TsrdoBoolean }
+  { TsrdBoolean }
 
-  TsrdoBoolean = class(TsrdoNumber)
+  TsoBoolean = class(TsoNumber)
   public
     Value: Boolean;
     procedure Created; override;
@@ -284,9 +293,9 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-  { TsrdoString }
+  { TsrdString }
 
-  TsrdoString = class(TsrdoObject)
+  TsoString = class(TsoObject)
   public
     Value: string;
     procedure Created; override;
@@ -298,143 +307,142 @@ type
 
 {* Run Time Engine *}
 
-  { TsrdoRun }
+  { TsrdRun }
 
-  TsrdoRun = class(TsardObject)
+  TsrdRun = class(TsardObject)
   public
     Stack: TsardStack;
     constructor Create;
     destructor Destroy; override;
-    function Execute(vBlock: TsrdoBlock):Boolean;
+    function Execute(vBlock: TsrdBlock):Boolean;
   end;
 
+  { TopOperator }
 
-  { TsrdoOperator }
-
-  TsrdoOperator = class(TsardObject)
+  TopOperator = class(TsardObject)
   protected
-    function DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean; virtual;
+    function DoOperate(vResult: TsrdResult; vObject: TsoObject): Boolean; virtual;
   public
     Code: string;
     Name: string;
     Level: Integer;
     Description: string;
-    function Operate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
+    function Operate(vResult: TsrdResult; vObject: TsoObject): Boolean;
     constructor Create; virtual;
   end;
 
-  TsrdoOperatorClass = class of TsrdoOperator;
-  { TsrdoOperators }
+  TopOperatorClass = class of TopOperator;
+  { TopOperators }
 
-  TsrdoOperators = class(TsardObjectList)
+  TopOperators = class(TsardObjectList)
   private
-    function GetItem(Index: Integer): TsrdoOperator;
+    function GetItem(Index: Integer): TopOperator;
   protected
-    function CheckBeforeRegister(AOperator: TsrdoOperator): Boolean; virtual;
+    function CheckBeforeRegister(AOperator: TopOperator): Boolean; virtual;
   public
-    function Find(const Code: string): TsrdoOperator;
-    function FindByName(const vName: string): TsrdoOperator;
-    function RegisterOperator(AOperator: TsrdoOperator): Boolean;
-    function RegisterOperator(AOperatorClass: TsrdoOperatorClass): Boolean;
-    property Items[Index: Integer]: TsrdoOperator read GetItem; default;
+    function Find(const Code: string): TopOperator;
+    function FindByName(const vName: string): TopOperator;
+    function RegisterOperator(AOperator: TopOperator): Boolean;
+    function RegisterOperator(AOperatorClass: TopOperatorClass): Boolean;
+    property Items[Index: Integer]: TopOperator read GetItem; default;
   end;
 
   { TopAssign }
 
-  TopAssign = class(TsrdoOperator)//Naaaaaaaaaah
+  TopAssign = class(TopOperator)//Naaaaaaaaaah
   public
     constructor Create; override;
   end;
 
   { TopPlus }
 
-  TopPlus = class(TsrdoOperator)
+  TopPlus = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopMinus }
 
-  TopMinus = class(TsrdoOperator)
+  TopMinus = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopMultiply }
 
-  TopMultiply = class(TsrdoOperator)
+  TopMultiply = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopDivide }
 
-  TopDivide = class(TsrdoOperator)
+  TopDivide = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopPower }
 
-  TopPower = class(TsrdoOperator)
+  TopPower = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopLesser }
 
-  TopLesser = class(TsrdoOperator)
+  TopLesser = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopGreater }
 
-  TopGreater = class(TsrdoOperator)
+  TopGreater = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopEqual }
 
-  TopEqual = class(TsrdoOperator)
+  TopEqual = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopNotEqual }
 
-  TopNot = class(TsrdoOperator)
+  TopNot = class(TopOperator)
   public
     constructor Create; override;
   end;
 
-  TopNotEqual = class(TsrdoOperator)
+  TopNotEqual = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopAnd }
 
-  TopAnd = class(TsrdoOperator)
+  TopAnd = class(TopOperator)
   public
     constructor Create; override;
   end;
 
   { TopOr }
 
-  TopOr = class(TsrdoOperator)
+  TopOr = class(TopOperator)
   public
     constructor Create; override;
   end;
 
-  { TsrdoEngine }
+  { TsrdEngine }
 
-  TsrdoEngine = class(TsardCustomEngine)
+  TsrdEngine = class(TsardCustomEngine)
   protected
-    FOperators: TsrdoOperators;
+    FOperators: TopOperators;
     procedure Created; override;
-    function CreateOperators: TsrdoOperators;
+    function CreateOperators: TopOperators;
   public
     constructor Create;
     function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
@@ -443,10 +451,10 @@ type
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
 
-    property Operators: TsrdoOperators read FOperators;
+    property Operators: TopOperators read FOperators;
   end;
 
-function sardEngine: TsrdoEngine;
+function sardEngine: TsrdEngine;
 
 implementation
 
@@ -454,23 +462,23 @@ uses
   sardScripts;
 
 var
-  FsardEngine: TsrdoEngine = nil;
+  FsardEngine: TsrdEngine = nil;
 
-function sardEngine: TsrdoEngine;
+function sardEngine: TsrdEngine;
 begin
   if FsardEngine = nil then
-    FsardEngine := TsrdoEngine.Create;
+    FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
 end;
 
 { TsardVariables }
 
-function TsardVariables.GetItem(Index: Integer): TsrdoVariable;
+function TsrdVariables.GetItem(Index: Integer): TsrdVariable;
 begin
-  Result := inherited Items[Index] as TsrdoVariable;
+  Result := inherited Items[Index] as TsrdVariable;
 end;
 
-function TsardVariables.Find(vName: string): TsrdoVariable;
+function TsrdVariables.Find(vName: string): TsrdVariable;
 var
   i: Integer;
 begin
@@ -485,21 +493,21 @@ begin
   end;
 end;
 
-{ TsrdoScope }
+{ TsrdScope }
 
-constructor TsrdoScope.Create(AParent: TsrdoScope);
+constructor TsrdScope.Create(AParent: TsrdScope);
 begin
   inherited Create;
-  FVariables := TsardVariables.Create;
+  FVariables := TsrdVariables.Create;
 end;
 
-destructor TsrdoScope.Destroy;
+destructor TsrdScope.Destroy;
 begin
   FreeAndNil(FVariables);
   inherited Destroy;
 end;
 
-function TsrdoScope.FindVariable(const vName: string): TsrdoVariable;
+function TsrdScope.FindVariable(const vName: string): TsrdVariable;
 begin
   Result := Variables.Find(vName);
   while (Parent <> nil) and (Result = nil) do
@@ -508,18 +516,12 @@ begin
   end;
 end;
 
-{ TsrdoVariable }
+{ TsrdVariable }
 
-procedure TsrdoVariable.SetName(AValue: string);
+procedure TsrdVariable.SetName(AValue: string);
 begin
   if FName =AValue then Exit;
   FName :=AValue;
-end;
-
-procedure TsrdoVariable.Created;
-begin
-  inherited Created;
-  FObjectType := otVariable;
 end;
 
 { TopAssign }
@@ -533,14 +535,14 @@ begin
   Description := 'Clone to another object';
 end;
 
-{ TsardBlockStack }
+{ TsrdBlockStack }
 
-function TsardBlockStack.GetCurrent: TsrdoBlock;
+function TsrdBlockStack.GetCurrent: TsrdBlock;
 begin
-  Result := (inherited GetCurrent) as TsrdoBlock;
+  Result := (inherited GetCurrent) as TsrdBlock;
 end;
 
-procedure TsardBlockStack.Push(vItem: TsrdoBlock);
+procedure TsrdBlockStack.Push(vItem: TsrdBlock);
 begin
   inherited Push(vItem);
 end;
@@ -625,26 +627,37 @@ begin
   Level := 52;
 end;
 
-{ TsrdoBranch }
+procedure TsoVariable.SetName(AValue: string);
+begin
+  FName := AValue;
+end;
 
-procedure TsrdoBranch.Created;
+procedure TsoVariable.Created;
+begin
+  inherited Created;
+  FObjectType := otVariable;
+end;
+
+{ TsrdBranch }
+
+procedure TsoScope.Created;
 begin
   inherited Created;
 end;
 
-constructor TsrdoBranch.Create;
+constructor TsoScope.Create;
 begin
   inherited Create;
-  FBlock := TsrdoScope.Create;
+  FBlock := TsrdScope.Create(nil);
 end;
 
-destructor TsrdoBranch.Destroy;
+destructor TsoScope.Destroy;
 begin
   FreeAndNil(FBlock);
   inherited Destroy;
 end;
 
-function TsrdoBranch.Execute(var vResult: TsrdoResult): Boolean;
+function TsoScope.Execute(var vResult: TsrdResult): Boolean;
 begin
   //Just Forward
   Result := Block.Execute(vResult);
@@ -681,17 +694,17 @@ begin
   Description := 'Sub object to another object';
 end;
 
-{ TsrdoOperator }
+{ TopOperator }
 
-function TsrdoOperator.DoOperate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
+function TopOperator.DoOperate(vResult: TsrdResult; vObject: TsoObject): Boolean;
 begin
   Result := False;
 end;
 
-function TsrdoOperator.Operate(vResult: TsrdoResult; vObject: TsrdoObject): Boolean;
+function TopOperator.Operate(vResult: TsrdResult; vObject: TsoObject): Boolean;
 var
-  aResult: TsrdoResult;
-  procedure OperateNow(O: TsrdoObject);
+  aResult: TsrdResult;
+  procedure OperateNow(O: TsoObject);
   begin
     if Self = nil then //TODO: If assign
       vResult.AnObject := O.Clone
@@ -706,7 +719,7 @@ var
     end;
   end;
 begin
-  aResult := TsrdoResult.Create;
+  aResult := TsrdResult.Create;
   try
     if vObject.Execute(aResult) then //it is a block
     begin
@@ -720,12 +733,12 @@ begin
   end;
 end;
 
-constructor TsrdoOperator.Create;
+constructor TopOperator.Create;
 begin
   inherited Create;
 end;
 
-function TsrdoOperators.Find(const Code: string): TsrdoOperator;
+function TopOperators.Find(const Code: string): TopOperator;
 var
   i: Integer;
 begin
@@ -740,7 +753,7 @@ begin
   end;
 end;
 
-function TsrdoOperators.FindByName(const vName: string): TsrdoOperator;
+function TopOperators.FindByName(const vName: string): TopOperator;
 var
   i: Integer;
 begin
@@ -755,14 +768,14 @@ begin
   end;
 end;
 
-function TsrdoOperators.RegisterOperator(AOperator: TsrdoOperator): Boolean;
+function TopOperators.RegisterOperator(AOperator: TopOperator): Boolean;
 begin
   Result := CheckBeforeRegister(AOperator);
   if Result then
     Add(AOperator);
 end;
 
-function TsrdoOperators.RegisterOperator(AOperatorClass: TsrdoOperatorClass): Boolean;
+function TopOperators.RegisterOperator(AOperatorClass: TopOperatorClass): Boolean;
 begin
   Result := RegisterOperator(AOperatorClass.Create);
 end;
@@ -778,21 +791,21 @@ begin
   Description := 'Add object to another object';
 end;
 
-{ TsrdoOperators }
+{ TopOperators }
 
-function TsrdoOperators.GetItem(Index: Integer): TsrdoOperator;
+function TopOperators.GetItem(Index: Integer): TopOperator;
 begin
-  Result := inherited Items[Index] as TsrdoOperator;
+  Result := inherited Items[Index] as TopOperator;
 end;
 
-function TsrdoOperators.CheckBeforeRegister(AOperator: TsrdoOperator): Boolean;
+function TopOperators.CheckBeforeRegister(AOperator: TopOperator): Boolean;
 begin
   Result := True;
 end;
 
-{ TsrdoEngine }
+{ TsrdEngine }
 
-procedure TsrdoEngine.Created;
+procedure TsrdEngine.Created;
 begin
   inherited;
   with Operators do
@@ -815,23 +828,23 @@ begin
   end;
 end;
 
-function TsrdoEngine.CreateOperators: TsrdoOperators;
+function TsrdEngine.CreateOperators: TopOperators;
 begin
-  Result := TsrdoOperators.Create;
+  Result := TopOperators.Create;
 end;
 
-constructor TsrdoEngine.Create;
+constructor TsrdEngine.Create;
 begin
   inherited Create;
   FOperators := CreateOperators;
 end;
 
-function TsrdoEngine.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdEngine.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := vChar in sWhitespace;
 end;
 
-function TsrdoEngine.IsControl(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdEngine.IsControl(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   if vOpen then
     Result := vChar in aControlsOpenChars
@@ -839,7 +852,7 @@ begin
     Result := vChar in sControlsChars;
 end;
 
-function TsrdoEngine.IsOperator(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdEngine.IsOperator(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   //if vOpen then
     Result := vChar in sOperatorOpenChars
@@ -847,7 +860,7 @@ begin
 //    Result := not IsWhiteSpace(vChar, False) and not IsNumber(vChar, False) and not IsControl(vChar, False); //Can be any thing except those
 end;
 
-function TsrdoEngine.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdEngine.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   if vOpen then
     Result := vChar in sNumberOpenChars
@@ -855,15 +868,15 @@ begin
     Result := vChar in sNumberChars;
 end;
 
-function TsrdoEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := inherited IsIdentifier(vChar, vOpen);
 end;
 
 
-{ TsrdoStatementItem }
+{ TsrdStatementItem }
 
-function TsrdoStatementItem.Execute(var vResult: TsrdoResult): Boolean;
+function TsrdStatementItem.Execute(var vResult: TsrdResult): Boolean;
 begin
   if AnObject = nil then
     raise EsardException.Create('Object not set!');
@@ -872,130 +885,130 @@ begin
   Result := AnOperator.Operate(vResult, AnObject);//Even AnOperator is nil it will work
 end;
 
-{ TsrdoClass }
+{ TsrdClass }
 
-procedure TsrdoClass.Created;
+procedure TsoClass.Created;
 begin
   inherited Created;
   FObjectType := otClass;
 end;
 
-{ TsrdoInstance }
+{ TsrdInstance }
 
-procedure TsrdoInstance.Created;
+procedure TsoInstance.Created;
 begin
   inherited Created;
   FObjectType := otObject;
 end;
 
-{ TsrdoBoolean }
+{ TsrdBoolean }
 
-procedure TsrdoBoolean.Created;
+procedure TsoBoolean.Created;
 begin
   inherited Created;
   FObjectType := otBoolean;
 end;
 
-function TsrdoBoolean.ToString(out outValue: string): Boolean;
+function TsoBoolean.ToString(out outValue: string): Boolean;
 begin
   Result :=inherited ToString(outValue);
 end;
 
-function TsrdoBoolean.ToFloat(out outValue: Float): Boolean;
+function TsoBoolean.ToFloat(out outValue: Float): Boolean;
 begin
   Result :=inherited ToFloat(outValue);
 end;
 
-function TsrdoBoolean.ToInteger(out outValue: int): Boolean;
+function TsoBoolean.ToInteger(out outValue: int): Boolean;
 begin
   Result :=inherited ToInteger(outValue);
 end;
 
-function TsrdoBoolean.ToBoolean(out outValue: Boolean): Boolean;
+function TsoBoolean.ToBoolean(out outValue: Boolean): Boolean;
 begin
   outValue := Value;
   Result := True;
 end;
 
-{ TsrdoString }
+{ TsrdString }
 
-procedure TsrdoString.Created;
+procedure TsoString.Created;
 begin
   inherited Created;
   FObjectType := otString;
 end;
 
-function TsrdoString.ToString(out outValue: string): Boolean;
+function TsoString.ToString(out outValue: string): Boolean;
 begin
   Result :=inherited ToString(outValue);
 end;
 
-function TsrdoString.ToFloat(out outValue: Float): Boolean;
+function TsoString.ToFloat(out outValue: Float): Boolean;
 begin
   Result :=inherited ToFloat(outValue);
 end;
 
-function TsrdoString.ToInteger(out outValue: int): Boolean;
+function TsoString.ToInteger(out outValue: int): Boolean;
 begin
   Result :=inherited ToInteger(outValue);
 end;
 
-function TsrdoString.ToBoolean(out outValue: Boolean): Boolean;
+function TsoString.ToBoolean(out outValue: Boolean): Boolean;
 begin
   if not TryStrToBool(Value, outValue) then
     outValue := AsInteger <> 0;
   Result := True;
 end;
 
-{ TsrdoFloat }
+{ TsrdFloat }
 
-procedure TsrdoFloat.Created;
+procedure TsoFloat.Created;
 begin
   inherited Created;
   FObjectType := otFloat;
 end;
 
-function TsrdoFloat.ToString(out outValue: string): Boolean;
+function TsoFloat.ToString(out outValue: string): Boolean;
 begin
   Result :=inherited ToString(outValue);
 end;
 
-function TsrdoFloat.ToFloat(out outValue: Float): Boolean;
+function TsoFloat.ToFloat(out outValue: Float): Boolean;
 begin
   Result :=inherited ToFloat(outValue);
 end;
 
-function TsrdoFloat.ToInteger(out outValue: int): Boolean;
+function TsoFloat.ToInteger(out outValue: int): Boolean;
 begin
   Result :=inherited ToInteger(outValue);
 end;
 
-function TsrdoFloat.ToBoolean(out outValue: Boolean): Boolean;
+function TsoFloat.ToBoolean(out outValue: Boolean): Boolean;
 begin
   outValue := Value <> 0;
   Result := True;
 end;
 
-{ TsrdoInteger }
+{ TsrdInteger }
 
-procedure TsrdoInteger.Created;
+procedure TsoInteger.Created;
 begin
   inherited Created;
   FObjectType := otInteger;
 end;
 
-procedure TsrdoInteger.Assign(FromObject: TsrdoObject);
+procedure TsoInteger.Assign(FromObject: TsoObject);
 begin
   if FromObject <> nil then
   begin
-    if FromObject is TsrdoInteger then
-      Value := (FromObject as TsrdoInteger).Value
+    if FromObject is TsoInteger then
+      Value := (FromObject as TsoInteger).Value
     else
       Value := FromObject.AsInteger;
   end;
 end;
 
-function TsrdoInteger.Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean;
+function TsoInteger.Operate(var vResult: TsrdResult; AnOperator: TopOperator): Boolean;
 begin
   Result := False;
   if vResult.AnObject = nil then
@@ -1003,76 +1016,76 @@ begin
     vResult.AnObject := Clone;
     Result := True;
   end
-  else if vResult.AnObject is TsrdoInteger then
+  else if vResult.AnObject is TsoInteger then
   begin
     Result := True;
-    WriteLn(IntToStr(TsrdoInteger(vResult.AnObject).Value) + ' '+ AnOperator.Code+' ' +IntToStr(Value));
+    WriteLn(IntToStr(TsoInteger(vResult.AnObject).Value) + ' '+ AnOperator.Code+' ' +IntToStr(Value));
     case AnOperator.Code of
-      '+': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value + Value;
-      '-': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value - Value;
-      '*': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value * Value;
-      '/': TsrdoInteger(vResult.AnObject).Value := TsrdoInteger(vResult.AnObject).Value div Value;
+      '+': TsoInteger(vResult.AnObject).Value := TsoInteger(vResult.AnObject).Value + Value;
+      '-': TsoInteger(vResult.AnObject).Value := TsoInteger(vResult.AnObject).Value - Value;
+      '*': TsoInteger(vResult.AnObject).Value := TsoInteger(vResult.AnObject).Value * Value;
+      '/': TsoInteger(vResult.AnObject).Value := TsoInteger(vResult.AnObject).Value div Value;
       else
         Result := False;
     end;
   end;
 end;
 
-function TsrdoInteger.ToString(out outValue: string): Boolean;
+function TsoInteger.ToString(out outValue: string): Boolean;
 begin
   Result := True;
   outValue := IntToStr(Value);
 end;
 
-function TsrdoInteger.ToFloat(out outValue: Float): Boolean;
+function TsoInteger.ToFloat(out outValue: Float): Boolean;
 begin
   Result := True;
   outValue := Value;
 end;
 
-function TsrdoInteger.ToInteger(out outValue: int): Boolean;
+function TsoInteger.ToInteger(out outValue: int): Boolean;
 begin
   Result := True;
   outValue := Value;
 end;
 
-function TsrdoInteger.ToBoolean(out outValue: Boolean): Boolean;
+function TsoInteger.ToBoolean(out outValue: Boolean): Boolean;
 begin
   outValue := Value <> 0;
   Result := True;
 end;
 
-{ TsrdoBlock }
+{ TsoBlock }
 
-function TsrdoBlock.GetStatement: TsrdoStatement;
+function TsrdBlock.GetStatement: TsrdStatement;
 begin
   Check;//TODO: not sure
-  Result := Last as TsrdoStatement;
+  Result := Last as TsrdStatement;
 end;
 
-function TsrdoBlock.GetItem(Index: Integer): TsrdoStatement;
+function TsrdBlock.GetItem(Index: Integer): TsrdStatement;
 begin
-  Result := inherited Items[Index] as TsrdoStatement;
+  Result := inherited Items[Index] as TsrdStatement;
 end;
 
-function TsrdoBlock.Add(AStatement: TsrdoStatement): Integer;
+function TsrdBlock.Add(AStatement: TsrdStatement): Integer;
 begin
   Result := inherited Add(AStatement);
 end;
 
-function TsrdoBlock.New: TsrdoStatement;
+function TsrdBlock.New: TsrdStatement;
 begin
-  Result := TsrdoStatement.Create;
+  Result := TsrdStatement.Create;
   Add(Result);
 end;
 
-procedure TsrdoBlock.Check;
+procedure TsrdBlock.Check;
 begin
   if Count = 0  then
     New;
 end;
 
-function TsrdoBlock.Execute(var vResult: TsrdoResult): Boolean;
+function TsrdBlock.Execute(var vResult: TsrdResult): Boolean;
 var
   i: Integer;
 begin
@@ -1083,33 +1096,33 @@ begin
   end;
 end;
 
-{ TsrdoStatement }
+{ TsrdStatement }
 
-function TsrdoStatement.GetItem(Index: Integer): TsrdoStatementItem;
+function TsrdStatement.GetItem(Index: Integer): TsrdStatementItem;
 begin
-  Result := inherited Items[Index] as TsrdoStatementItem;
+  Result := inherited Items[Index] as TsrdStatementItem;
 end;
 
-procedure TsrdoStatement.SetDebug(AValue: TsrdoDebug);
+procedure TsrdStatement.SetDebug(AValue: TsrdDebug);
 begin
   if FDebug =AValue then Exit;
   FDebug :=AValue;
 end;
 
-function TsrdoStatement.Add(AObject: TsrdoStatementItem): Integer;
+function TsrdStatement.Add(AObject: TsrdStatementItem): Integer;
 begin
   Result := inherited Add(AObject);
 end;
 
-function TsrdoStatement.Add(AOperator: TsrdoOperator; AObject: TsrdoObject): TsrdoStatementItem;
+function TsrdStatement.Add(AOperator: TopOperator; AObject: TsoObject): TsrdStatementItem;
 begin
-  Result := TsrdoStatementItem.Create;
+  Result := TsrdStatementItem.Create;
   Result.AnOperator := AOperator;
   Result.AnObject := AObject;
   Add(Result);
 end;
 
-function TsrdoStatement.Execute(var vResult: TsrdoResult): Boolean;
+function TsrdStatement.Execute(var vResult: TsrdResult): Boolean;
 var
   i: Integer;
 begin
@@ -1120,25 +1133,25 @@ begin
   end;
 end;
 
-{ TsrdoRun }
+{ TsoRun }
 
-constructor TsrdoRun.Create;
+constructor TsrdRun.Create;
 begin
   inherited Create;
   Stack := TsardStack.Create;
 end;
 
-destructor TsrdoRun.Destroy;
+destructor TsrdRun.Destroy;
 begin
   FreeAndNil(Stack);
   inherited Destroy;
 end;
 
-function TsrdoRun.Execute(vBlock: TsrdoBlock): Boolean;
+function TsrdRun.Execute(vBlock: TsrdBlock): Boolean;
 var
-  R: TsrdoResult;
+  R: TsrdResult;
 begin
-  R := TsrdoResult.Create;
+  R := TsrdResult.Create;
   try
     Result := vBlock.Execute(R);
     Writeln(R.AnObject.AsString)
@@ -1147,62 +1160,62 @@ begin
   end;
 end;
 
-{ TsrdoObjects }
+{ TsoObjects }
 
-function TsrdoObjects.GetItem(Index: Integer): TsrdoObject;
+function TsoObjects.GetItem(Index: Integer): TsoObject;
 begin
-  Result := inherited Items[Index] as TsrdoObject;
+  Result := inherited Items[Index] as TsoObject;
 end;
 
-{ TsrdoObject }
+{ TsoObject }
 
-function TsrdoObject.GetCanExecute: Boolean;
+function TsoObject.GetCanExecute: Boolean;
 begin
   Result := False;
 end;
 
-procedure TsrdoObject.Created;
+procedure TsoObject.Created;
 begin
 end;
 
-constructor TsrdoObject.Create;
+constructor TsoObject.Create;
 begin
   inherited Create;
 end;
 
-procedure TsrdoObject.AfterConstruction;
+procedure TsoObject.AfterConstruction;
 begin
   inherited AfterConstruction;
   Created;
 end;
 
-function TsrdoObject.This: TsrdoObject;
+function TsoObject.This: TsoObject;
 begin
   Result := Self;
 end;
 
-function TsrdoObject.Execute(var vResult: TsrdoResult): Boolean;
+function TsoObject.Execute(var vResult: TsrdResult): Boolean;
 begin
   Result := False;
 end;
 
-function TsrdoObject.Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean;
+function TsoObject.Operate(var vResult: TsrdResult; AnOperator: TopOperator): Boolean;
 begin
   Result := False;
 end;
 
-procedure TsrdoObject.Assign(FromObject: TsrdoObject);
+procedure TsoObject.Assign(FromObject: TsoObject);
 begin
   //Nothing to do
 end;
 
-function TsrdoObject.Clone: TsrdoObject;
+function TsoObject.Clone: TsoObject;
 begin
-  Result := TsrdoObjectClass(ClassType).Create;
+  Result := TsoObjectClass(ClassType).Create;
   Result.Assign(Self);
 end;
 
-function TsrdoObject.AsString: String;
+function TsoObject.AsString: String;
 var
   o: string;
 begin
@@ -1212,7 +1225,7 @@ begin
     Result := '';
 end;
 
-function TsrdoObject.AsFloat: Float;
+function TsoObject.AsFloat: Float;
 var
   o: Float;
 begin
@@ -1222,7 +1235,7 @@ begin
     Result := 0;
 end;
 
-function TsrdoObject.AsInteger: int;
+function TsoObject.AsInteger: int;
 var
   o: int;
 begin
@@ -1232,7 +1245,7 @@ begin
     Result := 0;
 end;
 
-function TsrdoObject.AsBoolean: Boolean;
+function TsoObject.AsBoolean: Boolean;
 var
   o: Boolean;
 begin
@@ -1242,22 +1255,22 @@ begin
     Result := False;
 end;
 
-function TsrdoObject.ToBoolean(out outValue: Boolean): Boolean;
+function TsoObject.ToBoolean(out outValue: Boolean): Boolean;
 begin
   Result := False;
 end;
 
-function TsrdoObject.ToString(out outValue: string): Boolean;
+function TsoObject.ToString(out outValue: string): Boolean;
 begin
   Result := False;
 end;
 
-function TsrdoObject.ToFloat(out outValue: Float): Boolean;
+function TsoObject.ToFloat(out outValue: Float): Boolean;
 begin
   Result := False;
 end;
 
-function TsrdoObject.ToInteger(out outValue: int): Boolean;
+function TsoObject.ToInteger(out outValue: int): Boolean;
 begin
   Result := False;
 end;
