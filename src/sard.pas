@@ -51,25 +51,25 @@ function Execute(Lines: TStrings): Boolean;
 var
   Scanner: TmyScript;
   Parser: TsrdParser;
-  Block: TsrdScope;
+  Scope: TsrdScope;
   Run: TsrdRun;
 begin
   //sardEngine.Run(Lines);
   WriteLn('-------------------------------');
   Scanner := TmyScript.Create;
   try
-    Block := TsrdScope.Create(nil);
-    Block.New;
-    Parser := TmyParser.Create(Block);
+    Scope := TsrdScope.Create(nil);
+    Scope.New;
+    Parser := TmyParser.Create(Scope);
     Scanner.Scanners.Parser := Parser;
     Scanner.Scan(Lines);
     Scanner.Scanners.Parser := nil;
 
     Run := TsrdRun.Create;
-    Run.Execute(Block);
+    Run.Execute(Scope);
 
     FreeAndNil(Parser);
-    FreeAndNil(Block);
+    FreeAndNil(Scope);
   finally
     FreeAndNil(Scanner);
   end;

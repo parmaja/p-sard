@@ -143,7 +143,7 @@ type
   protected
     FStack: TsrdParserStack;
   public
-    constructor Create(ABlock: TsrdBlock);
+    constructor Create(AScope: TsrdScope);
     destructor Destroy; override;
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
@@ -276,14 +276,14 @@ end;
 
 { TsrdParser }
 
-constructor TsrdParser.Create(ABlock: TsrdBlock);
+constructor TsrdParser.Create(AScope: TsrdScope);
 begin
   inherited Create;
   FStack := TsrdParserStack.Create;
-  if ABlock <> nil then
+  if AScope <> nil then
     with Stack.New do
     begin
-       Block := ABlock;
+       Block := AScope;
     end;
 end;
 
@@ -301,7 +301,14 @@ begin
       begin
         Stack.Current.SetObject(This);
         Stack.New;
-        Stack.Current.Block := Block;
+        Stack.Current.Block := Items;
+      end;
+    brBracket:
+      with TsoBlock.Create do
+      begin
+        Stack.Current.SetObject(This);
+        Stack.New;
+        Stack.Current.Block := Items;
       end;
   end;
 end;
@@ -311,8 +318,12 @@ begin
   case vBracket of
     brCurly:
     begin
-      if Stack.IsEmpty then
-        raise EsardException.Create('There is no opened block!');
+      if FStack.Current.Operation <> nil then
+        raise EsardException.Create('There is opertator but you finished the block');
+      Stack.Pop;
+    end;
+    brBracket:
+    begin
       if FStack.Current.Operation <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
       Stack.Pop;
@@ -364,8 +375,18 @@ end;
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
 begin
   case AControl of
-    ctlSemicolon: Stack.Current.Block.New;
-    ctlAssign: Stack.Current.States := Stack.Current.States + [stateAssign];
+    ctlSemicolon:
+    begin
+      if FStack.Current.Operation <> nil then
+        raise EsardException.Create('There is opertator but you finished the block');
+      Stack.Current.Block.New;
+    end;
+    ctlAssign:
+    begin
+//      if FStack.Current.Operation <> nil then
+//        raise EsardException.Create('There is opertator but you finished the block');
+      Stack.Current.States := Stack.Current.States + [stateAssign];
+    end;
   end;
 end;
 
