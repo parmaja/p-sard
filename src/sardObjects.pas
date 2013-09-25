@@ -86,26 +86,6 @@ type
     property Debug: TsrdDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
 
-  { TsrdVariable }
-
-  TsrdVariable = class(TsardObject)
-  private
-    FName: string;
-    procedure SetName(AValue: string);
-  public
-    property Name: string read FName write SetName;
-  end;
-
-  { TsardVariables }
-
-  TsrdVariables = class(TsardObjectList)
-  private
-    function GetItem(Index: Integer): TsrdVariable;
-  public
-    property Items[Index: Integer]: TsrdVariable read GetItem; default;
-    function Find(vName: string): TsrdVariable;
-  end;
-
   { TsrdBlock }
 
   TsrdBlock = class(TsardObjectList)
@@ -311,6 +291,26 @@ type
   end;
 
 {* Run Time Engine *}
+
+{ TsrdVariable }
+
+  TsrdVariable = class(TsardObject)
+  private
+    FName: string;
+    procedure SetName(AValue: string);
+  public
+    property Name: string read FName write SetName;
+  end;
+
+  { TsardVariables }
+
+  TsrdVariables = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TsrdVariable;
+  public
+    property Items[Index: Integer]: TsrdVariable read GetItem; default;
+    function Find(vName: string): TsrdVariable;
+  end;
 
   { TrunStackItem }
 
@@ -769,6 +769,7 @@ var
   procedure OperateNow(O: TsoObject);
   begin
     if Self = nil then //TODO: If assign
+    //if vStack.Current.Result.AnObject = nil then
       vStack.Current.Result.AnObject := O.Clone
     else
     begin
@@ -1154,7 +1155,7 @@ begin
   Result := Count > 0;
   for i := 0 to Count -1 do
   begin
-    Result := Result and Items[i].Execute(vStack);
+    Result := Items[i].Execute(vStack) and Result;
   end;
 end;
 
@@ -1191,7 +1192,7 @@ begin
   Result := Count > 0;
   for i := 0 to Count -1 do
   begin
-    Result := Result and Items[i].Execute(vStack);
+    Result := Items[i].Execute(vStack) and Result;
   end;
 end;
 
