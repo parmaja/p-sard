@@ -68,6 +68,7 @@ unit sardScripts;
   Scope
   Block
   Statment
+  Instruction
   Expression
 }
 
@@ -95,9 +96,6 @@ const
   sControlsChars = aControlsOpenChars + ['='];
 
   sOperatorOpenChars = ['+', '-', '*', '/', '<', '>', '^', '&', '|', '!', '=', '$', '@']; //<--Stupid idea, need to make it as array
-
-//  IDENTIFIER_OPEN_CHARS = ['A'..'Z', 'a'..'z', '_'];
-//  IDENTIFIER_CHARS = IDENTIFIER_OPEN_CHARS + ['0'..'9', '.']; //for : xdebug send tag like xdebug:message
 
 type
   TsrdTokenKinds = (tknWhitespace, tknOperator, tknControl, tknNumber, tknColor, tknString, tknIdentifier, tknComment);

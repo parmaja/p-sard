@@ -158,7 +158,7 @@ type
   public
     AnObject: TObject;
     Owner: TsardStack;
-    Prior: TsardStackItem;
+    Parent: TsardStackItem;
   end;
 
   { TsardStack }
@@ -237,7 +237,7 @@ begin
     raise EsardException.Create('Stack is empty');
   aObject := FCurrent.AnObject;
   aNode := FCurrent;
-  FCurrent := aNode.Prior;
+  FCurrent := aNode.Parent;
   Dec(FCount);
   aNode.Free;
   aObject.Free;
@@ -273,7 +273,7 @@ begin
     raise EsardException.Create('Stack is empty');
   Result := FCurrent.AnObject;
   aNode := FCurrent;
-  FCurrent := aNode.Prior;
+  FCurrent := aNode.Parent;
   aNode.Free;
   Dec(FCount);
 end;
@@ -286,7 +286,7 @@ begin
     raise EsardException.Create('Can''t push nil');
   aNode := TsardStackItem.Create;
   aNode.AnObject := vObject;
-  aNode.Prior := FCurrent;
+  aNode.Parent := FCurrent;
   aNode.Owner := Self;
   FCurrent := aNode;
   Inc(FCount);

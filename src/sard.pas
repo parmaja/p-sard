@@ -52,6 +52,7 @@ var
   Scanner: TmyScript;
   Parser: TsrdParser;
   Scope: TsrdScope;
+  Stack: TrunStack;
   Run: TsrdRun;
 begin
   //sardEngine.Run(Lines);
@@ -66,8 +67,12 @@ begin
     Scanner.Scanners.Parser := nil;
 
     Run := TsrdRun.Create;
-    Run.Execute(Scope);
+    Stack := TrunStack.Create;
+    Stack.New;
+    Run.Execute(Stack, Scope);
 
+    FreeAndNil(Stack);
+    FreeAndNil(Run);
     FreeAndNil(Parser);
     FreeAndNil(Scope);
   finally
