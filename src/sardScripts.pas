@@ -297,26 +297,42 @@ end;
 
 procedure TsardScanParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
-  with TsrdoBranch.Create do
-  begin
-    Stack.Current.SetObject(This);
-    Stack.New;
-    Stack.Current.Block := Block;
+  case vBracket of
+    brCurly:
+      with TsrdoBranch.Create do
+      begin
+        Stack.Current.SetObject(This);
+        Stack.New;
+        Stack.Current.Block := Block;
+      end;
   end;
 end;
 
 procedure TsardScanParser.TriggerClose(vBracket: TsardBracketKind);
 begin
-  if Stack.IsEmpty then
-    raise EsardException.Create('There is no opened block!');
-  if FStack.Current.Operation <> nil then
-    raise EsardException.Create('There is opertator but you finished the block');
-  Stack.Pop;
+  case vBracket of
+    brCurly:
+    begin
+      if Stack.IsEmpty then
+        raise EsardException.Create('There is no opened block!');
+      if FStack.Current.Operation <> nil then
+        raise EsardException.Create('There is opertator but you finished the block');
+      Stack.Pop;
+    end;
+  end;
 end;
 
 procedure TsardScanParser.TriggerToken(Token: String; TokenID: Integer);
 begin
   case TsardTokenKinds(TokenID) of
+    tknIdentifier:
+    begin
+      with TsrdoVariable.Create do
+      begin
+        Name := Token;
+        Stack.Current.SetObject(This);
+      end;
+    end;
     tknNumber:
     begin
       if pos('.', Token) > 0 then

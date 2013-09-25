@@ -7,6 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, SynEdit, SynHighlighterCss, Forms, Controls,
   Graphics, Dialogs, StdCtrls,
+  LCLType,
   sard;
 
 type
@@ -19,10 +20,10 @@ type
     SynCssSyn1: TSynCssSyn;
     procedure Button1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   private
-    { private declarations }
   public
-    { public declarations }
+    procedure Run;
   end;
 
 var
@@ -36,12 +37,23 @@ implementation
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
-  Execute(InputEdit.Lines);
+  Run;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  InputEdit.Lines.Text := ' 10 + { 2 * 2 }';
+  InputEdit.Lines.Text := 'x := 10 + { 2 * 2 }';
+end;
+
+procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_F9 then
+    Run;
+end;
+
+procedure TForm1.Run;
+begin
+  Execute(InputEdit.Lines);
 end;
 
 end.

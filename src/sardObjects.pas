@@ -37,7 +37,7 @@ uses
 
 type
 
-  TsrdoObjectType = (otUnkown, otInteger, otFloat, otBoolean, otString, otObject, otClass);
+  TsrdoObjectType = (otUnkown, otInteger, otFloat, otBoolean, otString, otObject, otClass, otVariable);
   TsrdoCompare = (cmpLess, cmpEqual, cmpGreater);
 
   TsrdoDebug = class(TsardObject)
@@ -97,7 +97,34 @@ type
     function Execute(var vResult: TsrdoResult): Boolean;
   end;
 
-  { TBlockStack }
+  { TsrdoVariable }
+
+  TsrdoVariable = class;
+
+  { TsardVariables }
+
+  TsardVariables = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TsrdoVariable;
+  public
+    property Items[Index: Integer]: TsrdoVariable read GetItem; default;
+    function Find(vName: string): TsrdoVariable;
+  end;
+
+  { TsrdoScope }
+
+  TsrdoScope = class(TsrdoBlock)
+  private
+    FParent: TsrdoScope;
+    FVariables: TsardVariables;
+  public
+    constructor Create(AParent: TsrdoScope);
+    destructor Destroy; override;
+    //It is find it in the parents also
+    function FindVariable(const vName: string): TsrdoVariable; virtual;
+    property Variables: TsardVariables read FVariables;
+    property Parent: TsrdoScope read FParent;
+  end;
 
   { TsardBlockStack }
 
@@ -130,8 +157,6 @@ type
 
   TsrdoObject = class(TsardObject, IsrdoObject)
   private
-    FName: string; //if name is '' then the object cant change the value
-    procedure SetName(AValue: string);
   protected
     FObjectType: TsrdoObjectType;
     procedure Created; virtual;
@@ -142,7 +167,6 @@ type
     function This: TsrdoObject; //return the same object, stupid but save some code :P
     function Execute(var vResult: TsrdoResult): Boolean; virtual;
     function Operate(var vResult: TsrdoResult; AnOperator: TsrdoOperator): Boolean; virtual;
-    property Name: string read FName write SetName;
     procedure Assign(FromObject: TsrdoObject); virtual;
     function Clone: TsrdoObject; virtual;
     property ObjectType: TsrdoObjectType read FObjectType;
@@ -181,9 +205,21 @@ type
     procedure Created; override;
   end;
 
+  { TsrdoVariable }
+
+  TsrdoVariable = class(TsrdoObject)
+  private
+    FName: string;
+    procedure SetName(AValue: string);
+  public
+    Value: TsrdoResult;
+    procedure Created; override;
+    property Name: string read FName write SetName;
+  end;
+
   TsrdoBranch = class(TsrdoObject, IsrdoBlock)
   protected
-    FBlock: TsrdoBlock;
+    FBlock: TsrdoScope;
     procedure Created; override;
   public
     constructor Create; override;
@@ -305,7 +341,7 @@ type
 
   { TopAssign }
 
-  TopAssign = class(TsrdoOperator)
+  TopAssign = class(TsrdoOperator)//Naaaaaaaaaah
   public
     constructor Create; override;
   end;
@@ -427,6 +463,65 @@ begin
   Result := FsardEngine;
 end;
 
+{ TsardVariables }
+
+function TsardVariables.GetItem(Index: Integer): TsrdoVariable;
+begin
+  Result := inherited Items[Index] as TsrdoVariable;
+end;
+
+function TsardVariables.Find(vName: string): TsrdoVariable;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if SameText(vName, Items[i].Name) then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+{ TsrdoScope }
+
+constructor TsrdoScope.Create(AParent: TsrdoScope);
+begin
+  inherited Create;
+  FVariables := TsardVariables.Create;
+end;
+
+destructor TsrdoScope.Destroy;
+begin
+  FreeAndNil(FVariables);
+  inherited Destroy;
+end;
+
+function TsrdoScope.FindVariable(const vName: string): TsrdoVariable;
+begin
+  Result := Variables.Find(vName);
+  while (Parent <> nil) and (Result = nil) do
+  begin
+    Result := Parent.FindVariable(vName);
+  end;
+end;
+
+{ TsrdoVariable }
+
+procedure TsrdoVariable.SetName(AValue: string);
+begin
+  if FName =AValue then Exit;
+  FName :=AValue;
+end;
+
+procedure TsrdoVariable.Created;
+begin
+  inherited Created;
+  FObjectType := otVariable;
+end;
+
 { TopAssign }
 
 constructor TopAssign.Create;
@@ -434,7 +529,7 @@ begin
   inherited Create;
   Code := ':=';
   Name := 'Assign';
-  Level := 90;
+  Level := 10;
   Description := 'Clone to another object';
 end;
 
@@ -540,7 +635,7 @@ end;
 constructor TsrdoBranch.Create;
 begin
   inherited Create;
-  FBlock := TsrdoBlock.Create;
+  FBlock := TsrdoScope.Create;
 end;
 
 destructor TsrdoBranch.Destroy;
@@ -1060,15 +1155,6 @@ begin
 end;
 
 { TsrdoObject }
-
-procedure TsrdoObject.SetName(AValue: string);
-begin
-  if FName <> AValue then
-  begin
-    //CheckUniqe; TODO
-    FName := AValue;
-  end;
-end;
 
 function TsrdoObject.GetCanExecute: Boolean;
 begin
