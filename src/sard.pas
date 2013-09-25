@@ -51,7 +51,7 @@ function Execute(Lines: TStrings): Boolean;
 var
   Scanner: TmyScript;
   Parser: TsrdParser;
-  Scope: TsrdScope;
+  Block: TsrdBlock;
   Stack: TrunStack;
   Run: TsrdRun;
 begin
@@ -59,9 +59,9 @@ begin
   WriteLn('-------------------------------');
   Scanner := TmyScript.Create;
   try
-    Scope := TsrdScope.Create(nil);
-    Scope.New;
-    Parser := TmyParser.Create(Scope);
+    Block := TsrdBlock.Create;
+    Block.New;
+    Parser := TmyParser.Create(Block);
     Scanner.Scanners.Parser := Parser;
     Scanner.Scan(Lines);
     Scanner.Scanners.Parser := nil;
@@ -69,12 +69,12 @@ begin
     Run := TsrdRun.Create;
     Stack := TrunStack.Create;
     Stack.New;
-    Run.Execute(Stack, Scope);
+    Run.Execute(Stack, Block);
 
     FreeAndNil(Stack);
     FreeAndNil(Run);
     FreeAndNil(Parser);
-    FreeAndNil(Scope);
+    FreeAndNil(Block);
   finally
     FreeAndNil(Scanner);
   end;

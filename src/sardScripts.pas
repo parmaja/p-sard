@@ -141,7 +141,7 @@ type
   protected
     FStack: TsrdParserStack;
   public
-    constructor Create(AScope: TsrdScope);
+    constructor Create(ABlock: TsrdBlock);
     destructor Destroy; override;
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
@@ -274,14 +274,14 @@ end;
 
 { TsrdParser }
 
-constructor TsrdParser.Create(AScope: TsrdScope);
+constructor TsrdParser.Create(ABlock: TsrdBlock);
 begin
   inherited Create;
   FStack := TsrdParserStack.Create;
-  if AScope <> nil then
+  if ABlock <> nil then
     with Stack.New do
     begin
-       Block := AScope;
+       Block := ABlock;
     end;
 end;
 
@@ -295,7 +295,7 @@ procedure TsrdParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
   case vBracket of
     brCurly:
-      with TsoScope.Create do
+      with TsoBranch.Create do
       begin
         Stack.Current.SetObject(This);
         Stack.New;

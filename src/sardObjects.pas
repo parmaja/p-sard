@@ -53,7 +53,6 @@ type
 
   TopOperator = class;
 
-  TsrdScope = class;
   TrunStack = class;
 
   { TsrdResult }
@@ -69,7 +68,7 @@ type
   public
     AnOperator: TopOperator;
     AnObject: TsoObject;
-    function Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+    function Execute(vStack: TrunStack): Boolean;
   end;
 
   { TsrdStatement }
@@ -82,7 +81,7 @@ type
   public
     function Add(AObject: TsrdStatementItem): Integer;
     function Add(AOperator:TopOperator; AObject: TsoObject): TsrdStatementItem;
-    function Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+    function Execute(vStack: TrunStack): Boolean;
     property Items[Index: Integer]: TsrdStatementItem read GetItem; default;
     property Debug: TsrdDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
@@ -119,23 +118,7 @@ type
     procedure Check; //Check if empty then create first statement
     property Items[Index: Integer]: TsrdStatement read GetItem; default;
     property Statement: TsrdStatement read GetStatement;
-    function Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
-  end;
-
-  { TsrdScope }
-
-  TsrdScope = class(TsrdBlock)
-  private
-    FParent: TsrdScope;
-    FVariables: TsrdVariables;
-  public
-    constructor Create(AParent: TsrdScope);
-    destructor Destroy; override;
-    //It is find it in the parents also
-    function FindVariable(const vName: string): TsrdVariable; virtual;
     function Execute(vStack: TrunStack): Boolean;
-    property Variables: TsrdVariables read FVariables;
-    property Parent: TsrdScope read FParent;
   end;
 
   { TsrdBlockStack }
@@ -152,18 +135,18 @@ type
   end;
 
   IsrdOperate = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
-    function Add(vScope: TsrdScope; var vResult: TsrdResult): Boolean;
-    function Sub(vScope: TsrdScope; var vResult: TsrdResult): Boolean;
-    function Mulpiply(vScope: TsrdScope; var vResult: TsrdResult): Boolean;
-    function Divide(vScope: TsrdScope; var vResult: TsrdResult): Boolean;
+    function Add(var vResult: TsrdResult): Boolean;
+    function Sub(var vResult: TsrdResult): Boolean;
+    function Mulpiply(var vResult: TsrdResult): Boolean;
+    function Divide(var vResult: TsrdResult): Boolean;
   end;
 
   IsrdCompare = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
-    function Compare(vScope: TsrdScope; var vResult: TsrdResult): TsrdCompare;
+    function Compare(var vResult: TsrdResult): TsrdCompare;
   end;
 
   IsrdBlock = interface['{CB4C0FA1-E233-431E-8CC2-3755F62D93F2}']
-    function Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+    function Execute(vStack: TrunStack): Boolean;
   end;
 
   { TsoObject }
@@ -178,7 +161,7 @@ type
     constructor Create; virtual;
     procedure AfterConstruction; override;
     function This: TsoObject; //return the same object, stupid but save some code :P
-    function Execute(vStack: TrunStack; vScope: TsrdScope): Boolean; virtual;
+    function Execute(vStack: TrunStack): Boolean; virtual;
     function Operate(vStack: TrunStack; AnOperator: TopOperator): Boolean; virtual;
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone: TsoObject; virtual;
@@ -239,22 +222,25 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack; vScope: TsrdScope): Boolean; override;
+    function Execute(vStack: TrunStack): Boolean; override;
     property Items: TsrdBlock read FItems;
+  end;
+
+  TsoBranch = class(TsoBlock)
   end;
 
   { TsoScope }
 
-  TsoScope = class(TsoObject, IsrdBlock)
+{  TsoScope = class(TsoObject, IsrdBlock)
   protected
     FItems: TsrdScope;
     procedure Created; override;
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack; vScope: TsrdScope): Boolean; override;
+    function Execute(vStack: TrunStack): Boolean; override;
     property Items: TsrdScope read FItems;
-  end;
+  end;}
 
 (**** Common Objects *****)
 
@@ -355,7 +341,7 @@ type
     Stack: TsardStack;
     constructor Create;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack; vScope: TsrdScope):Boolean;
+    function Execute(vStack: TrunStack; vBlock: TsrdBlock):Boolean;
   end;
 
   { TopOperator }
@@ -368,7 +354,7 @@ type
     Name: string;
     Level: Integer;
     Description: string;
-    function Operate(vStack: TrunStack; vScope: TsrdScope; vObject: TsoObject): Boolean;
+    function Operate(vStack: TrunStack; vObject: TsoObject): Boolean;
     constructor Create; virtual;
   end;
 
@@ -563,9 +549,9 @@ begin
   inherited Destroy;
 end;
 
-function TsoBlock.Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+function TsoBlock.Execute(vStack: TrunStack): Boolean;
 begin
-  Result := Items.Execute(vStack, vScope);
+  Result := Items.Execute(vStack);
 end;
 
 { TsardVariables }
@@ -588,34 +574,6 @@ begin
       break;
     end;
   end;
-end;
-
-{ TsrdScope }
-
-constructor TsrdScope.Create(AParent: TsrdScope);
-begin
-  inherited Create;
-  FVariables := TsrdVariables.Create;
-end;
-
-destructor TsrdScope.Destroy;
-begin
-  FreeAndNil(FVariables);
-  inherited Destroy;
-end;
-
-function TsrdScope.FindVariable(const vName: string): TsrdVariable;
-begin
-  Result := Variables.Find(vName);
-  while (Parent <> nil) and (Result = nil) do
-  begin
-    Result := Parent.FindVariable(vName);
-  end;
-end;
-
-function TsrdScope.Execute(vStack: TrunStack): Boolean;
-begin
-  Result := inherited Execute(vStack, Self);
 end;
 
 { TsrdVariable }
@@ -741,7 +699,7 @@ begin
 end;
 
 { TsrdBranch }
-
+{
 procedure TsoScope.Created;
 begin
   inherited Created;
@@ -760,11 +718,12 @@ begin
   inherited Destroy;
 end;
 
-function TsoScope.Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+function TsoScope.Execute(vStack: TrunStack): Boolean;
 begin
   //Just Forward
   Result := Items.Execute(vStack);
 end;
+}
 
 { TopDivide }
 
@@ -804,7 +763,7 @@ begin
   Result := False;
 end;
 
-function TopOperator.Operate(vStack: TrunStack; vScope: TsrdScope; vObject: TsoObject): Boolean;
+function TopOperator.Operate(vStack: TrunStack; vObject: TsoObject): Boolean;
 var
   aResult: TsrdResult;
   procedure OperateNow(O: TsoObject);
@@ -824,7 +783,7 @@ var
 begin
   aResult := TsrdResult.Create;
   try
-    if vObject.Execute(vStack, vScope) then //it is a block
+    if vObject.Execute(vStack) then //it is a block
     begin
       if aResult.AnObject <> nil then
         OperateNow(aResult.AnObject)
@@ -979,13 +938,13 @@ end;
 
 { TsrdStatementItem }
 
-function TsrdStatementItem.Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+function TsrdStatementItem.Execute(vStack: TrunStack): Boolean;
 begin
   if AnObject = nil then
     raise EsardException.Create('Object not set!');
   {if AnOperator = nil then
     raise EsardException.Create('Object not set!');}
-  Result := AnOperator.Operate(vStack, vScope, AnObject);//Even AnOperator is nil it will work
+  Result := AnOperator.Operate(vStack, AnObject);//Even AnOperator is nil it will work
 end;
 
 { TsrdClass }
@@ -1188,14 +1147,14 @@ begin
     New;
 end;
 
-function TsrdBlock.Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+function TsrdBlock.Execute(vStack: TrunStack): Boolean;
 var
   i: Integer;
 begin
   Result := Count > 0;
   for i := 0 to Count -1 do
   begin
-    Result := Result and Items[i].Execute(vStack, vScope);
+    Result := Result and Items[i].Execute(vStack);
   end;
 end;
 
@@ -1225,14 +1184,14 @@ begin
   Add(Result);
 end;
 
-function TsrdStatement.Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+function TsrdStatement.Execute(vStack: TrunStack): Boolean;
 var
   i: Integer;
 begin
   Result := Count > 0;
   for i := 0 to Count -1 do
   begin
-    Result := Result and Items[i].Execute(vStack, vScope);
+    Result := Result and Items[i].Execute(vStack);
   end;
 end;
 
@@ -1250,9 +1209,9 @@ begin
   inherited Destroy;
 end;
 
-function TsrdRun.Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+function TsrdRun.Execute(vStack: TrunStack; vBlock: TsrdBlock): Boolean;
 begin
-  Result := vScope.Execute(vStack);
+  Result := vBlock.Execute(vStack);
   Writeln(vStack.Current.Result.AnObject.AsString)//debug
 end;
 
@@ -1290,7 +1249,7 @@ begin
   Result := Self;
 end;
 
-function TsoObject.Execute(vStack: TrunStack; vScope: TsrdScope): Boolean;
+function TsoObject.Execute(vStack: TrunStack): Boolean;
 begin
   Result := False;
 end;
