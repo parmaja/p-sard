@@ -31,18 +31,20 @@ type
 type
   EsardException = class(Exception)
   private
-    FLine: Integer;
-    FColumn: Integer;
     FCode: Cardinal;
   public
-    constructor Create(const Msg: string); overload;
-    constructor Create(const Msg: string; const Column, Line: Integer); overload;
     property Code: Cardinal read FCode write FCode;
+  end;
+
+  EsardParserException = class(EsardException)
+  private
+    FLine: Integer;
+    FColumn: Integer;
+  public
+    constructor Create(const Msg: string; const Column, Line: Integer);
     property Column: Integer read FColumn write FColumn;
     property Line: Integer read FLine write FLine;
   end;
-
-  EsardParserException = class(EsardException);
 
   //Base classes
 
@@ -69,9 +71,9 @@ type
   protected
     function CheckText(S: string; const Text: string; const Column: Integer): Boolean;
     function ScanText(S: string; const Text: string; var Column: Integer): Boolean;
-    procedure Scan(const Text: string; var Column: Integer; const Line: Integer); virtual; abstract;
-    function Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean; virtual;
-    function DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
+    procedure Scan(const Text: string; var Column: Integer); virtual; abstract;
+    function Accept(const Text: string; var Column: Integer): Boolean; virtual;
+    function DetectScanner(const Text: string; var Column: Integer): Integer;
     procedure SelectScanner(AScannerClass: TsardScannerClass);
   public
     Index: TsardScannerID;
@@ -86,6 +88,7 @@ type
 
   TsardScanners = class(TsardObjectList)
   private
+    FLine: Integer;
     FParser: TsardParser;
     FScannerID: TsardScannerID;
     FFeeder: TsardFeeder;
@@ -93,16 +96,19 @@ type
     procedure SetParser(AValue: TsardParser);
   public
     constructor Create(vFeeder: TsardFeeder; FreeObjects: boolean = True); virtual;
-    function DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
+    function DetectScanner(const Text: string; var Column: Integer): Integer;
     procedure SwitchScanner(NextScanner: TsardScannerID);
     procedure SelectScanner(ScannerClass: TsardScannerClass);
     function Find(const ScannerClass: TsardScannerClass): TsardScanner;
-    procedure ScanLine(const Text: string; const Line: Integer);
+    procedure RaiseError(AError: string; AColumn: Integer); overload;
+    procedure RaiseError(AError: string); overload;
+    procedure ScanLine(const Text: string; const ALine: Integer);
     function RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
     property Items[Index: Integer]: TsardScanner read GetItem; default;
     property ScannerID: TsardScannerID read FScannerID;
     property Feeder: TsardFeeder read FFeeder;
     property Parser: TsardParser read FParser write SetParser;
+    property Line: Integer read FLine;
   end;
 
   { TsardFeeder }
@@ -286,18 +292,16 @@ begin
   Inc(FCount);
 end;
 
-{ EmnXMLException }
-
-constructor EsardException.Create(const Msg: string; const Column, Line: Integer);
+function FormatColLine(Column, Line: Integer): string;
 begin
-  Create(Msg + #13'Line Number ' + IntToStr(Line) + ', Column ' + IntToStr(Column));
-  FLine := Line;
-  FColumn := Column;
+   Result := #13'Line Number ' + IntToStr(Line) + ', Column ' + IntToStr(Column)
 end;
 
-constructor EsardException.Create(const Msg: string);
+constructor EsardParserException.Create(const Msg: string; const Column, Line: Integer);
 begin
-  inherited Create(Msg);
+  inherited Create(Msg +  #13 +FormatColLine(Column, Line));
+  FLine := Line;
+  FColumn := Column;
 end;
 
 { TsardScanner }
@@ -356,14 +360,14 @@ begin
   end;
 end;
 *)
-function TsardScanner.Accept(const Text: string; var Column: Integer; const Line: Integer): Boolean;
+function TsardScanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := False;
 end;
 
-function TsardScanner.DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
+function TsardScanner.DetectScanner(const Text: string; var Column: Integer): Integer;
 begin
-  Result := Scanners.DetectScanner(Text, Column, Line);
+  Result := Scanners.DetectScanner(Text, Column);
 end;
 
 procedure TsardScanner.SelectScanner(AScannerClass: TsardScannerClass);
@@ -391,9 +395,10 @@ end;
 
 procedure TsardScanners.SetParser(AValue: TsardParser);
 begin
-  if FParser = AValue then Exit;
+  if FParser = AValue then
+    Exit;
   if Feeder.Active then
-    raise EsardException.Create('You can'' set a parser while it is active!');
+    RaiseError('You can'' set a parser while it is active!');
   FParser := AValue;
 end;
 
@@ -403,14 +408,14 @@ begin
   inherited Create(FreeObjects);
 end;
 
-function TsardScanners.DetectScanner(const Text: string; var Column: Integer; const Line: Integer): Integer;
+function TsardScanners.DetectScanner(const Text: string; var Column: Integer): Integer;
 var
   i: Integer;
 begin
   Result := -1;
   for i := 0 to Count - 1 do
   begin
-    if (Items[i].Index <> Result) and Items[i].Accept(Text, Column, Line) then
+    if (Items[i].Index <> Result) and Items[i].Accept(Text, Column) then
     begin
       Result := i;
 //      WriteLn('Accept: '+Items[i].ClassName);
@@ -418,7 +423,7 @@ begin
     end;
   end;
   if Result < 0 then
-    raise EsardException.Create('Scanner not found:' + Text[Column]);
+    RaiseError('Scanner not found:' + Text[Column], Column);
   SwitchScanner(Result);
 end;
 
@@ -435,6 +440,16 @@ begin
       break;
     end;
   end;
+end;
+
+procedure TsardScanners.RaiseError(AError: string; AColumn: Integer);
+begin
+  raise EsardParserException.Create(AError, AColumn, Line);
+end;
+
+procedure TsardScanners.RaiseError(AError: string);
+begin
+  raise EsardException.Create(AError);
 end;
 
 function TsardScanners.RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
@@ -485,7 +500,7 @@ var
 begin
   aScanner := Find(ScannerClass);
   if aScanner = nil then
-    raise EsardException.Create('Scanner not found');
+    RaiseError('Scanner not found');
   SwitchScanner(aScanner.Index);
 end;
 
@@ -514,25 +529,35 @@ begin
   Scanners.ScanLine(Text, Line);
 end;
 
-procedure TsardScanners.ScanLine(const Text: string; const Line: Integer);
+procedure TsardScanners.ScanLine(const Text: string; const ALine: Integer);
 var
   Column, OldColumn: Integer;
   OldScanner: TsardScannerID;
   l: Integer;
 begin
+  FLine := ALine;
   Column := 1; //start of pascal string is 1
   l := Length(Text);
   while (Column <= l) do
   begin
     OldColumn := Column;
     OldScanner := FScannerID;
+    try
+      Items[ScannerID].Scan(Text, Column);
+      if Column <= Length(Text) then
+        DetectScanner(Text, Column);
 
-    Items[ScannerID].Scan(Text, Column, Line);
-    if Column <= Length(Text) then
-      DetectScanner(Text, Column, Line);
-
-    if (OldColumn = Column) and (OldScanner = FScannerID) then
-      raise EsardException.Create('Feeder in loop with: ' + Items[FScannerID].ClassName);
+      if (OldColumn = Column) and (OldScanner = FScannerID) then
+        RaiseError('Feeder in loop with: ' + Items[FScannerID].ClassName, Column);
+    except
+      on E: EsardParserException do
+        raise;
+      on E: EsardException do
+      begin
+        E.Message := E.Message + #13 + FormatColLine(Column, Line);
+        raise;
+      end;
+    end;
   end;
 end;
 

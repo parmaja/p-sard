@@ -36,7 +36,6 @@ type
   end;
 
 function Execute(Lines: TStrings): Boolean;
-procedure Test;
 
 implementation
 
@@ -56,6 +55,7 @@ var
   Run: TsrdoRun;
 begin
   //sardEngine.Run(Lines);
+  WriteLn('-------------------------------');
   Scanner := TmyScript.Create;
   try
     Block := TsrdoBlock.Create;
@@ -74,10 +74,6 @@ begin
     FreeAndNil(Scanner);
   end;
   Result := True;
-end;
-
-procedure Test;
-begin
 end;
 
 end.

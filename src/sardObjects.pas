@@ -99,10 +99,13 @@ type
 
   { TBlockStack }
 
-  TBlockStack = class(TsardStack)
+  { TsardBlockStack }
+
+  TsardBlockStack = class(TsardStack)
   private
     function GetCurrent: TsrdoBlock;
   public
+    procedure Push(vItem: TsrdoBlock);
     property Current: TsrdoBlock read GetCurrent;
   end;
 
@@ -300,6 +303,13 @@ type
     property Items[Index: Integer]: TsrdoOperator read GetItem; default;
   end;
 
+  { TopAssign }
+
+  TopAssign = class(TsrdoOperator)
+  public
+    constructor Create; override;
+  end;
+
   { TopPlus }
 
   TopPlus = class(TsrdoOperator)
@@ -417,11 +427,27 @@ begin
   Result := FsardEngine;
 end;
 
-{ TBlockStack }
+{ TopAssign }
 
-function TBlockStack.GetCurrent: TsrdoBlock;
+constructor TopAssign.Create;
+begin
+  inherited Create;
+  Code := ':=';
+  Name := 'Assign';
+  Level := 90;
+  Description := 'Clone to another object';
+end;
+
+{ TsardBlockStack }
+
+function TsardBlockStack.GetCurrent: TsrdoBlock;
 begin
   Result := (inherited GetCurrent) as TsrdoBlock;
+end;
+
+procedure TsardBlockStack.Push(vItem: TsrdoBlock);
+begin
+  inherited Push(vItem);
 end;
 
 { TopNot }
