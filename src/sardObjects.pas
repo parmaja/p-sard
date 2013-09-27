@@ -30,6 +30,15 @@ unit sardObjects;
  o3 := 10+5;
 *)
 
+{
+TODO:
+create variable manually in the example to test return value in formual
+10+x
+soVariable find it is value in the stack and use it in formual
+
+soVariable create a runtime variable in the stack
+x := 10;
+}
 interface
 
 uses
@@ -144,7 +153,7 @@ type
     function Execute(vStack: TrunStack): Boolean; virtual;
     function Operate(vStack: TrunStack; AnOperator: TopOperator): Boolean; virtual;
     procedure Assign(FromObject: TsoObject); virtual;
-    function Clone: TsoObject; virtual;
+    function Clone(WithValue: Boolean = True): TsoObject; virtual;
     property ObjectType: TsrdObjectType read FObjectType;
     property CanExecute: Boolean read GetCanExecute;
     function AsString: String;
@@ -768,11 +777,18 @@ var
   aResult: TsrdResult;
   procedure OperateNow(O: TsoObject);
   begin
+    {
+      if previouse object is null and there is a operator we considr that privouse object is empty one like 0 or ''
+      it is good to say  -10
+    }
+
     if Self = nil then //TODO: If assign
     //if vStack.Current.Result.AnObject = nil then
       vStack.Current.Result.AnObject := O.Clone
     else
     begin
+      if vStack.Current.Result.AnObject = nil then
+        vStack.Current.Result.AnObject := O.Clone(False);
       Result := DoOperate(vStack, O);
       if not Result then
       begin
@@ -1265,10 +1281,11 @@ begin
   //Nothing to do
 end;
 
-function TsoObject.Clone: TsoObject;
+function TsoObject.Clone(WithValue: Boolean): TsoObject;
 begin
   Result := TsoObjectClass(ClassType).Create;
-  Result.Assign(Self);
+  if WithValue then
+    Result.Assign(Self);
 end;
 
 function TsoObject.AsString: String;

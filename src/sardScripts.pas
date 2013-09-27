@@ -60,6 +60,10 @@ unit sardScripts;
 *)
 
 {TODO
+  Outch
+  how to scan, minus here?
+  x := -10;
+
   check not add object if there is no operator in curOperator
   do not allow to add empty statment
 }
