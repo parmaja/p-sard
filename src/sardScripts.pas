@@ -138,7 +138,7 @@ type
     function GetCurrent: TsrdParserStackItem;
   public
     procedure Push(vItem: TsrdParserStackItem);
-    function New: TsrdParserStackItem;
+    function Push: TsrdParserStackItem;
     property Current: TsrdParserStackItem read GetCurrent;
   end;
 
@@ -273,7 +273,7 @@ begin
   inherited Push(vItem);
 end;
 
-function TsrdParserStack.New: TsrdParserStackItem;
+function TsrdParserStack.Push: TsrdParserStackItem;
 begin
   Result := TsrdParserStackItem.Create;
   Push(Result);
@@ -286,7 +286,7 @@ begin
   inherited Create;
   FStack := TsrdParserStack.Create;
   if ABlock <> nil then
-    with Stack.New do
+    with Stack.Push do
     begin
        Block := ABlock;
     end;
@@ -305,14 +305,14 @@ begin
       with TsoBranch.Create do
       begin
         Stack.Current.SetObject(This);
-        Stack.New;
+        Stack.Push;
         Stack.Current.Block := Items;
       end;
     brBracket:
       with TsoBlock.Create do
       begin
         Stack.Current.SetObject(This);
-        Stack.New;
+        Stack.Push;
         Stack.Current.Block := Items;
       end;
   end;
@@ -325,13 +325,13 @@ begin
     begin
       if FStack.Current.Operation <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
-      Stack.Pop;
+      Stack.Pop.Free;
     end;
     brBracket:
     begin
       if FStack.Current.Operation <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
-      Stack.Pop;
+      Stack.Pop.Free;
     end;
   end;
 end;
@@ -384,7 +384,7 @@ begin
     begin
       if FStack.Current.Operation <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
-      Stack.Current.Block.New;
+      Stack.Current.Block.Add;
     end;
     ctlAssign:
     begin

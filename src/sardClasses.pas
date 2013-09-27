@@ -260,16 +260,16 @@ end;
 
 procedure TsardStack.Delete;
 var
-  aNode: TsardStackItem;
+  aItem: TsardStackItem;
   aObject: TObject;
 begin
   if FCurrentItem = nil then
     raise EsardException.Create('Stack is empty');
   aObject := FCurrentItem.AnObject;
-  aNode := FCurrentItem;
-  FCurrentItem := aNode.Parent;
+  aItem := FCurrentItem;
+  FCurrentItem := aItem.Parent;
   Dec(FCount);
-  aNode.Free;
+  aItem.Free;
   aObject.Free;
 end;
 
@@ -297,14 +297,14 @@ end;
 
 function TsardStack.Pop: TObject;
 var
-  aNode: TsardStackItem;
+  aItem: TsardStackItem;
 begin
   if FCurrentItem = nil then
     raise EsardException.Create('Stack is empty');
   Result := FCurrentItem.AnObject;
-  aNode := FCurrentItem;
-  FCurrentItem := aNode.Parent;
-  aNode.Free;
+  aItem := FCurrentItem;
+  FCurrentItem := aItem.Parent;
+  aItem.Free;
   Dec(FCount);
 end;
 

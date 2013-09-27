@@ -101,9 +101,10 @@ type
   private
     function GetStatement: TsrdStatement;
     function GetItem(Index: Integer): TsrdStatement;
+  protected
   public
     function Add(AStatement: TsrdStatement): Integer;
-    function New: TsrdStatement;
+    function Add: TsrdStatement;
     procedure Check; //Check if empty then create first statement
     property Items[Index: Integer]: TsrdStatement read GetItem; default;
     property Statement: TsrdStatement read GetStatement;
@@ -144,16 +145,14 @@ type
   private
   protected
     FObjectType: TsrdObjectType;
-    function GetCanExecute: Boolean; virtual;//TODO not sure
   public
     constructor Create; virtual;
     function This: TsoObject; //return the same object, stupid but save some code :P
     //function Execute(vStack: TrunStack): Boolean; virtual;
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual; abstract;
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone(WithValue: Boolean = True): TsoObject; virtual;
     property ObjectType: TsrdObjectType read FObjectType;
-    property CanExecute: Boolean read GetCanExecute;
     function AsString: String;
     function AsFloat: Float;
     function AsInteger: int;
@@ -164,15 +163,37 @@ type
     function ToInteger(out outValue: int): Boolean; virtual;
   end;
 
-{-------- Objects --------}
-
   { TsoObjects }
 
-  TsoObjects = class(TsardObjectList)
+  TsrdObjects = class(TsardObjectList)
   private
     function GetItem(Index: Integer): TsoObject;
   public
     property Items[Index: Integer]: TsoObject read GetItem; default;
+  end;
+
+  {-------- Objects --------}
+
+  { TsoConstObject }
+
+  TsoConstObject = class(TsoObject)
+  protected
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual; abstract;
+  public
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override; final;
+  end;
+
+  { TsoBlock }
+
+  TsoBlock = class(TsoObject, IsrdBlock)
+  protected
+    FItems: TsrdBlock;
+    procedure Created; override;
+  public
+    constructor Create; override;
+    destructor Destroy; override;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override; final;
+    property Items: TsrdBlock read FItems;
   end;
 
   { TsrdClass }
@@ -199,20 +220,8 @@ type
   public
     Value: TsrdResult;
     procedure Created; override;
-    property Name: string read FName write SetName;
-  end;
-
-  { TsoBlock }
-
-  TsoBlock = class(TsoObject, IsrdBlock)
-  protected
-    FItems: TsrdBlock;
-    procedure Created; override;
-  public
-    constructor Create; override;
-    destructor Destroy; override;
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
-    property Items: TsrdBlock read FItems;
+    property Name: string read FName write SetName;
   end;
 
   TsoBranch = class(TsoBlock) //Todo rename tp scope
@@ -223,7 +232,6 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack; AOperator: TopOperator):Boolean; override;
   end;
 
   { TsoScope }
@@ -243,7 +251,7 @@ type
 
   { TsrdNone }
 
-  TsoNone = class(TsoObject) //None it is not Null, it is an initial value we sart it
+  TsoNone = class(TsoConstObject) //None it is not Null, it is an initial value we sart it
   public
     //Do operator
     //Convert to 0 or ''
@@ -251,7 +259,7 @@ type
 
   { TsrdNumber }
 
-  TsoNumber = class(TsoObject) //abstract
+  TsoNumber = class(TsoConstObject) //abstract
   public
     //Assign
     //Do operator
@@ -264,7 +272,7 @@ type
     Value: int;
     procedure Created; override;
     procedure Assign(FromObject: TsoObject); override;
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
     function ToInteger(out outValue: int): Boolean; override;
@@ -297,7 +305,7 @@ type
 
   { TsrdString }
 
-  TsoString = class(TsoObject)
+  TsoString = class(TsoConstObject)
   public
     Value: string;
     procedure Created; override;
@@ -468,7 +476,8 @@ type
       function GetCurrent: TrunStackItem;
     public
       procedure Push(vObject: TrunStackItem);
-      function New: TrunStackItem;
+      function Push: TrunStackItem; overload;
+      function Pop: TrunStackItem;
       property Current: TrunStackItem read GetCurrent;
     end;
 
@@ -507,6 +516,23 @@ begin
   Result := FsardEngine;
 end;
 
+{ TsoConstObject }
+
+function TsoConstObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+begin
+   if vStack.Current.Result.AnObject = nil then
+  begin
+    vStack.Current.Result.AnObject := Clone;
+    Result := True;
+  end
+  else
+    Result := DoExecute(vStack, AOperator);
+
+  WriteLn('Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level));
+  if AOperator <> nil then
+    Write('{'+ AOperator.ClassName+'}');
+end;
+
 { TrunStackItem }
 
 constructor TrunStackItem.Create;
@@ -532,10 +558,15 @@ begin
   inherited Push(vObject);
 end;
 
-function TrunStack.New: TrunStackItem;
+function TrunStack.Push: TrunStackItem;
 begin
   Result := TrunStackItem.Create;
   Push(Result);
+end;
+
+function TrunStack.Pop: TrunStackItem;
+begin
+  Result := (inherited Pop) as TrunStackItem;
 end;
 
 { TsoBlock }
@@ -544,6 +575,25 @@ procedure TsoBlock.Created;
 begin
   inherited Created;
   FObjectType := otBlock;
+end;
+
+function TsoBlock.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+var
+  T: TrunStackItem;
+begin
+  Result := False;
+  T := vStack.Push;
+  try
+    Result := Items.Execute(vStack);
+  finally
+    vStack.Pop;
+  end;
+  if T.Result.AnObject <> nil then
+    T.Result.AnObject.Execute(vStack, AOperator);
+
+  WriteLn('Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level));
+  if AOperator <> nil then
+    Write('{'+ AOperator.ClassName+'}');
 end;
 
 constructor TsoBlock.Create;
@@ -556,11 +606,6 @@ destructor TsoBlock.Destroy;
 begin
   FreeAndNil(FItems);
   inherited Destroy;
-end;
-
-function TsoBlock.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
-begin
-  Result := Items.Execute(vStack);
 end;
 
 { TsardVariables }
@@ -707,6 +752,10 @@ begin
   FObjectType := otVariable;
 end;
 
+function TsoVariable.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+begin
+end;
+
 { TsrdBranch }
 {
 procedure TsoScope.Created;
@@ -773,12 +822,18 @@ begin
 end;
 
 function TopOperator.Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
+begin
+  Result := False;
+end;
+
+(*
+function TopOperator.Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
 var
   aResult: TsrdResult;
   procedure ExecuteNow(O: TsoObject);
   begin
     {
-      if previouse object is null and there is a operator we considr that privouse object is empty one like 0 or ''
+      if previous object is null and there is a operator we considr that privouse object is empty one like 0 or ''
       it is good to say  -10
     }
 
@@ -806,6 +861,7 @@ begin
     aResult.Free;
   end;
 end;
+*)
 
 constructor TopOperator.Create;
 begin
@@ -956,7 +1012,8 @@ begin
     raise EsardException.Create('Object not set!');
   {if AnOperator = nil then
     raise EsardException.Create('Object not set!');}
-  Result := AnOperator.Execute(vStack, AnObject);//Even AnOperator is nil it will work
+//  Result := AnOperator.Execute(vStack, AnObject);//Even AnOperator is nil it will work
+  Result := AnObject.Execute(vStack, AnOperator);
 end;
 
 { TsrdClass }
@@ -1082,15 +1139,9 @@ begin
   end;
 end;
 
-function TsoInteger.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+function TsoInteger.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
-  Result := False;
-  if vStack.Current.Result.AnObject = nil then
-  begin
-    vStack.Current.Result.AnObject := Clone;
-    Result := True;
-  end
-  else if vStack.Current.Result.AnObject is TsoInteger then
+  if vStack.Current.Result.AnObject is TsoInteger then
   begin
     Result := True;
     WriteLn(IntToStr(TsoInteger(vStack.Current.Result.AnObject).Value) + ' '+ AOperator.Code+' ' +IntToStr(Value));
@@ -1147,7 +1198,7 @@ begin
   Result := inherited Add(AStatement);
 end;
 
-function TsrdBlock.New: TsrdStatement;
+function TsrdBlock.Add: TsrdStatement;
 begin
   Result := TsrdStatement.Create;
   Add(Result);
@@ -1156,7 +1207,7 @@ end;
 procedure TsrdBlock.Check;
 begin
   if Count = 0  then
-    New;
+    Add;
 end;
 
 function TsrdBlock.Execute(vStack: TrunStack): Boolean;
@@ -1219,26 +1270,14 @@ begin
   inherited Destroy;
 end;
 
-function TsoMain.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
-begin
-//  Result := Block.Execute(vStack);
-  Result := inherited Execute(vStack, AOperator);
-  Writeln(vStack.Current.Result.AnObject.AsString)//debug
-end;
+{ TsrdObjects }
 
-{ TsoObjects }
-
-function TsoObjects.GetItem(Index: Integer): TsoObject;
+function TsrdObjects.GetItem(Index: Integer): TsoObject;
 begin
   Result := inherited Items[Index] as TsoObject;
 end;
 
 { TsoObject }
-
-function TsoObject.GetCanExecute: Boolean;
-begin
-  Result := False;
-end;
 
 constructor TsoObject.Create;
 begin
@@ -1248,11 +1287,6 @@ end;
 function TsoObject.This: TsoObject;
 begin
   Result := Self;
-end;
-
-function TsoObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
-begin
-  Result := False;
 end;
 
 procedure TsoObject.Assign(FromObject: TsoObject);

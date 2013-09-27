@@ -19,27 +19,11 @@ uses
   Classes, SysUtils,
   sardObjects, sardScripts;
 
-type
-
-  { TmyScanner }
-
-  TmyParser = class(TsrdParser)
-  protected
-  public
-    procedure TriggerToken(Token: String; TokenID: Integer); override;
-  end;
-
 function Execute(Lines: TStrings): Boolean;
 
 implementation
 
 { TmyFeeder }
-
-procedure TmyParser.TriggerToken(Token: String; TokenID: Integer);
-begin
-  inherited;
-  //WriteLn(Token);
-end;
 
 function Execute(Lines: TStrings): Boolean;
 var
@@ -52,17 +36,21 @@ begin
   WriteLn('-------------------------------');
 
   Main := TsoMain.Create;
-
-  Parser := TmyParser.Create(Main.Items);
+  { Compile }
+  Parser := TsrdParser.Create(Main.Items);
   Scanners := TsrdScanners.Create(Parser);
   Feeder := TsrdFeeder.Create(Scanners);
 
   Feeder.Scan(Lines);
 
+  { Run }
   Stack := TrunStack.Create;
-  Stack.New;
+  Stack.Push;
   Main.Execute(Stack, nil);
+  WriteLn('=== Result:  ' + Stack.Current.Result.AnObject.AsString + '  ===');
 
+
+  { End }
   FreeAndNil(Stack);
   FreeAndNil(Main);
   FreeAndNil(Parser);
