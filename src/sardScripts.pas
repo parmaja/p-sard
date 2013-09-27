@@ -438,7 +438,6 @@ begin
     Scanners.Parser.TriggerControl(ctlAssign)
   else if b = '~' then
     Scanners.Parser.TriggerControl(ctlPointer);
-  Inc(Column);
 end;
 
 function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
