@@ -107,13 +107,16 @@ type
   TsrdState = (stateIdentifier, stateDeclare, stateAssign, stateBlock);
   TsrdStates = set of TsrdState;
 
-  { TsrdScript }
+  TsrdFeeder = class(TsardFeeder)
+  end;
 
-  TsrdScript = class(TsardFeeder)
+  { TsrdScanners }
+
+  TsrdScanners = class(TsardScanners)
   private
   protected
+    procedure Created; override;
   public
-    constructor Create; override;
   end;
 
   { TsrdParserStackItem }
@@ -139,7 +142,7 @@ type
     property Current: TsrdParserStackItem read GetCurrent;
   end;
 
-  { TsrdScriptParser }
+  { TsrdFeederParser }
 
   TsrdParser = class(TsardParser)
   protected
@@ -443,25 +446,20 @@ begin
   Result := sardEngine.IsControl(Text[Column], True);
 end;
 
-{ TsrdScript }
+{ TsrdFeeder }
 
-constructor TsrdScript.Create;
+procedure TsrdScanners.Created;
 begin
-  inherited Create;
-
-  with Scanners do
-  begin
-    RegisterScanner(TsrdStart_Scanner);
-    RegisterScanner(TsrdWhitespace_Scanner);
-    RegisterScanner(TsrdBlockComment_Scanner);
-    RegisterScanner(TsrdLineComment_Scanner);
-    RegisterScanner(TsrdNumber_Scanner);
-    RegisterScanner(TsrdSQString_Scanner);
-    RegisterScanner(TsrdDQString_Scanner);
-    RegisterScanner(TsrdControl_Scanner);
-    RegisterScanner(TopOperator_Scanner); //Register it after comment because comment take /*
-    RegisterScanner(TsrdIdentifier_Scanner);//Last one
-  end;
+  RegisterScanner(TsrdStart_Scanner);
+  RegisterScanner(TsrdWhitespace_Scanner);
+  RegisterScanner(TsrdBlockComment_Scanner);
+  RegisterScanner(TsrdLineComment_Scanner);
+  RegisterScanner(TsrdNumber_Scanner);
+  RegisterScanner(TsrdSQString_Scanner);
+  RegisterScanner(TsrdDQString_Scanner);
+  RegisterScanner(TsrdControl_Scanner);
+  RegisterScanner(TopOperator_Scanner); //Register it after comment because comment take /*
+  RegisterScanner(TsrdIdentifier_Scanner);//Last one
   //FOffScanner := scanIdentifier;
 end;
 

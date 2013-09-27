@@ -144,11 +144,9 @@ type
   private
   protected
     FObjectType: TsrdObjectType;
-    procedure Created; virtual;
     function GetCanExecute: Boolean; virtual;//TODO not sure
   public
     constructor Create; virtual;
-    procedure AfterConstruction; override;
     function This: TsoObject; //return the same object, stupid but save some code :P
     function Execute(vStack: TrunStack): Boolean; virtual;
     function Operate(vStack: TrunStack; AnOperator: TopOperator): Boolean; virtual;
@@ -165,6 +163,8 @@ type
     function ToFloat(out outValue: Float): Boolean; virtual;
     function ToInteger(out outValue: int): Boolean; virtual;
   end;
+
+{-------- Objects --------}
 
   { TsoObjects }
 
@@ -215,7 +215,15 @@ type
     property Items: TsrdBlock read FItems;
   end;
 
-  TsoBranch = class(TsoBlock)
+  TsoBranch = class(TsoBlock) //Todo rename tp scope
+  public
+  end;
+
+  TsoMain = class(TsoBranch)
+  public
+    constructor Create; override;
+    destructor Destroy; override;
+    function Execute(vStack: TrunStack):Boolean; override;
   end;
 
   { TsoScope }
@@ -231,7 +239,7 @@ type
     property Items: TsrdScope read FItems;
   end;}
 
-(**** Common Objects *****)
+{-------- Const Objects --------}
 
   { TsrdNone }
 
@@ -299,59 +307,7 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-{* Run Time Engine *}
-
-{ TsrdVariable }
-
-  TsrdVariable = class(TsardObject)
-  private
-    FName: string;
-    procedure SetName(AValue: string);
-  public
-    property Name: string read FName write SetName;
-  end;
-
-  { TsardVariables }
-
-  TsrdVariables = class(TsardObjectList)
-  private
-    function GetItem(Index: Integer): TsrdVariable;
-  public
-    property Items[Index: Integer]: TsrdVariable read GetItem; default;
-    function Find(vName: string): TsrdVariable;
-  end;
-
-  { TrunStackItem }
-
-  TrunStackItem = class(TsardObject)
-  private
-    FResult: TsrdResult;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    property Result: TsrdResult read FResult;
-  end;
-
-  { TrunStack }
-
-  TrunStack = class(TsardStack)
-  private
-    function GetCurrent: TrunStackItem;
-  public
-    procedure Push(vObject: TrunStackItem);
-    function New: TrunStackItem;
-    property Current: TrunStackItem read GetCurrent;
-  end;
-
-  { TsrdRun }
-
-  TsrdRun = class(TsardObject)
-  public
-    Stack: TsardStack;
-    constructor Create;
-    destructor Destroy; override;
-    function Execute(vStack: TrunStack; vBlock: TsrdBlock):Boolean;
-  end;
+{-------- Operators --------}
 
   { TopOperator }
 
@@ -471,6 +427,50 @@ type
   public
     constructor Create; override;
   end;
+
+{-------- Run Time Engine --------}
+
+  { TsrdVariable }
+
+    TsrdVariable = class(TsardObject)
+    private
+      FName: string;
+      procedure SetName(AValue: string);
+    public
+      property Name: string read FName write SetName;
+    end;
+
+    { TsardVariables }
+
+    TsrdVariables = class(TsardObjectList)
+    private
+      function GetItem(Index: Integer): TsrdVariable;
+    public
+      property Items[Index: Integer]: TsrdVariable read GetItem; default;
+      function Find(vName: string): TsrdVariable;
+    end;
+
+    { TrunStackItem }
+
+    TrunStackItem = class(TsardObject)
+    private
+      FResult: TsrdResult;
+    public
+      constructor Create;
+      destructor Destroy; override;
+      property Result: TsrdResult read FResult;
+    end;
+
+    { TrunStack }
+
+    TrunStack = class(TsardStack)
+    private
+      function GetCurrent: TrunStackItem;
+    public
+      procedure Push(vObject: TrunStackItem);
+      function New: TrunStackItem;
+      property Current: TrunStackItem read GetCurrent;
+    end;
 
   { TsrdEngine }
 
@@ -1214,21 +1214,20 @@ end;
 
 { TsoRun }
 
-constructor TsrdRun.Create;
+constructor TsoMain.Create;
 begin
   inherited Create;
-  Stack := TsardStack.Create;
 end;
 
-destructor TsrdRun.Destroy;
+destructor TsoMain.Destroy;
 begin
-  FreeAndNil(Stack);
   inherited Destroy;
 end;
 
-function TsrdRun.Execute(vStack: TrunStack; vBlock: TsrdBlock): Boolean;
+function TsoMain.Execute(vStack: TrunStack): Boolean;
 begin
-  Result := vBlock.Execute(vStack);
+//  Result := Block.Execute(vStack);
+  Result := inherited Execute(vStack);
   Writeln(vStack.Current.Result.AnObject.AsString)//debug
 end;
 
@@ -1246,19 +1245,9 @@ begin
   Result := False;
 end;
 
-procedure TsoObject.Created;
-begin
-end;
-
 constructor TsoObject.Create;
 begin
   inherited Create;
-end;
-
-procedure TsoObject.AfterConstruction;
-begin
-  inherited AfterConstruction;
-  Created;
 end;
 
 function TsoObject.This: TsoObject;

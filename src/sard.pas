@@ -29,17 +29,11 @@ type
     procedure TriggerToken(Token: String; TokenID: Integer); override;
   end;
 
-  { TmyScript }
-
-  TmyScript = class(TsrdScript)
-  protected
-  end;
-
 function Execute(Lines: TStrings): Boolean;
 
 implementation
 
-{ TmyScript }
+{ TmyFeeder }
 
 procedure TmyParser.TriggerToken(Token: String; TokenID: Integer);
 begin
@@ -49,35 +43,32 @@ end;
 
 function Execute(Lines: TStrings): Boolean;
 var
-  Scanner: TmyScript;
+  Scanners: TsrdScanners;
+  Feeder: TsrdFeeder;
   Parser: TsrdParser;
-  Block: TsrdBlock;
   Stack: TrunStack;
-  Run: TsrdRun;
+  Main: TsoMain;
 begin
-  //sardEngine.Run(Lines);
   WriteLn('-------------------------------');
-  Scanner := TmyScript.Create;
-  try
-    Block := TsrdBlock.Create;
-    Block.New;
-    Parser := TmyParser.Create(Block);
-    Scanner.Scanners.Parser := Parser;
-    Scanner.Scan(Lines);
-    Scanner.Scanners.Parser := nil;
 
-    Run := TsrdRun.Create;
-    Stack := TrunStack.Create;
-    Stack.New;
-    Run.Execute(Stack, Block);
+  Main := TsoMain.Create;
 
-    FreeAndNil(Stack);
-    FreeAndNil(Run);
-    FreeAndNil(Parser);
-    FreeAndNil(Block);
-  finally
-    FreeAndNil(Scanner);
-  end;
+  Parser := TmyParser.Create(Main.Items);
+  Scanners := TsrdScanners.Create(Parser);
+  Feeder := TsrdFeeder.Create(Scanners);
+
+  Feeder.Scan(Lines);
+
+  Stack := TrunStack.Create;
+  Stack.New;
+  Main.Execute(Stack);
+
+  FreeAndNil(Stack);
+  FreeAndNil(Main);
+  FreeAndNil(Parser);
+  FreeAndNil(Scanners);
+  FreeAndNil(Feeder);
+
   Result := True;
 end;
 
