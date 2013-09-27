@@ -135,7 +135,7 @@ type
   end;
 
   IsrdBlock = interface['{CB4C0FA1-E233-431E-8CC2-3755F62D93F2}']
-    function Execute(vStack: TrunStack): Boolean;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
   end;
 
   { TsoObject }
@@ -148,8 +148,8 @@ type
   public
     constructor Create; virtual;
     function This: TsoObject; //return the same object, stupid but save some code :P
-    function Execute(vStack: TrunStack): Boolean; virtual;
-    function Execute(vStack: TrunStack; AnOperator: TopOperator): Boolean; virtual;
+    //function Execute(vStack: TrunStack): Boolean; virtual;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual;
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone(WithValue: Boolean = True): TsoObject; virtual;
     property ObjectType: TsrdObjectType read FObjectType;
@@ -211,7 +211,7 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack): Boolean; override;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     property Items: TsrdBlock read FItems;
   end;
 
@@ -223,7 +223,7 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack):Boolean; override;
+    function Execute(vStack: TrunStack; AOperator: TopOperator):Boolean; override;
   end;
 
   { TsoScope }
@@ -264,7 +264,7 @@ type
     Value: int;
     procedure Created; override;
     procedure Assign(FromObject: TsoObject); override;
-    function Execute(vStack: TrunStack; AnOperator: TopOperator): Boolean; override;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
     function ToInteger(out outValue: int): Boolean; override;
@@ -558,7 +558,7 @@ begin
   inherited Destroy;
 end;
 
-function TsoBlock.Execute(vStack: TrunStack): Boolean;
+function TsoBlock.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
   Result := Items.Execute(vStack);
 end;
@@ -790,17 +790,12 @@ var
       if vStack.Current.Result.AnObject = nil then
         vStack.Current.Result.AnObject := O.Clone(False);
       Result := DoExecute(vStack, O);
-      if not Result then
-      begin
-        Result := O.Execute(vStack, Self);
-        //Ok let me do it. : the TopPlus said
-      end;
     end;
   end;
 begin
   aResult := TsrdResult.Create;
   try
-    if vObject.Execute(vStack) then //it is a block
+    if not vObject.Execute(vStack, Self) then //it is a block
     begin
       if aResult.AnObject <> nil then
         ExecuteNow(aResult.AnObject)
@@ -1087,7 +1082,7 @@ begin
   end;
 end;
 
-function TsoInteger.Execute(vStack: TrunStack; AnOperator: TopOperator): Boolean;
+function TsoInteger.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
   Result := False;
   if vStack.Current.Result.AnObject = nil then
@@ -1098,8 +1093,8 @@ begin
   else if vStack.Current.Result.AnObject is TsoInteger then
   begin
     Result := True;
-    WriteLn(IntToStr(TsoInteger(vStack.Current.Result.AnObject).Value) + ' '+ AnOperator.Code+' ' +IntToStr(Value));
-    case AnOperator.Code of
+    WriteLn(IntToStr(TsoInteger(vStack.Current.Result.AnObject).Value) + ' '+ AOperator.Code+' ' +IntToStr(Value));
+    case AOperator.Code of
       '+': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value + Value;
       '-': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value - Value;
       '*': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value * Value;
@@ -1224,10 +1219,10 @@ begin
   inherited Destroy;
 end;
 
-function TsoMain.Execute(vStack: TrunStack): Boolean;
+function TsoMain.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
 //  Result := Block.Execute(vStack);
-  Result := inherited Execute(vStack);
+  Result := inherited Execute(vStack, AOperator);
   Writeln(vStack.Current.Result.AnObject.AsString)//debug
 end;
 
@@ -1255,12 +1250,7 @@ begin
   Result := Self;
 end;
 
-function TsoObject.Execute(vStack: TrunStack): Boolean;
-begin
-  Result := False;
-end;
-
-function TsoObject.Execute(vStack: TrunStack; AnOperator: TopOperator): Boolean;
+function TsoObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
   Result := False;
 end;

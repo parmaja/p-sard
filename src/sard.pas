@@ -61,7 +61,7 @@ begin
 
   Stack := TrunStack.Create;
   Stack.New;
-  Main.Execute(Stack);
+  Main.Execute(Stack, nil);
 
   FreeAndNil(Stack);
   FreeAndNil(Main);
