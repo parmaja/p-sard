@@ -149,7 +149,7 @@ type
     constructor Create; virtual;
     function This: TsoObject; //return the same object, stupid but save some code :P
     function Execute(vStack: TrunStack): Boolean; virtual;
-    function Operate(vStack: TrunStack; AnOperator: TopOperator): Boolean; virtual;
+    function Execute(vStack: TrunStack; AnOperator: TopOperator): Boolean; virtual;
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone(WithValue: Boolean = True): TsoObject; virtual;
     property ObjectType: TsrdObjectType read FObjectType;
@@ -264,7 +264,7 @@ type
     Value: int;
     procedure Created; override;
     procedure Assign(FromObject: TsoObject); override;
-    function Operate(vStack: TrunStack; AnOperator: TopOperator): Boolean; override;
+    function Execute(vStack: TrunStack; AnOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
     function ToInteger(out outValue: int): Boolean; override;
@@ -313,13 +313,13 @@ type
 
   TopOperator = class(TsardObject)
   protected
-    function DoOperate(vStack: TrunStack; vObject: TsoObject): Boolean; virtual;
+    function DoExecute(vStack: TrunStack; vObject: TsoObject): Boolean; virtual;
   public
     Code: string;
     Name: string;
     Level: Integer;
     Description: string;
-    function Operate(vStack: TrunStack; vObject: TsoObject): Boolean;
+    function Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
     constructor Create; virtual;
   end;
 
@@ -767,15 +767,15 @@ end;
 
 { TopOperator }
 
-function TopOperator.DoOperate(vStack: TrunStack; vObject: TsoObject): Boolean;
+function TopOperator.DoExecute(vStack: TrunStack; vObject: TsoObject): Boolean;
 begin
   Result := False;
 end;
 
-function TopOperator.Operate(vStack: TrunStack; vObject: TsoObject): Boolean;
+function TopOperator.Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
 var
   aResult: TsrdResult;
-  procedure OperateNow(O: TsoObject);
+  procedure ExecuteNow(O: TsoObject);
   begin
     {
       if previouse object is null and there is a operator we considr that privouse object is empty one like 0 or ''
@@ -789,10 +789,10 @@ var
     begin
       if vStack.Current.Result.AnObject = nil then
         vStack.Current.Result.AnObject := O.Clone(False);
-      Result := DoOperate(vStack, O);
+      Result := DoExecute(vStack, O);
       if not Result then
       begin
-        Result := O.Operate(vStack, Self);
+        Result := O.Execute(vStack, Self);
         //Ok let me do it. : the TopPlus said
       end;
     end;
@@ -803,10 +803,10 @@ begin
     if vObject.Execute(vStack) then //it is a block
     begin
       if aResult.AnObject <> nil then
-        OperateNow(aResult.AnObject)
+        ExecuteNow(aResult.AnObject)
     end
     else//<-- maybe not !!!
-      OperateNow(vObject);
+      ExecuteNow(vObject);
   finally
     aResult.Free;
   end;
@@ -961,7 +961,7 @@ begin
     raise EsardException.Create('Object not set!');
   {if AnOperator = nil then
     raise EsardException.Create('Object not set!');}
-  Result := AnOperator.Operate(vStack, AnObject);//Even AnOperator is nil it will work
+  Result := AnOperator.Execute(vStack, AnObject);//Even AnOperator is nil it will work
 end;
 
 { TsrdClass }
@@ -1087,7 +1087,7 @@ begin
   end;
 end;
 
-function TsoInteger.Operate(vStack: TrunStack; AnOperator: TopOperator): Boolean;
+function TsoInteger.Execute(vStack: TrunStack; AnOperator: TopOperator): Boolean;
 begin
   Result := False;
   if vStack.Current.Result.AnObject = nil then
@@ -1260,7 +1260,7 @@ begin
   Result := False;
 end;
 
-function TsoObject.Operate(vStack: TrunStack; AnOperator: TopOperator): Boolean;
+function TsoObject.Execute(vStack: TrunStack; AnOperator: TopOperator): Boolean;
 begin
   Result := False;
 end;
