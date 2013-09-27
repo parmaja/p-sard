@@ -450,7 +450,6 @@ begin
     if (Items[i].Index <> Result) and Items[i].Accept(Text, Column) then
     begin
       Result := i;
-//      WriteLn('Accept: '+Items[i].ClassName);
       break;
     end;
   end;

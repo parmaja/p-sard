@@ -527,10 +527,12 @@ procedure TsrdDQString_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
 begin
+  Inc(Column);//First char
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
   Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknString));
+  Inc(Column);
 end;
 
 function TsrdDQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -544,10 +546,12 @@ procedure TsrdSQString_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
 begin
+  Inc(Column);
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
   Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknString));
+  Inc(Column);
 end;
 
 function TsrdSQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -559,6 +563,7 @@ end;
 
 procedure TsrdBlockComment_Scanner.Scan(const Text: string; var Column: Integer);
 begin
+  Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) do
   begin
     if (CheckText('*/', Text, Column)) then
@@ -579,6 +584,7 @@ end;
 
 procedure TsrdLineComment_Scanner.Scan(const Text: string; var Column: Integer);
 begin
+  Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
   //Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c)); ignore comment

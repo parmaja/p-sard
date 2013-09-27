@@ -42,7 +42,7 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  InputEdit.Lines.Text := '10 + ( 2 * (6 * 6 ) )';
+  InputEdit.Lines.Text := '10 + ( 2 * (6 * 6))';
 end;
 
 procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
