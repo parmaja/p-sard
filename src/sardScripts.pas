@@ -17,6 +17,7 @@ unit sardScripts;
     It is case insensitive
     Declareing after the name
     Assigning ":=", compare "=", object child "."
+    Dot as Identifier separator "."
     Not equal operator "<>"
 
     foo:{
@@ -47,6 +48,9 @@ unit sardScripts;
    foo:integer{
      := 10;
    }
+
+   Description: new comment but saved with the objects.
+   {* This object not usfule dont use it *}
 *)
 
 (*
@@ -96,10 +100,12 @@ const
   sBracketCloseChars = [')', ']', '}'];
   sBracketChars = sBracketOpoenChars + sBracketCloseChars;
 
-  aControlsOpenChars = [':', '.', ',', ';', '~'] + sBracketChars;
+  aControlsOpenChars = [':', ',', ';', '~'] + sBracketChars;
   sControlsChars = aControlsOpenChars + ['='];
 
   sOperatorOpenChars = ['+', '-', '*', '/', '<', '>', '^', '&', '|', '!', '=', '$', '@']; //<--Stupid idea, need to make it as array
+
+  sIdentifierSeparator = '.';
 
 type
   TsrdTokenKinds = (tknWhitespace, tknOperator, tknControl, tknNumber, tknColor, tknString, tknIdentifier, tknComment);
@@ -325,13 +331,13 @@ begin
     begin
       if FStack.Current.Operation <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
-      Stack.Pop.Free;
+      Stack.Pop;
     end;
     brBracket:
     begin
       if FStack.Current.Operation <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
-      Stack.Pop.Free;
+      Stack.Pop;
     end;
   end;
 end;
@@ -518,7 +524,7 @@ end;
 
 function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := sardEngine.IsIdentifier(Text[Column], True);//need to improve to accept unicode chars
+  Result := sardEngine.IsIdentifier(Text[Column], True);
 end;
 
 { TsrdDQStringScanner }

@@ -46,9 +46,12 @@ begin
   { Run }
   Stack := TrunStack.Create;
   Stack.Push;
+  Stack.Current.Scope.Variables.Register('__ver__'); //just for test
+  Stack.Current.Scope.Variables.SetValue('__ver__', TsoInteger.Create(100));
   Main.Execute(Stack, nil);
-  WriteLn('=== Result:  ' + Stack.Current.Result.AnObject.AsString + '  ===');
-
+  if Stack.Current.Result.AnObject <> nil then
+    WriteLn('=== Result:  ' + Stack.Current.Result.AnObject.AsString + '  ===');
+  Stack.Pop;
 
   { End }
   FreeAndNil(Stack);

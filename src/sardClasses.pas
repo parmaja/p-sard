@@ -189,8 +189,8 @@ type
   public
     function IsEmpty: Boolean;
     procedure Push(vObject: TObject);
-    function Pop: TObject;
-    procedure Delete;
+    procedure Pop;
+    function Pull: TObject; //Pop but do not delete delete the ibject
     function Peek: TObject;
     property Current: TObject read GetCurrent;
     property CurrentItem: TsardStackItem read FCurrentItem;
@@ -258,7 +258,7 @@ procedure TsardParser.TriggerControl(AControl: TsardControl);
 begin
 end;
 
-procedure TsardStack.Delete;
+procedure TsardStack.Pop;
 var
   aItem: TsardStackItem;
   aObject: TObject;
@@ -295,7 +295,7 @@ begin
   Result := FCurrentItem.AnObject;
 end;
 
-function TsardStack.Pop: TObject;
+function TsardStack.Pull: TObject;
 var
   aItem: TsardStackItem;
 begin

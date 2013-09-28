@@ -39,6 +39,14 @@ soVariable find it is value in the stack and use it in formual
 soVariable create a runtime variable in the stack
 x := 10;
 }
+
+{
+  Prefix guid
+  srd global classes inherited from sard
+  run Runtime classes
+  so Sard objects, that created when compile the source
+  op Operators objects
+}
 interface
 
 uses
@@ -61,15 +69,9 @@ type
   TsoObjectClass = class of TsoObject;
 
   TopOperator = class;
-
+  TrunResult = class;
   TrunStack = class;
-
-  { TsrdResult }
-
-  TsrdResult = class(TsardObject)
-    AnObject: TsoObject;
-  end;
-
+  TrunVariables = class;
 
   { TsrdStatementItem }
 
@@ -125,14 +127,14 @@ type
   end;
 
   IsrdOperate = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
-    function Add(var vResult: TsrdResult): Boolean;
-    function Sub(var vResult: TsrdResult): Boolean;
-    function Mulpiply(var vResult: TsrdResult): Boolean;
-    function Divide(var vResult: TsrdResult): Boolean;
+    function Add(var vResult: TrunResult): Boolean;
+    function Sub(var vResult: TrunResult): Boolean;
+    function Mulpiply(var vResult: TrunResult): Boolean;
+    function Divide(var vResult: TrunResult): Boolean;
   end;
 
   IsrdCompare = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
-    function Compare(var vResult: TsrdResult): TsrdCompare;
+    function Compare(var vResult: TrunResult): TsrdCompare;
   end;
 
   IsrdBlock = interface['{CB4C0FA1-E233-431E-8CC2-3755F62D93F2}']
@@ -148,7 +150,6 @@ type
   public
     constructor Create; virtual;
     function This: TsoObject; //return the same object, stupid but save some code :P
-    //function Execute(vStack: TrunStack): Boolean; virtual;
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual; abstract;
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone(WithValue: Boolean = True): TsoObject; virtual;
@@ -218,7 +219,6 @@ type
     FName: string;
     procedure SetName(AValue: string);
   public
-    Value: TsrdResult;
     procedure Created; override;
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     property Name: string read FName write SetName;
@@ -267,10 +267,14 @@ type
 
   { TsrdInteger }
 
+  { TsoInteger }
+
   TsoInteger = class(TsoNumber)
+  protected
+    procedure Created; override;
   public
     Value: int;
-    procedure Created; override;
+    constructor Create(AValue: int); overload;
     procedure Assign(FromObject: TsoObject); override;
     function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
@@ -438,35 +442,64 @@ type
 
 {-------- Run Time Engine --------}
 
-  { TsrdVariable }
+  { TrunVariable }
 
-    TsrdVariable = class(TsardObject)
+    TrunVariable = class(TsardObject)
     private
       FName: string;
       procedure SetName(AValue: string);
     public
+      Value: TrunResult;
       property Name: string read FName write SetName;
     end;
 
     { TsardVariables }
 
-    TsrdVariables = class(TsardObjectList)
+    { TrunVariables }
+
+    TrunVariables = class(TsardObjectList)
     private
-      function GetItem(Index: Integer): TsrdVariable;
+      function GetItem(Index: Integer): TrunVariable;
     public
-      property Items[Index: Integer]: TsrdVariable read GetItem; default;
-      function Find(vName: string): TsrdVariable;
+      property Items[Index: Integer]: TrunVariable read GetItem; default;
+      function Find(vName: string): TrunVariable;
+      function Register(vName: string): TrunVariable;
+      function SetValue(vName: string; vValue: TsoObject): TrunVariable;
+    end;
+
+    { TrunResult }
+
+    TrunResult = class(TsardObject)
+    private
+      FAnObject: TsoObject;
+      procedure SetAnObject(AValue: TsoObject);
+    public
+      destructor Destroy; override;
+      property AnObject: TsoObject read FAnObject write SetAnObject;
+    end;
+
+    { TsrdScope }
+
+    TsrdScope = class(TsardObject)
+    private
+      FVariables: TrunVariables;
+    public
+      constructor Create;
+      destructor Destroy; override;
+      property Variables: TrunVariables read FVariables;
     end;
 
     { TrunStackItem }
 
     TrunStackItem = class(TsardObject)
     private
-      FResult: TsrdResult;
+      FResult: TrunResult;
+      FScope: TsrdScope;
     public
       constructor Create;
       destructor Destroy; override;
-      property Result: TsrdResult read FResult;
+      property Result: TrunResult read FResult;
+      property Scope: TsrdScope read FScope;
     end;
 
     { TrunStack }
@@ -477,7 +510,7 @@ type
     public
       procedure Push(vObject: TrunStackItem);
       function Push: TrunStackItem; overload;
-      function Pop: TrunStackItem;
+      function Pull: TrunStackItem;
       property Current: TrunStackItem read GetCurrent;
     end;
 
@@ -516,6 +549,38 @@ begin
   Result := FsardEngine;
 end;
 
+{ TrunResult }
+
+procedure TrunResult.SetAnObject(AValue: TsoObject);
+begin
+  if FAnObject <> AValue then
+  begin
+    if FAnObject <> nil then
+      FreeAndNil(FAnObject);
+    FAnObject :=AValue;
+  end;
+end;
+
+destructor TrunResult.Destroy;
+begin
+  FreeAndNil(FAnObject);
+  inherited Destroy;
+end;
+
+{ TsrdScope }
+
+constructor TsrdScope.Create;
+begin
+  inherited Create;
+  FVariables := TrunVariables.Create;
+end;
+
+destructor TsrdScope.Destroy;
+begin
+  FreeAndNil(FVariables);
+  inherited Destroy;
+end;
+
 { TsoConstObject }
 
 function TsoConstObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
@@ -537,12 +602,15 @@ end;
 
 constructor TrunStackItem.Create;
 begin
-  FResult := TsrdResult.Create;
+  inherited;
+  FResult := TrunResult.Create;
+  FScope := TsrdScope.Create;
 end;
 
 destructor TrunStackItem.Destroy;
 begin
   FreeAndNil(FResult);
+  FreeAndNil(FScope);
   inherited Destroy;
 end;
 
@@ -564,9 +632,9 @@ begin
   Push(Result);
 end;
 
-function TrunStack.Pop: TrunStackItem;
+function TrunStack.Pull: TrunStackItem;
 begin
-  Result := (inherited Pop) as TrunStackItem;
+  Result := (inherited Pull) as TrunStackItem;
 end;
 
 { TsoBlock }
@@ -586,11 +654,11 @@ begin
   try
     Result := Items.Execute(vStack);
   finally
-    vStack.Pop;
+    vStack.Pull;
   end;
   if T.Result.AnObject <> nil then
     T.Result.AnObject.Execute(vStack, AOperator);
-
+  FreeAndNil(T);
   WriteLn('Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level));
   if AOperator <> nil then
     Write('{'+ AOperator.ClassName+'}');
@@ -610,12 +678,12 @@ end;
 
 { TsardVariables }
 
-function TsrdVariables.GetItem(Index: Integer): TsrdVariable;
+function TrunVariables.GetItem(Index: Integer): TrunVariable;
 begin
-  Result := inherited Items[Index] as TsrdVariable;
+  Result := inherited Items[Index] as TrunVariable;
 end;
 
-function TsrdVariables.Find(vName: string): TsrdVariable;
+function TrunVariables.Find(vName: string): TrunVariable;
 var
   i: Integer;
 begin
@@ -630,9 +698,27 @@ begin
   end;
 end;
 
-{ TsrdVariable }
+function TrunVariables.Register(vName: string): TrunVariable;
+begin
+  Result := Find(vName);
+  if Result <> nil then
+  begin
+    Result := TrunVariable.Create;
+    Result.Name := vName;
+    Add(Result);
+  end;
+end;
 
-procedure TsrdVariable.SetName(AValue: string);
+function TrunVariables.SetValue(vName: string; vValue: TsoObject): TrunVariable;
+begin
+  Result := Find(vName);
+  if Result <> nil then
+    Result.Value.AnObject := vValue;
+end;
+
+{ TrunVariable }
+
+procedure TrunVariable.SetName(AValue: string);
 begin
   if FName =AValue then Exit;
   FName :=AValue;
@@ -753,10 +839,17 @@ begin
 end;
 
 function TsoVariable.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+var
+  v: TrunVariable;
 begin
+  v := vStack.Current.Scope.Variables.Register(Name);
+  if v <> nil then
+  begin
+    if v.Value.AnObject <> nil then
+      v.Value.AnObject.Execute(vStack, AOperator);
+  end;
 end;
 
-{ TsrdBranch }
 {
 procedure TsoScope.Created;
 begin
@@ -829,7 +922,7 @@ end;
 (*
 function TopOperator.Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
 var
-  aResult: TsrdResult;
+  aResult: TrunResult;
   procedure ExecuteNow(O: TsoObject);
   begin
     {
@@ -848,7 +941,7 @@ var
     end;
   end;
 begin
-  aResult := TsrdResult.Create;
+  aResult := TrunResult.Create;
   try
     if not vObject.Execute(vStack, Self) then //it is a block
     begin
@@ -1126,6 +1219,12 @@ procedure TsoInteger.Created;
 begin
   inherited Created;
   FObjectType := otInteger;
+end;
+
+constructor TsoInteger.Create(AValue: int);
+begin
+  inherited Create;
+  Value := AValue;
 end;
 
 procedure TsoInteger.Assign(FromObject: TsoObject);
