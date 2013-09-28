@@ -43,6 +43,8 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   InputEdit.Lines.Text := '10 + ( 2 * (6 * 6))';
+  if FileExistsUTF8(Application.Location + 'recent.sard') then
+    InputEdit.Lines.LoadFromFile(Application.Location + 'recent.sard');
 end;
 
 procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -53,6 +55,7 @@ end;
 
 procedure TForm1.Run;
 begin
+  InputEdit.Lines.SaveToFile(Application.Location + 'recent.sard');
   Execute(InputEdit.Lines);
 end;
 

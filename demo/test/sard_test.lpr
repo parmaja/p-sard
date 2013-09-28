@@ -7,12 +7,14 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
+  Classes,
   Forms, main, sard, sardScripts, sardObjects;
 
 {$R *.res}
 
 begin
   RequireDerivedFormResource := True;
+  Application.BidiMode := bdLeftToRight;
   Application.Initialize;
   Application.CreateForm(TForm1, Form1);
   Application.Run;

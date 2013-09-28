@@ -450,6 +450,8 @@ type
       procedure SetName(AValue: string);
     public
       Value: TrunResult;
+      constructor Create;
+      destructor Destroy; override;
       property Name: string read FName write SetName;
     end;
 
@@ -701,7 +703,7 @@ end;
 function TrunVariables.Register(vName: string): TrunVariable;
 begin
   Result := Find(vName);
-  if Result <> nil then
+  if Result = nil then
   begin
     Result := TrunVariable.Create;
     Result.Name := vName;
@@ -722,6 +724,18 @@ procedure TrunVariable.SetName(AValue: string);
 begin
   if FName =AValue then Exit;
   FName :=AValue;
+end;
+
+constructor TrunVariable.Create;
+begin
+  inherited Create;
+  Value := TrunResult.Create;
+end;
+
+destructor TrunVariable.Destroy;
+begin
+  FreeAndNil(Value);
+  inherited Destroy;
 end;
 
 { TopAssign }
