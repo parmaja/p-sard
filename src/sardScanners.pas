@@ -1,4 +1,4 @@
-unit sardScripts;
+unit sardScanners;
 {**
  *  This file is part of the "SARD"
  *

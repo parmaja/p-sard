@@ -17,7 +17,7 @@ interface
 
 uses
   Classes, SysUtils,
-  sardObjects, sardScripts;
+  sardObjects, sardScanners;
 
 function Execute(Lines: TStrings): Boolean;
 

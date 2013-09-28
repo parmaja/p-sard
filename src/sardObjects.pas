@@ -524,7 +524,7 @@ function sardEngine: TsrdEngine;
 implementation
 
 uses
-  sardScripts;
+  sardScanners;
 
 var
   FsardEngine: TsrdEngine = nil;
