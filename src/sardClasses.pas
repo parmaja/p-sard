@@ -162,7 +162,9 @@ type
   public
     procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
     procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;
-    procedure TriggerToken(Token: String; TokenID: Integer); virtual; abstract;
+    procedure TriggerIdentifier(Token: String); virtual; abstract;
+    procedure TriggerNumber(Token: String); virtual; abstract;
+    procedure TriggerString(Token: String); virtual; abstract;
     procedure TriggerOperator(AOperator: TsardObject); virtual; abstract; //TsardoOperator
     procedure TriggerControl(AControl: TsardControl); virtual;
   end;

@@ -234,19 +234,6 @@ type
     destructor Destroy; override;
   end;
 
-  { TsoScope }
-
-{  TsoScope = class(TsoObject, IsrdBlock)
-  protected
-    FItems: TsrdScope;
-    procedure Created; override;
-  public
-    constructor Create; override;
-    destructor Destroy; override;
-    function Execute(vStack: TrunStack): Boolean; override;
-    property Items: TsrdScope read FItems;
-  end;}
-
 {-------- Const Objects --------}
 
   { TsrdNone }
@@ -264,8 +251,6 @@ type
     //Assign
     //Do operator
   end;
-
-  { TsrdInteger }
 
   { TsoInteger }
 
@@ -864,32 +849,6 @@ begin
   end;
 end;
 
-{
-procedure TsoScope.Created;
-begin
-  inherited Created;
-  FObjectType := otBlock;
-end;
-
-constructor TsoScope.Create;
-begin
-  inherited Create;
-  FItems := TsrdScope.Create(nil);
-end;
-
-destructor TsoScope.Destroy;
-begin
-  FreeAndNil(FItems);
-  inherited Destroy;
-end;
-
-function TsoScope.Execute(vStack: TrunStack): Boolean;
-begin
-  //Just Forward
-  Result := Items.Execute(vStack);
-end;
-}
-
 { TopDivide }
 
 constructor TopDivide.Create;
@@ -932,43 +891,6 @@ function TopOperator.Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
 begin
   Result := False;
 end;
-
-(*
-function TopOperator.Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
-var
-  aResult: TrunResult;
-  procedure ExecuteNow(O: TsoObject);
-  begin
-    {
-      if previous object is null and there is a operator we considr that privouse object is empty one like 0 or ''
-      it is good to say  -10
-    }
-
-    if Self = nil then //TODO: If assign
-    //if vStack.Current.Result.AnObject = nil then
-      vStack.Current.Result.AnObject := O.Clone
-    else
-    begin
-      if vStack.Current.Result.AnObject = nil then
-        vStack.Current.Result.AnObject := O.Clone(False);
-      Result := DoExecute(vStack, O);
-    end;
-  end;
-begin
-  aResult := TrunResult.Create;
-  try
-    if not vObject.Execute(vStack, Self) then //it is a block
-    begin
-      if aResult.AnObject <> nil then
-        ExecuteNow(aResult.AnObject)
-    end
-    else//<-- maybe not !!!
-      ExecuteNow(vObject);
-  finally
-    aResult.Free;
-  end;
-end;
-*)
 
 constructor TopOperator.Create;
 begin
@@ -1062,6 +984,8 @@ begin
     Operators.RegisterOperator(TopLesser);
 
     Operators.RegisterOperator(TopPower);
+
+    Operators.RegisterOperator(TopAssign);
   end;
 end;
 
@@ -1109,7 +1033,6 @@ function TsrdEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := inherited IsIdentifier(vChar, vOpen);
 end;
-
 
 { TsrdStatementItem }
 

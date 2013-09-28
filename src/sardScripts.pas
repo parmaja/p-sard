@@ -108,8 +108,6 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdTokenKinds = (tknWhitespace, tknOperator, tknControl, tknNumber, tknColor, tknString, tknIdentifier, tknComment);
-
   TsrdState = (stateIdentifier, stateDeclare, stateAssign, stateBlock);
   TsrdStates = set of TsrdState;
 
@@ -158,7 +156,9 @@ type
     destructor Destroy; override;
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
-    procedure TriggerToken(Token: String; TokenID: Integer); override;
+    procedure TriggerIdentifier(Token: String); override;
+    procedure TriggerNumber(Token: String); override;
+    procedure TriggerString(Token: String); override;
     procedure TriggerControl(AControl: TsardControl); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
 
@@ -342,44 +342,41 @@ begin
   end;
 end;
 
-procedure TsrdParser.TriggerToken(Token: String; TokenID: Integer);
+procedure TsrdParser.TriggerIdentifier(Token: String);
 begin
-  case TsrdTokenKinds(TokenID) of
-    tknIdentifier:
+  with TsoVariable.Create do
+  begin
+    Name := Token;
+    Stack.Current.SetObject(This);
+  end;
+end;
+
+procedure TsrdParser.TriggerNumber(Token: String);
+begin
+  if pos('.', Token) > 0 then
+  begin
+    with TsoFloat.Create do
     begin
-      with TsoVariable.Create do
-      begin
-        Name := Token;
-        Stack.Current.SetObject(This);
-      end;
+      Stack.Current.SetObject(This);
+      Value := StrToFloat(Token);
     end;
-    tknNumber:
+  end
+  else
+  begin
+    with TsoInteger.Create do
     begin
-      if pos('.', Token) > 0 then
-      begin
-        with TsoFloat.Create do
-        begin
-          Stack.Current.SetObject(This);
-          Value := StrToFloat(Token);
-        end;
-      end
-      else
-      begin
-        with TsoInteger.Create do
-        begin
-          Stack.Current.SetObject(This);
-          Value := StrToInt64(Token);
-        end;
-      end;
+      Stack.Current.SetObject(This);
+      Value := StrToInt64(Token);
     end;
-    tknString:
-    begin
-      with TsoString.Create do
-      begin
-        Stack.Current.SetObject(This);
-        Value := Token;
-      end;
-    end;
+  end;
+end;
+
+procedure TsrdParser.TriggerString(Token: String);
+begin
+  with TsoString.Create do
+  begin
+    Stack.Current.SetObject(This);
+    Value := Token;
   end;
 end;
 
@@ -478,7 +475,7 @@ begin
   l := Length(Text);
   while (Column <= l) and (sardEngine.IsNumber(Text[Column], False)) do
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknNumber));
+  Scanners.Parser.TriggerNumber(MidStr(Text, c, Column - c));
 end;
 
 function TsrdNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -519,7 +516,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and (sardEngine.IsIdentifier(Text[Column], False)) do
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknIdentifier));
+  Scanners.Parser.TriggerIdentifier(MidStr(Text, c, Column - c));
 end;
 
 function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -537,7 +534,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknString));
+  Scanners.Parser.TriggerString(MidStr(Text, c, Column - c));
   Inc(Column);
 end;
 
@@ -556,7 +553,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), Ord(tknString));
+  Scanners.Parser.TriggerString(MidStr(Text, c, Column - c));
   Inc(Column);
 end;
 
@@ -593,7 +590,7 @@ begin
   Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
-  //Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c)); ignore comment
+  //Scanners.Parser.TriggerIdentifier(MidStr(Text, c, Column - c)); ignore comment
 end;
 
 function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
