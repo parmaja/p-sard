@@ -108,7 +108,7 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdState = (stateIdentifier, stateDeclare, stateAssign, stateBlock);
+  TsrdState = (stateDeclare, stateAssign, stateBlock, stateIdentifier, stateNumber, stateString, stateComment, stateOperator);
   TsrdStates = set of TsrdState;
 
   TsrdFeeder = class(TsardFeeder)
@@ -126,13 +126,19 @@ type
   { TsrdParserStackItem }
 
   TsrdParserStackItem = class(TsardObject)
+  private
+    FStates: TsrdStates;
   public
-    States: TsrdStates;
+    Identifier: string;
     Operation: TopOperator;
     Block: TsrdBlock;
   public
     procedure SetOperator(AOperation: TopOperator);
     procedure SetObject(AObject: TsoObject);
+    procedure SetState(AStates: TsrdStates);
+    procedure Reset;
+    procedure NewStatement;
+    property States: TsrdStates read FStates;
   end;
 
   { TsrdParserStack }
@@ -267,6 +273,24 @@ begin
   Operation := nil;
 end;
 
+procedure TsrdParserStackItem.SetState(AStates: TsrdStates);
+begin
+  FStates := FStates + AStates;
+end;
+
+procedure TsrdParserStackItem.Reset;
+begin
+  FStates := [];
+  Identifier := '';
+  Operation := nil;
+end;
+
+procedure TsrdParserStackItem.NewStatement;
+begin
+  Reset;
+  Block.Add;
+end;
+
 { TsrdParserStack }
 
 function TsrdParserStack.GetCurrent: TsrdParserStackItem;
@@ -308,12 +332,23 @@ procedure TsrdParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
   case vBracket of
     brCurly:
-      with TsoBranch.Create do
+      if Stack.Current.States = [stateIdentifier] then
       begin
-        Stack.Current.SetObject(This);
-        Stack.Push;
-        Stack.Current.Block := Items;
-      end;
+        with TsoClass.Create do
+        begin
+          Name := Stack.Current.Identifier;
+          Stack.Current.SetObject(This);
+          Stack.Push;
+          Stack.Current.Block := Items;
+        end;
+      end
+      else
+        with TsoBranch.Create do
+        begin
+          Stack.Current.SetObject(This);
+          Stack.Push;
+          Stack.Current.Block := Items;
+        end;
     brBracket:
       with TsoBlock.Create do
       begin
@@ -331,6 +366,8 @@ begin
     begin
       if FStack.Current.Operation <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
+{      if FStack.Current.Block.Count = 0 then
+        raise EsardException.Create('Hmmm why empty block!');}//Warning not Error
       Stack.Pop;
     end;
     brBracket:
@@ -344,10 +381,12 @@ end;
 
 procedure TsrdParser.TriggerIdentifier(Token: String);
 begin
+  Stack.Current.Identifier := Token;
   with TsoVariable.Create do
   begin
     Name := Token;
     Stack.Current.SetObject(This);
+    Stack.Current.SetState([stateIdentifier]);
   end;
 end;
 
@@ -369,6 +408,7 @@ begin
       Value := StrToInt64(Token);
     end;
   end;
+  Stack.Current.SetState([stateNumber]);
 end;
 
 procedure TsrdParser.TriggerString(Token: String);
@@ -378,6 +418,7 @@ begin
     Stack.Current.SetObject(This);
     Value := Token;
   end;
+  Stack.Current.SetState([stateString]);
 end;
 
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
@@ -387,14 +428,28 @@ begin
     begin
       if FStack.Current.Operation <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
-      Stack.Current.Block.Add;
+      Stack.Current.NewStatement;
     end;
     ctlAssign:
     begin
-//      if FStack.Current.Operation <> nil then
-//        raise EsardException.Create('There is opertator but you finished the block');
-      Stack.Current.States := Stack.Current.States + [stateAssign];
+      if (Stack.Current.States = []) or (Stack.Current.States = [stateIdentifier]) then
+      begin
+        Stack.Current.SetState([stateAssign]);
+      end
+      else
+        raise EsardException.Create('You can not use assignment here!');
     end;
+    ctlDeclare:
+      begin
+        if (Stack.Current.States = [stateIdentifier]) then
+        begin
+          Stack.Current.SetState([stateDeclare]);
+        end
+        else
+          raise EsardException.Create('You can not use assignment here!');
+      end
+    else
+      raise EsardException.Create('Not implemented yet, sorry :(');
   end;
 end;
 
@@ -403,6 +458,7 @@ begin
   if Stack.Current.Operation <> nil then
     raise EsardException.Create('Operator already set');
   Stack.Current.Operation := AOperator as TopOperator;
+  Stack.Current.SetState([stateOperator]);
 end;
 
 { TsrdControlScanner }

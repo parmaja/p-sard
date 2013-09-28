@@ -143,7 +143,7 @@ type
 
   { TsoObject }
 
-  TsoObject = class(TsardObject, IsrdObject)
+  TsoObject = class abstract(TsardObject, IsrdObject)
   private
   protected
     FObjectType: TsrdObjectType;
@@ -199,9 +199,15 @@ type
 
   { TsrdClass }
 
-  TsoClass = class(TsoObject)
+  { TsoClass }
+
+  TsoClass = class(TsoBlock)
+  private
+    FName: string;
+    procedure SetName(AValue: string);
   public
     procedure Created; override;
+    property Name: string read FName write SetName;
   end;
 
   { TsrdInstance }
@@ -225,6 +231,10 @@ type
   end;
 
   TsoBranch = class(TsoBlock) //Todo rename tp scope
+  public
+  end;
+
+  TsoDeclair = class(TsoBlock) //Todo rename tp scope
   public
   end;
 
@@ -429,77 +439,75 @@ type
 
   { TrunVariable }
 
-    TrunVariable = class(TsardObject)
-    private
-      FName: string;
-      procedure SetName(AValue: string);
-    public
-      Value: TrunResult;
-      constructor Create;
-      destructor Destroy; override;
-      property Name: string read FName write SetName;
-    end;
+  TrunVariable = class(TsardObject)
+  private
+    FName: string;
+    procedure SetName(AValue: string);
+  public
+    Value: TrunResult;
+    constructor Create;
+    destructor Destroy; override;
+    property Name: string read FName write SetName;
+  end;
 
-    { TsardVariables }
+  { TrunVariables }
 
-    { TrunVariables }
+  TrunVariables = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TrunVariable;
+  public
+    property Items[Index: Integer]: TrunVariable read GetItem; default;
+    function Find(vName: string): TrunVariable;
+    function Register(vName: string): TrunVariable;
+    function SetValue(vName: string; vValue: TsoObject): TrunVariable;
+  end;
 
-    TrunVariables = class(TsardObjectList)
-    private
-      function GetItem(Index: Integer): TrunVariable;
-    public
-      property Items[Index: Integer]: TrunVariable read GetItem; default;
-      function Find(vName: string): TrunVariable;
-      function Register(vName: string): TrunVariable;
-      function SetValue(vName: string; vValue: TsoObject): TrunVariable;
-    end;
+  { TrunResult }
 
-    { TrunResult }
+  TrunResult = class(TsardObject)
+  private
+    FAnObject: TsoObject;
+    procedure SetAnObject(AValue: TsoObject);
+  public
+    destructor Destroy; override;
+    property AnObject: TsoObject read FAnObject write SetAnObject;
+  end;
 
-    TrunResult = class(TsardObject)
-    private
-      FAnObject: TsoObject;
-      procedure SetAnObject(AValue: TsoObject);
-    public
-      destructor Destroy; override;
-      property AnObject: TsoObject read FAnObject write SetAnObject;
-    end;
+  { TsrdScope }
 
-    { TsrdScope }
+  TsrdScope = class(TsardObject)
+  private
+    FVariables: TrunVariables;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Variables: TrunVariables read FVariables;
+  end;
 
-    TsrdScope = class(TsardObject)
-    private
-      FVariables: TrunVariables;
-    public
-      constructor Create;
-      destructor Destroy; override;
-      property Variables: TrunVariables read FVariables;
-    end;
+  { TrunStackItem }
 
-    { TrunStackItem }
+  TrunStackItem = class(TsardObject)
+  private
+    FResult: TrunResult;
+    FScope: TsrdScope;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Result: TrunResult read FResult;
+    property Scope: TsrdScope read FScope;
+  end;
 
-    TrunStackItem = class(TsardObject)
-    private
-      FResult: TrunResult;
-      FScope: TsrdScope;
-    public
-      constructor Create;
-      destructor Destroy; override;
-      property Result: TrunResult read FResult;
-      property Scope: TsrdScope read FScope;
-    end;
+  { TrunStack }
 
-    { TrunStack }
-
-    TrunStack = class(TsardStack)
-    private
-      function GetCurrent: TrunStackItem;
-    public
-      procedure Push(vObject: TrunStackItem);
-      function Push: TrunStackItem; overload;
-      function Pull: TrunStackItem;
-      property Current: TrunStackItem read GetCurrent;
-    end;
+  TrunStack = class(TsardStack)
+  private
+    function GetCurrent: TrunStackItem;
+  public
+    procedure Push(vObject: TrunStackItem);
+    function Push: TrunStackItem; overload;
+    function Pull: TrunStackItem;
+    property Current: TrunStackItem read GetCurrent;
+  end;
 
   { TsrdEngine }
 
@@ -1047,6 +1055,14 @@ begin
 end;
 
 { TsrdClass }
+
+procedure TsoClass.SetName(AValue: string);
+begin
+  if FName =AValue then
+  begin
+    FName :=AValue;
+  end;
+end;
 
 procedure TsoClass.Created;
 begin
