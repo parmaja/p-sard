@@ -108,7 +108,7 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdState = (stateDeclare, stateAssign, stateBlock, stateIdentifier, stateNumber, stateString, stateComment, stateOperator);
+  TsrdState = (stateBlock, stateDeclare, stateAssign, stateIdentifier, stateNumber, stateString, stateOperator, stateComment);
   TsrdStates = set of TsrdState;
 
   TsrdFeeder = class(TsardFeeder)
@@ -129,11 +129,13 @@ type
   private
     FStates: TsrdStates;
   public
-    Identifier: string;
-    Operation: TopOperator;
+    TokenType: TsrdType; //Type of Identifier
+    AnOperator: TopOperator;
+    Token: string;
     Block: TsrdBlock;
   public
-    procedure SetOperator(AOperation: TopOperator);
+    procedure SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
+    procedure SetOperator(AOperator: TopOperator);
     procedure SetObject(AObject: TsoObject);
     procedure SetState(AStates: TsrdStates);
     procedure Reset;
@@ -160,11 +162,13 @@ type
   public
     constructor Create(ABlock: TsrdBlock);
     destructor Destroy; override;
+    procedure SetAsNumber;
+    procedure SetAsString;
+    procedure SetAsIdentifier;
+    procedure FlushToken;
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
-    procedure TriggerIdentifier(Token: String); override;
-    procedure TriggerNumber(Token: String); override;
-    procedure TriggerString(Token: String); override;
+    procedure TriggerToken(AToken: String; AType: TsrdType); override;
     procedure TriggerControl(AControl: TsardControl); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
 
@@ -258,19 +262,25 @@ uses
 
 { TsrdParserStackItem }
 
-procedure TsrdParserStackItem.SetOperator(AOperation: TopOperator);
+procedure TsrdParserStackItem.SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
 begin
-  if Operation = nil then
+  Token := AIdentifier;
+  TokenType := ATokenType;
+end;
+
+procedure TsrdParserStackItem.SetOperator(AOperator: TopOperator);
+begin
+  if AnOperator = nil then
     raise EsardException.Create('Operator is already set');
-  Operation := AOperation;
+  AnOperator := AOperator;
 end;
 
 procedure TsrdParserStackItem.SetObject(AObject: TsoObject);
 begin
   //  if Operation = nil then
   //   raise EsardParserException.Create('Need a operator');
-  Block.Statement.Add(Operation, AObject);
-  Operation := nil;
+  Block.Statement.Add(AnOperator, AObject);
+//  AnOperator := nil;
 end;
 
 procedure TsrdParserStackItem.SetState(AStates: TsrdStates);
@@ -281,8 +291,8 @@ end;
 procedure TsrdParserStackItem.Reset;
 begin
   FStates := [];
-  Identifier := '';
-  Operation := nil;
+  Token := '';
+  AnOperator := nil;
 end;
 
 procedure TsrdParserStackItem.NewStatement;
@@ -328,6 +338,60 @@ begin
   inherited Destroy;
 end;
 
+procedure TsrdParser.SetAsNumber;
+begin
+  with Stack.Current do
+  begin
+    if pos('.', Token) > 0 then
+    begin
+      with TsoFloat.Create do
+      begin
+        Stack.Current.SetObject(This);
+        Value := StrToFloat(Token);
+      end;
+    end
+    else
+    begin
+      with TsoInteger.Create do
+      begin
+        Stack.Current.SetObject(This);
+        Value := StrToInt64(Token);
+      end;
+    end;
+    Stack.Current.SetState([stateNumber]);
+  end;
+end;
+
+procedure TsrdParser.SetAsString;
+begin
+  with Stack.Current do
+  begin
+    with TsoString.Create do
+    begin
+      Stack.Current.SetObject(This);
+      Value := Token;
+    end;
+    Stack.Current.SetState([stateString]);
+  end;
+end;
+
+procedure TsrdParser.SetAsIdentifier;
+begin
+
+end;
+
+procedure TsrdParser.FlushToken;
+begin
+  case Stack.Current.TokenType of
+    tpString: SetAsString;
+    tpNumber: SetAsNumber;
+    tpIdentifier: SetAsIdentifier;
+  end;
+  Stack.Current.AnOperator := nil;
+  Stack.Current.Token := '';
+  Stack.Current.TokenType := tpNone;
+end;
+
 procedure TsrdParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
   case vBracket of
@@ -336,7 +400,7 @@ begin
       begin
         with TsoClass.Create do
         begin
-          Name := Stack.Current.Identifier;
+          Name := Stack.Current.Token;
           Stack.Current.SetObject(This);
           Stack.Push;
           Stack.Current.Block := Items;
@@ -361,10 +425,11 @@ end;
 
 procedure TsrdParser.TriggerClose(vBracket: TsardBracketKind);
 begin
+  FlushToken;
   case vBracket of
     brCurly:
     begin
-      if FStack.Current.Operation <> nil then
+      if FStack.Current.AnOperator <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
 {      if FStack.Current.Block.Count = 0 then
         raise EsardException.Create('Hmmm why empty block!');}//Warning not Error
@@ -372,53 +437,24 @@ begin
     end;
     brBracket:
     begin
-      if FStack.Current.Operation <> nil then
+      if FStack.Current.AnOperator <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
       Stack.Pop;
     end;
   end;
 end;
 
-procedure TsrdParser.TriggerIdentifier(Token: String);
+procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
 begin
-  Stack.Current.Identifier := Token;
+  Stack.Current.Token := AToken;
+  Stack.Current.TokenType := AType;
+{
   with TsoVariable.Create do
   begin
     Name := Token;
     Stack.Current.SetObject(This);
     Stack.Current.SetState([stateIdentifier]);
-  end;
-end;
-
-procedure TsrdParser.TriggerNumber(Token: String);
-begin
-  if pos('.', Token) > 0 then
-  begin
-    with TsoFloat.Create do
-    begin
-      Stack.Current.SetObject(This);
-      Value := StrToFloat(Token);
-    end;
-  end
-  else
-  begin
-    with TsoInteger.Create do
-    begin
-      Stack.Current.SetObject(This);
-      Value := StrToInt64(Token);
-    end;
-  end;
-  Stack.Current.SetState([stateNumber]);
-end;
-
-procedure TsrdParser.TriggerString(Token: String);
-begin
-  with TsoString.Create do
-  begin
-    Stack.Current.SetObject(This);
-    Value := Token;
-  end;
-  Stack.Current.SetState([stateString]);
+  end;}
 end;
 
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
@@ -426,8 +462,9 @@ begin
   case AControl of
     ctlSemicolon:
     begin
-      if FStack.Current.Operation <> nil then
+      if FStack.Current.AnOperator <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
+      FlushToken;
       Stack.Current.NewStatement;
     end;
     ctlAssign:
@@ -455,9 +492,10 @@ end;
 
 procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
-  if Stack.Current.Operation <> nil then
+  FlushToken;
+  if Stack.Current.AnOperator <> nil then
     raise EsardException.Create('Operator already set');
-  Stack.Current.Operation := AOperator as TopOperator;
+  Stack.Current.AnOperator := AOperator as TopOperator;
   Stack.Current.SetState([stateOperator]);
 end;
 
@@ -531,7 +569,7 @@ begin
   l := Length(Text);
   while (Column <= l) and (sardEngine.IsNumber(Text[Column], False)) do
     Inc(Column);
-  Scanners.Parser.TriggerNumber(MidStr(Text, c, Column - c));
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpNumber);
 end;
 
 function TsrdNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -572,7 +610,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and (sardEngine.IsIdentifier(Text[Column], False)) do
     Inc(Column);
-  Scanners.Parser.TriggerIdentifier(MidStr(Text, c, Column - c));
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpIdentifier);
 end;
 
 function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -590,7 +628,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
-  Scanners.Parser.TriggerString(MidStr(Text, c, Column - c));
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
   Inc(Column);
 end;
 
@@ -609,7 +647,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
-  Scanners.Parser.TriggerString(MidStr(Text, c, Column - c));
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
   Inc(Column);
 end;
 
@@ -646,7 +684,7 @@ begin
   Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
-  //Scanners.Parser.TriggerIdentifier(MidStr(Text, c, Column - c)); ignore comment
+  //Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c)); ignore comment
 end;
 
 function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;

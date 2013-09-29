@@ -150,7 +150,7 @@ type
   public
     constructor Create; virtual;
     function This: TsoObject; //return the same object, stupid but save some code :P
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual; abstract;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual;
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone(WithValue: Boolean = True): TsoObject; virtual;
     property ObjectType: TsrdObjectType read FObjectType;
@@ -580,17 +580,14 @@ end;
 
 function TsoConstObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
-   if vStack.Current.Result.AnObject = nil then
+  inherited;
+  if vStack.Current.Result.AnObject = nil then
   begin
     vStack.Current.Result.AnObject := Clone;
     Result := True;
   end
   else
     Result := DoExecute(vStack, AOperator);
-
-  WriteLn('Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level));
-  if AOperator <> nil then
-    Write('{'+ AOperator.ClassName+'}');
 end;
 
 { TrunStackItem }
@@ -644,6 +641,7 @@ function TsoBlock.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 var
   T: TrunStackItem;
 begin
+  inherited;
   Result := False;
   T := vStack.Push;
   try
@@ -849,6 +847,7 @@ function TsoVariable.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean
 var
   v: TrunVariable;
 begin
+  inherited;
   v := vStack.Current.Scope.Variables.Register(Name);
   if v <> nil then
   begin
@@ -1048,9 +1047,6 @@ function TsrdStatementItem.Execute(vStack: TrunStack): Boolean;
 begin
   if AnObject = nil then
     raise EsardException.Create('Object not set!');
-  {if AnOperator = nil then
-    raise EsardException.Create('Object not set!');}
-//  Result := AnOperator.Execute(vStack, AnObject);//Even AnOperator is nil it will work
   Result := AnObject.Execute(vStack, AnOperator);
 end;
 
@@ -1196,7 +1192,7 @@ begin
   if vStack.Current.Result.AnObject is TsoInteger then
   begin
     Result := True;
-    WriteLn(IntToStr(TsoInteger(vStack.Current.Result.AnObject).Value) + ' '+ AOperator.Code+' ' +IntToStr(Value));
+    WriteLn(IntToStr(TsoInteger(vStack.Current.Result.AnObject).Value) + ' '+ AOperator.Code + ' ' +IntToStr(Value));
     case AOperator.Code of
       '+': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value + Value;
       '-': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value - Value;
@@ -1334,11 +1330,23 @@ end;
 constructor TsoObject.Create;
 begin
   inherited Create;
+  Writeln('->'+ClassName);
 end;
 
 function TsoObject.This: TsoObject;
 begin
   Result := Self;
+end;
+
+function TsoObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+var
+  s: string;
+begin
+  s := StringOfChar('-', vStack.CurrentItem.Level)+'->';
+  s := s + 'Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level);
+  if AOperator <> nil then
+    s := s +'{'+ AOperator.ClassName+'}';
+  WriteLn(s);
 end;
 
 procedure TsoObject.Assign(FromObject: TsoObject);

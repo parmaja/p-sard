@@ -16,9 +16,11 @@ type
 
   TForm1 = class(TForm)
     Button1: TButton;
+    Button2: TButton;
     InputEdit: TSynEdit;
     SynCssSyn1: TSynCssSyn;
     procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   private
@@ -38,6 +40,11 @@ implementation
 procedure TForm1.Button1Click(Sender: TObject);
 begin
   Run;
+end;
+
+procedure TForm1.Button2Click(Sender: TObject);
+begin
+  Build(InputEdit.Lines);
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);

@@ -19,11 +19,39 @@ uses
   Classes, SysUtils,
   sardObjects, sardScanners;
 
+function Build(Lines: TStrings): Boolean;
 function Execute(Lines: TStrings): Boolean;
 
 implementation
 
 { TmyFeeder }
+
+function Build(Lines: TStrings): Boolean;
+var
+  Scanners: TsrdScanners;
+  Feeder: TsrdFeeder;
+  Parser: TsrdParser;
+  Main: TsoMain;
+begin
+  WriteLn('-------------------------------');
+
+  Main := TsoMain.Create;
+  { Compile }
+  Parser := TsrdParser.Create(Main.Items);
+  Scanners := TsrdScanners.Create(Parser);
+  Feeder := TsrdFeeder.Create(Scanners);
+
+  Feeder.Scan(Lines);
+
+  { End }
+  FreeAndNil(Parser);
+  FreeAndNil(Scanners);
+  FreeAndNil(Feeder);
+  FreeAndNil(Main);
+
+  Result := True;
+end;
+
 
 function Execute(Lines: TStrings): Boolean;
 var
@@ -42,12 +70,13 @@ begin
   Feeder := TsrdFeeder.Create(Scanners);
 
   Feeder.Scan(Lines);
-
+  WriteLn('');
+  WriteLn('-------------------------------');
   { Run }
   Stack := TrunStack.Create;
   Stack.Push;
-  Stack.Current.Scope.Variables.Register('__ver__'); //just for test
-  Stack.Current.Scope.Variables.SetValue('__ver__', TsoInteger.Create(100));
+  //Stack.Current.Scope.Variables.Register('__ver__'); //just for test
+  //Stack.Current.Scope.Variables.SetValue('__ver__', TsoInteger.Create(100));
   Main.Execute(Stack, nil);
   if Stack.Current.Result.AnObject <> nil then
     WriteLn('=== Result:  ' + Stack.Current.Result.AnObject.AsString + '  ===');

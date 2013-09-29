@@ -155,6 +155,8 @@ type
 
   end;
 
+  TsrdType = (tpNone, tpIdentifier, tpNumber, tpString, tpOperator, tpControl, tpComment);
+
   { TsardParser }
 
   TsardParser = class(TsardObject)
@@ -162,9 +164,9 @@ type
   public
     procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
     procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;
-    procedure TriggerIdentifier(Token: String); virtual; abstract;
-    procedure TriggerNumber(Token: String); virtual; abstract;
-    procedure TriggerString(Token: String); virtual; abstract;
+    procedure TriggerToken(AToken: String; AType: TsrdType); virtual; abstract;
+    //procedure TriggerNumber(Token: String); virtual; abstract;
+    //procedure TriggerString(Token: String); virtual; abstract;
     procedure TriggerOperator(AOperator: TsardObject); virtual; abstract; //TsardoOperator
     procedure TriggerControl(AControl: TsardControl); virtual;
   end;
