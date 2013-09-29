@@ -177,7 +177,7 @@ type
 
   { TsoConstObject }
 
-  TsoConstObject = class(TsoObject)
+  TsoConstObject = class abstract(TsoObject)
   protected
     function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual; abstract;
   public
@@ -186,59 +186,93 @@ type
 
   { TsoBlock }
 
-  TsoBlock = class(TsoObject, IsrdBlock)
+  TsoBlock = class abstract(TsoObject, IsrdBlock)
   protected
     FItems: TsrdBlock;
     procedure Created; override;
+    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
+    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override; final;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     property Items: TsrdBlock read FItems;
   end;
 
-  { TsrdClass }
+  { TsoNamedObject }
 
-  { TsoClass }
-
-  TsoClass = class(TsoBlock)
+  TsoNamedObject = class(TsoObject)
   private
     FName: string;
     procedure SetName(AValue: string);
   public
-    procedure Created; override;
     property Name: string read FName write SetName;
   end;
 
-  { TsrdInstance }
+  { TsoNamedBlock }
 
-  TsoInstance = class(TsoObject)
-  public
-    Value: TsoObject;
-    procedure Created; override;
-  end;
-
-  { TsoVariable }
-
-  TsoVariable = class(TsoObject)
+  TsoNamedBlock = class(TsoBlock)
   private
     FName: string;
     procedure SetName(AValue: string);
   public
+    property Name: string read FName write SetName;
+  end;
+
+  {*  Variables objects *}
+
+  { TsoInstance }
+
+  { it is a variable value like x in this "10 + x + 5" }
+
+  TsoInstance = class(TsoNamedObject)
+  private
+  public
+    Reference: TsoObject;
     procedure Created; override;
+  end;
+
+  { TsoAssign }
+
+  { It is assign a variable value, x:=10 + y}
+
+  TsoAssign = class(TsoNamedObject)
+  private
+  protected
+    procedure Created; override;
+  public
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
-    property Name: string read FName write SetName;
   end;
 
-  TsoBranch = class(TsoBlock) //Todo rename tp scope
+  { TsoDeclare }
+
+  TsoDeclare = class(TsoNamedBlock)
+  private
+  public
+    procedure Created; override;
+  end;
+
+  {* Just continued the parent block, Used with ( ) *}
+
+  { TsoDescend }
+
+  TsoDescend = class(TsoBlock)
+  protected
+    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
+    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
   public
   end;
 
-  TsoDeclair = class(TsoBlock) //Todo rename tp scope
+  { TsoSection }
+
+  TsoSection = class(TsoBlock) //Result of was droped until using := assign in the first of statment
+  protected
+    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
+    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
   public
   end;
 
-  TsoMain = class(TsoBranch)
+  TsoMain = class(TsoSection)
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -312,6 +346,10 @@ type
     function ToFloat(out outValue: Float): Boolean; override;
     function ToInteger(out outValue: int): Boolean; override;
     function ToBoolean(out outValue: Boolean): Boolean; override;
+  end;
+
+  TctlControl = class abstract(TsardObject)
+  public
   end;
 
 {-------- Operators --------}
@@ -491,6 +529,7 @@ type
     FResult: TrunResult;
     FScope: TsrdScope;
   public
+    Reference: TrunResult; //nil but if it exist we use it to assign it after block executed
     constructor Create;
     destructor Destroy; override;
     property Result: TrunResult read FResult;
@@ -542,6 +581,64 @@ begin
   if FsardEngine = nil then
     FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
+end;
+
+{ TsoSection }
+
+procedure TsoSection.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+  inherited;
+  vStack.Push; //<--here we can push a variable result or create temp result to drop it
+end;
+
+procedure TsoSection.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
+var
+  T: TrunStackItem;
+begin
+  inherited;
+  T := vStack.Pull;
+  if T.Result.AnObject <> nil then
+    T.Result.AnObject.Execute(vStack, AOperator);
+  FreeAndNil(T);
+end;
+
+{ TsoDescend }
+
+procedure TsoDescend.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+  inherited;
+  vStack.Push; //<--here we can push a variable result or create temp result to drop it
+end;
+
+procedure TsoDescend.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
+var
+  T: TrunStackItem;
+begin
+  inherited;
+  T := vStack.Pull;
+  if T.Result.AnObject <> nil then
+    T.Result.AnObject.Execute(vStack, AOperator);
+  FreeAndNil(T);
+end;
+
+{ TsoNamedObject }
+
+procedure TsoNamedObject.SetName(AValue: string);
+begin
+  if AValue <> FName then
+  begin
+    FName := AValue;
+  end;
+end;
+
+{ TsoNamedBlock }
+
+procedure TsoNamedBlock.SetName(AValue: string);
+begin
+  if AValue <> FName then
+  begin
+    FName := AValue;
+  end;
 end;
 
 { TrunResult }
@@ -641,21 +738,25 @@ begin
   FObjectType := otBlock;
 end;
 
+procedure TsoBlock.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+end;
+
+procedure TsoBlock.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+end;
+
 function TsoBlock.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
-var
-  T: TrunStackItem;
 begin
   inherited;
   Result := False;
-  T := vStack.Push;
+  BeforeExecute(vStack, AOperator);
   try
     Result := Items.Execute(vStack);
   finally
-    vStack.Pull;
   end;
-  if T.Result.AnObject <> nil then
-    T.Result.AnObject.Execute(vStack, AOperator);
-  FreeAndNil(T);
+  AfterExecute(vStack, AOperator);
+
   WriteLn('Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level));
   if AOperator <> nil then
     Write('{'+ AOperator.ClassName+'}');
@@ -836,18 +937,13 @@ begin
   Level := 52;
 end;
 
-procedure TsoVariable.SetName(AValue: string);
-begin
-  FName := AValue;
-end;
-
-procedure TsoVariable.Created;
+procedure TsoAssign.Created;
 begin
   inherited Created;
   FObjectType := otVariable;
 end;
 
-function TsoVariable.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+function TsoAssign.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 var
   v: TrunVariable;
 begin
@@ -855,8 +951,10 @@ begin
   v := vStack.Current.Scope.Variables.Register(Name);
   if v <> nil then
   begin
-    if v.Value.AnObject <> nil then
-      v.Value.AnObject.Execute(vStack, AOperator);
+    vStack.Current.Reference := v.Value;
+    v.Value.SetAnObject(vStack.Current.Result.AnObject);//Set the variable value
+{    if v.Value.AnObject <> nil then
+      v.Value.AnObject.Execute(vStack, AOperator);}
   end;
 end;
 
@@ -1056,15 +1154,7 @@ end;
 
 { TsrdClass }
 
-procedure TsoClass.SetName(AValue: string);
-begin
-  if FName =AValue then
-  begin
-    FName :=AValue;
-  end;
-end;
-
-procedure TsoClass.Created;
+procedure TsoDeclare.Created;
 begin
   inherited Created;
   FObjectType := otClass;

@@ -108,10 +108,15 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdState = (stateBlock, stateDeclare, stateAssign, stateIdentifier, stateNumber, stateString, stateOperator, stateComment);
-  TsrdStates = set of TsrdState;
+  TsrdFlag = (flagBlock, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagOperator, flagComment);
+  TsrdFlags = set of TsrdFlag;
+
+  { TsrdFeeder }
 
   TsrdFeeder = class(TsardFeeder)
+  protected
+    procedure DoStart; override;
+    procedure DoStop; override;
   end;
 
   { TsrdScanners }
@@ -127,7 +132,7 @@ type
 
   TsrdParserStackItem = class(TsardObject)
   private
-    FStates: TsrdStates;
+    FFlags: TsrdFlags;
   public
     TokenType: TsrdType; //Type of Identifier
     AnOperator: TopOperator;
@@ -137,10 +142,10 @@ type
     procedure SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
     procedure SetOperator(AOperator: TopOperator);
     procedure SetObject(AObject: TsoObject);
-    procedure SetState(AStates: TsrdStates);
+    procedure SetFlags(AFlags: TsrdFlags);
     procedure Reset;
     procedure NewStatement;
-    property States: TsrdStates read FStates;
+    property Flags: TsrdFlags read FFlags;
   end;
 
   { TsrdParserStack }
@@ -165,7 +170,7 @@ type
     procedure SetAsNumber;
     procedure SetAsString;
     procedure SetAsIdentifier;
-    procedure FlushToken;
+    procedure AddObject;
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
     procedure TriggerToken(AToken: String; AType: TsrdType); override;
@@ -260,6 +265,20 @@ implementation
 uses
   StrUtils;
 
+{ TsrdFeeder }
+
+procedure TsrdFeeder.DoStart;
+begin
+  inherited;
+  Scanners.Parser.TriggerControl(ctlStart);
+end;
+
+procedure TsrdFeeder.DoStop;
+begin
+  inherited;
+  Scanners.Parser.TriggerControl(ctlStop);
+end;
+
 { TsrdParserStackItem }
 
 procedure TsrdParserStackItem.SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
@@ -283,14 +302,14 @@ begin
 //  AnOperator := nil;
 end;
 
-procedure TsrdParserStackItem.SetState(AStates: TsrdStates);
+procedure TsrdParserStackItem.SetFlags(AFlags: TsrdFlags);
 begin
-  FStates := FStates + AStates;
+  FFlags := FFlags + AFlags;
 end;
 
 procedure TsrdParserStackItem.Reset;
 begin
-  FStates := [];
+  FFlags := [];
   Token := '';
   AnOperator := nil;
 end;
@@ -358,7 +377,7 @@ begin
         Value := StrToInt64(Token);
       end;
     end;
-    Stack.Current.SetState([stateNumber]);
+    Stack.Current.SetFlags([flagNumber]);
   end;
 end;
 
@@ -371,7 +390,7 @@ begin
       Stack.Current.SetObject(This);
       Value := Token;
     end;
-    Stack.Current.SetState([stateString]);
+    Stack.Current.SetFlags([flagString]);
   end;
 end;
 
@@ -380,8 +399,14 @@ begin
 
 end;
 
-procedure TsrdParser.FlushToken;
+procedure TsrdParser.AddObject;
 begin
+  if (Stack.Current.Block.Count > 0) and (Stack.Current.AnOperator = nil) then
+    raise EsardException.Create('You cant add object with out operator!');
+
+  if (Stack.Current.Token = '') then
+    raise EsardException.Create('You cant add empty!');
+
   case Stack.Current.TokenType of
     tpString: SetAsString;
     tpNumber: SetAsNumber;
@@ -396,9 +421,9 @@ procedure TsrdParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
   case vBracket of
     brCurly:
-      if Stack.Current.States = [stateIdentifier] then
+{      if Stack.Current.Flags = [flagDeclare, flagIdentifier] then //nop
       begin
-        with TsoClass.Create do
+        with TsoDeclare.Create do
         begin
           Name := Stack.Current.Token;
           Stack.Current.SetObject(This);
@@ -406,15 +431,15 @@ begin
           Stack.Current.Block := Items;
         end;
       end
-      else
-        with TsoBranch.Create do
+      else}
+        with TsoSection.Create do
         begin
           Stack.Current.SetObject(This);
           Stack.Push;
           Stack.Current.Block := Items;
         end;
     brBracket:
-      with TsoBlock.Create do
+      with TsoDescend.Create do
       begin
         Stack.Current.SetObject(This);
         Stack.Push;
@@ -425,10 +450,11 @@ end;
 
 procedure TsrdParser.TriggerClose(vBracket: TsardBracketKind);
 begin
-  FlushToken;
+  AddObject;
   case vBracket of
     brCurly:
     begin
+      TriggerControl(ctlSemicolon);
       if FStack.Current.AnOperator <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
 {      if FStack.Current.Block.Count = 0 then
@@ -437,6 +463,7 @@ begin
     end;
     brBracket:
     begin
+      TriggerControl(ctlSemicolon);
       if FStack.Current.AnOperator <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
       Stack.Pop;
@@ -446,41 +473,52 @@ end;
 
 procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
 begin
+  if Stack.Current.Token <> '' then
+    raise EsardException.Create('Already we have object "' + Stack.Current.Token + '"');
   Stack.Current.Token := AToken;
   Stack.Current.TokenType := AType;
 {
-  with TsoVariable.Create do
+  with TsoAssign.Create do
   begin
     Name := Token;
     Stack.Current.SetObject(This);
-    Stack.Current.SetState([stateIdentifier]);
+    Stack.Current.SetFlags([stateIdentifier]);
   end;}
 end;
 
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
 begin
   case AControl of
+    ctlStart:
+    begin
+    end;
+    ctlStop:
+    begin
+      if FStack.Current.AnOperator <> nil then
+        raise EsardException.Create('There is opertator but you finished the block');
+      AddObject;
+    end;
     ctlSemicolon:
     begin
       if FStack.Current.AnOperator <> nil then
         raise EsardException.Create('There is opertator but you finished the block');
-      FlushToken;
+      AddObject;
       Stack.Current.NewStatement;
     end;
     ctlAssign:
     begin
-      if (Stack.Current.States = []) or (Stack.Current.States = [stateIdentifier]) then
+      if (Stack.Current.Flags = []) or (Stack.Current.Flags = [flagIdentifier]) then
       begin
-        Stack.Current.SetState([stateAssign]);
+        Stack.Current.SetFlags([flagAssign]);
       end
       else
         raise EsardException.Create('You can not use assignment here!');
     end;
     ctlDeclare:
       begin
-        if (Stack.Current.States = [stateIdentifier]) then
+        if (Stack.Current.Flags = [flagIdentifier]) then
         begin
-          Stack.Current.SetState([stateDeclare]);
+          Stack.Current.SetFlags([flagDeclare]);
         end
         else
           raise EsardException.Create('You can not use assignment here!');
@@ -492,11 +530,11 @@ end;
 
 procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
-  FlushToken;
+  AddObject;
   if Stack.Current.AnOperator <> nil then
     raise EsardException.Create('Operator already set');
   Stack.Current.AnOperator := AOperator as TopOperator;
-  Stack.Current.SetState([stateOperator]);
+  Stack.Current.SetFlags([flagOperator]);
 end;
 
 { TsrdControlScanner }
@@ -526,15 +564,13 @@ begin
   else if b = '}' then
     Scanners.Parser.TriggerClose(brCurly)
   else if b = ';' then
-    Scanners.Parser.TriggerControl(ctlFinish)
+    Scanners.Parser.TriggerControl(ctlSemicolon)
   else if b = ',' then
-    Scanners.Parser.TriggerControl(ctlSplit)
+    Scanners.Parser.TriggerControl(ctlComma)
   else if b = ':' then
     Scanners.Parser.TriggerControl(ctlDeclare)
   else if b = ':=' then
-    Scanners.Parser.TriggerControl(ctlAssign)
-  else if b = '~' then
-    Scanners.Parser.TriggerControl(ctlPointer);
+    Scanners.Parser.TriggerControl(ctlAssign);
 end;
 
 function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;

@@ -66,7 +66,7 @@ type
     procedure AfterConstruction; override;
   end;
 
-  TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpenBlock, ctlCloseBlock, ctlPoInter, ctlSplit, ctlFinish, ctlComma, ctlSemicolon);
+  TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpenBlock, ctlCloseBlock, ctlStart, ctlStop, ctlComma, ctlSemicolon);
   TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
 
@@ -136,7 +136,6 @@ type
   protected
     procedure DoStart; virtual;
     procedure DoStop; virtual;
-
   public
     constructor Create(vScanners: TsardScanners);
     destructor Destroy; override;
@@ -165,10 +164,8 @@ type
     procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
     procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;
     procedure TriggerToken(AToken: String; AType: TsrdType); virtual; abstract;
-    //procedure TriggerNumber(Token: String); virtual; abstract;
-    //procedure TriggerString(Token: String); virtual; abstract;
-    procedure TriggerOperator(AOperator: TsardObject); virtual; abstract; //TsardoOperator
-    procedure TriggerControl(AControl: TsardControl); virtual;
+    procedure TriggerOperator(AOperator: TsardObject); virtual; abstract;
+    procedure TriggerControl(AControl: TsardControl); virtual; abstract;
   end;
 
   TsardStack = class;
@@ -257,10 +254,6 @@ begin
 end;
 
 { TsardParser }
-
-procedure TsardParser.TriggerControl(AControl: TsardControl);
-begin
-end;
 
 procedure TsardStack.Pop;
 var
@@ -359,45 +352,7 @@ begin
   if Result then
     Column := Column + Length(S);
 end;
-(*
-procedure TsardScanner.ScanTo(NextScanner: TsardScannerID; const SubStr, Text: string; var Column: Integer; const Line: Integer);
-var
-  p: Integer;
-  l, c, i: Integer;
-begin
-  p := 0;
-  c := 1;
-  l := Length(SubStr);
-  for i := Column to Length(Text) do
-  begin
-    if not (Text[i] in sWhitespace) then
-    begin
-      if Text[i] = SubStr[c] then
-      begin
-        if c = l then
-        begin
-          p := i + 1;
-          break;
-        end;
-        Inc(c);
-      end
-      else
-        raise EsardParserException.Create('syntax error', Line, Column);
-    end;
-  end;
 
-  if p > 0 then
-  begin
-    Column := p;
-    SwitchScanner(NextScanner);
-  end
-  else
-  begin
-    Column := Length(Text) + 1;
-    SwitchScanner(Scanner);
-  end;
-end;
-*)
 function TsardScanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := False;
