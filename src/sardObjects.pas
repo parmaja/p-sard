@@ -581,13 +581,17 @@ end;
 function TsoConstObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
   inherited;
-  if vStack.Current.Result.AnObject = nil then
+  if (vStack.Current.Result.AnObject = nil) and (AOperator = nil) then
   begin
     vStack.Current.Result.AnObject := Clone;
     Result := True;
   end
   else
+  begin
+    if vStack.Current.Result.AnObject = nil then
+      vStack.Current.Result.AnObject := Clone(False);
     Result := DoExecute(vStack, AOperator);
+  end;
 end;
 
 { TrunStackItem }
