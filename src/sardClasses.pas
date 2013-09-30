@@ -36,7 +36,7 @@ type
     property Code: Cardinal read FCode write FCode;
   end;
 
-  EsardParserException = class(EsardException)
+  EsardParserException = class(Exception)
   private
     FLine: Integer;
     FColumn: Integer;
@@ -114,8 +114,6 @@ type
     procedure SwitchScanner(NextScanner: TsardScannerID);
     procedure SelectScanner(ScannerClass: TsardScannerClass);
     function Find(const ScannerClass: TsardScannerClass): TsardScanner;
-    procedure RaiseError(AError: string; AColumn: Integer); overload;
-    procedure RaiseError(AError: string); overload;
     procedure ScanLine(const Text: string; const ALine: Integer);
     function RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
     property Items[Index: Integer]: TsardScanner read GetItem; default;
@@ -215,10 +213,20 @@ type
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual;
   end;
 
+procedure RaiseError(AError: string);
+
 implementation
 
 uses
   StrUtils;
+
+procedure RaiseError(AError: string);
+begin
+  raise EsardException.Create(AError) at
+    get_caller_addr(get_frame),
+    get_caller_frame(get_frame);
+end;
+
 
 { TsardObjectList }
 
@@ -273,7 +281,7 @@ end;
 function TsardStack.GetCurrent: TObject;
 begin
 {  if FCurrentItem = nil then
-    raise EsardException.Create('Stack is empty');}
+    RaiseError('Stack is empty');}
   if FCurrentItem = nil then
     Result := nil
   else
@@ -288,7 +296,7 @@ end;
 function TsardStack.Peek: TObject;
 begin
   if FCurrentItem = nil then
-    raise EsardException.Create('Stack is empty');
+    RaiseError('Stack is empty');
   Result := FCurrentItem.AnObject;
 end;
 
@@ -297,7 +305,7 @@ var
   aItem: TsardStackItem;
 begin
   if FCurrentItem = nil then
-    raise EsardException.Create('Stack is empty');
+    RaiseError('Stack is empty');
   Result := FCurrentItem.AnObject;
   aItem := FCurrentItem;
   FCurrentItem := aItem.Parent;
@@ -310,7 +318,7 @@ var
   aItem: TsardStackItem;
 begin
   if vObject = nil then
-    raise EsardException.Create('Can''t push nil');
+    RaiseError('Can''t push nil');
   aItem := TsardStackItem.Create;
   aItem.AnObject := vObject;
   aItem.Parent := FCurrentItem;
@@ -413,7 +421,7 @@ begin
     end;
   end;
   if Result < 0 then
-    RaiseError('Scanner not found:' + Text[Column], Column);
+    RaiseError('Scanner not found:' + Text[Column]);
   SwitchScanner(Result);
 end;
 
@@ -432,16 +440,6 @@ begin
   end;
 end;
 
-procedure TsardScanners.RaiseError(AError: string; AColumn: Integer);
-begin
-  raise EsardParserException.Create(AError, AColumn, Line);
-end;
-
-procedure TsardScanners.RaiseError(AError: string);
-begin
-  raise EsardException.Create(AError);
-end;
-
 function TsardScanners.RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
 var
   aScanner: TsardScanner;
@@ -454,7 +452,7 @@ end;
 procedure TsardFeeder.Stop;
 begin
   if not FActive then
-    raise EsardException.Create('File already closed');
+    RaiseError('File already closed');
   DoStop;
   FActive := False;
 end;
@@ -463,7 +461,7 @@ end;
 procedure TsardFeeder.Start;
 begin
   if FActive then
-    raise EsardException.Create('File already opened');
+    RaiseError('File already opened');
   FActive := True;
   DoStart;
 end;
@@ -472,7 +470,7 @@ procedure TsardFeeder.SetScanners(AValue: TsardScanners);
 begin
   if FScanners =AValue then Exit;
   if Active then
-    raise EsardException.Create('You can not set scanner when started!');
+    RaiseError('You can not set scanner when started!');
   FScanners :=AValue;
 end;
 
@@ -523,7 +521,7 @@ end;
 procedure TsardFeeder.ScanLine(const Text: string; const Line: Integer);
 begin
   if not Active then
-    raise EsardException.Create('Feeder not started');
+    RaiseError('Feeder not started');
   Scanners.ScanLine(Text, Line);
 end;
 
@@ -546,14 +544,11 @@ begin
         DetectScanner(Text, Column);
 
       if (OldColumn = Column) and (OldScanner = FScannerID) then
-        RaiseError('Feeder in loop with: ' + Items[FScannerID].ClassName, Column);
+        RaiseError('Feeder in loop with: ' + Items[FScannerID].ClassName);
     except
-      on E: EsardParserException do
-        raise;
       on E: EsardException do
       begin
-        E.Message := E.Message + #13 + FormatColLine(Column, Line);
-        raise;
+        raise EsardParserException.Create(E.Message, Column, Line);
       end;
     end;
   end;

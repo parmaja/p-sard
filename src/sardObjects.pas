@@ -1173,7 +1173,7 @@ end;
 function TsrdStatementItem.Execute(vStack: TrunStack): Boolean;
 begin
   if AnObject = nil then
-    raise EsardException.Create('Object not set!');
+    RaiseError('Object not set!');
   Result := AnObject.Execute(vStack, AnOperator);
 end;
 

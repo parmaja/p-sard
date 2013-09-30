@@ -311,7 +311,7 @@ procedure TsrdParserStackItem.SetIdentifier(AIdentifier: string; ATokenType: Tsr
 begin
   CheckBuffer;
   if Buffer.Token <> '' then
-    raise EsardException.Create('Identifier is already set');
+    RaiseError('Identifier is already set');
   Buffer.Token := AIdentifier;
   Buffer.TokenType := ATokenType;
   SetFlags([flagIdentifier]);
@@ -321,7 +321,7 @@ procedure TsrdParserStackItem.SetOperator(AOperator: TopOperator);
 begin
   CheckBuffer;
   if Buffer.TokenOperator <> nil then
-    raise EsardException.Create('Operator is already set');
+    RaiseError('Operator is already set');
   Buffer.TokenOperator := AOperator;
 end;
 
@@ -335,7 +335,7 @@ procedure TsrdParserStackItem.SetObject(AObject: TsoObject);
 begin
   CheckBuffer;
   if Buffer.TokenObject <> nil then
-    raise EsardException.Create('Object is already set');
+    RaiseError('Object is already set');
   Buffer.TokenObject := AObject;
 end;
 
@@ -351,7 +351,7 @@ begin
     with Buffer do
     begin
       if (flagObject in Flags) and (TokenOperator = nil) then
-        raise EsardException.Create('You cant add object without operator!');
+        RaiseError('You cant add object without operator!');
 
       Convert;
 
@@ -365,9 +365,8 @@ begin
         end;
   {    if (Block.Count > 0) and (TokenOperator = nil) then }
 
-
       if TokenObject = nil then
-        raise EsardException.Create('Object is nil!');
+        RaiseError('Object is nil!');
       Block.Statement.Add(TokenOperator, TokenObject);
     end;
   FreeAndNil(Buffer);
@@ -376,6 +375,7 @@ end;
 procedure TsrdParserStackItem.NewStatement;
 begin
   Block.Add;
+  FFlags := [];
 end;
 
 destructor TsrdParserStackItem.Destroy;
@@ -431,7 +431,7 @@ begin
   with Buffer do
   begin
     if Token ='' then
-      raise EsardException.Create('Nothing to convert to string object');
+      RaiseError('Nothing to convert to string object');
     with TsoString.Create do
     begin
       Value := Token;
@@ -447,7 +447,7 @@ begin
   with Buffer do
   begin
     if Token ='' then
-      raise EsardException.Create('Nothing to convert to number object');
+      RaiseError('Nothing to convert to number object');
 
     if pos('.', Token) > 0 then
     begin
@@ -543,13 +543,13 @@ begin
     begin
       Stack.Pop;
       if Stack.Count = 0 then
-        raise EsardException.Create('Maybe you closed not opened Curly')
+        RaiseError('Maybe you closed not opened Curly')
     end;
     brBracket:
     begin
       Stack.Pop;
       if Stack.Count = 0 then
-        raise EsardException.Create('Maybe you closed not opened Bracket')
+        RaiseError('Maybe you closed not opened Bracket')
     end;
   end;
 end;
@@ -582,7 +582,7 @@ begin
         Flush;
       end
       else
-        raise EsardException.Create('You can not use assignment here!');
+        RaiseError('You can not use assignment here!');
     end;
     ctlDeclare:
       begin
@@ -592,10 +592,10 @@ begin
           Flush;
         end
         else
-          raise EsardException.Create('You can not use assignment here!');
+          RaiseError('You can not use assignment here!');
       end
     else
-      raise EsardException.Create('Not implemented yet, sorry :(');
+      RaiseError('Not implemented yet, sorry :(');
   end;
 end;
 
@@ -603,7 +603,7 @@ procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
   Flush;
 {  if Stack.Current.TokenOperator <> nil then
-    raise EsardException.Create('Operator already set');}
+    RaiseError('Operator already set');}
   Stack.Current.SetOperator(AOperator as TopOperator);
 end;
 
@@ -697,7 +697,7 @@ begin
 
   o := sardEngine.Operators.Find(s);
   if o = nil then
-    raise EsardException.Create('Unkown operator: ' + s);
+    RaiseError('Unkown operator: ' + s);
   Scanners.Parser.TriggerOperator(o);
 end;
 
