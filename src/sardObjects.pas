@@ -252,7 +252,18 @@ type
     procedure Created; override;
   end;
 
-  {* Just continued the parent block, Used with ( ) *}
+  {* Just continued the parent block *}
+
+  { TsoBend }
+
+  TsoBend = class(TsoBlock)
+  protected
+    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
+    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
+  public
+  end;
+
+  {* Used by ( ) *}
 
   { TsoDescend }
 
@@ -262,6 +273,8 @@ type
     procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
   public
   end;
+
+  (* Used by { } *)
 
   { TsoSection }
 
@@ -581,6 +594,18 @@ begin
   if FsardEngine = nil then
     FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
+end;
+
+{ TsoBend }
+
+procedure TsoBend.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+  inherited;
+end;
+
+procedure TsoBend.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+  inherited;
 end;
 
 { TsoSection }

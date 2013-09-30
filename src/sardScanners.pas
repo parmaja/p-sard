@@ -108,7 +108,7 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdFlag = (flagBlock, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagObject, flagOperator, flagComment);
+  TsrdFlag = (flagBlock, flagInstance, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagObject, flagOperator, flagComment);
   TsrdFlags = set of TsrdFlag;
 
   { TsrdFeeder }
@@ -128,13 +128,17 @@ type
   public
   end;
 
+  TsrdObjectStyle = (tsConst, tsInstance, tsDeclare, tsAssign, tsBlock);
+
   { TsrdParserBuffer }
 
   TsrdParserBuffer = class(TsardObject)
   public
-    TokenType: TsrdType;
-    TokenOperator: TopOperator;
     Token: string;
+    TokenType: TsrdType;
+
+    TokenOperator: TopOperator;
+    TokenStyle: TsrdObjectStyle;
     TokenObject: TsoObject;
     procedure Convert;
   end;
@@ -156,6 +160,7 @@ type
     procedure ConvertObject;
 
     procedure SetOperator(AOperator: TopOperator);
+    procedure SetStyle(AStyle: TsrdObjectStyle);
     procedure SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
     procedure SetObject(AObject: TsoObject);
     procedure SetFlags(AFlags: TsrdFlags);
@@ -319,13 +324,19 @@ begin
   Buffer.TokenOperator := AOperator;
 end;
 
+procedure TsrdParserStackItem.SetStyle(AStyle: TsrdObjectStyle);
+begin
+  CheckBuffer;
+  Buffer.TokenStyle := AStyle;
+end;
+
 procedure TsrdParserStackItem.SetObject(AObject: TsoObject);
 begin
   CheckBuffer;
   if Buffer.TokenObject <> nil then
     raise EsardException.Create('Object is already set');
   Buffer.TokenObject := AObject;
-  Buffer.TokenType := tpObject;
+  //Buffer.TokenType := tpObject;
 end;
 
 procedure TsrdParserStackItem.SetFlags(AFlags: TsrdFlags);
@@ -346,7 +357,8 @@ begin
           tpString: ConvertString;
           tpNumber: ConvertNumber;
           tpIdentifier: ConvertIdentifier;
-          tpObject: ConvertObject;//It is already object, i know.
+          else
+            ConvertObject;//It is already object, i know.
         end;
       if (Block.Count > 0) and (TokenOperator = nil) then
         raise EsardException.Create('You cant add object without operator!');
@@ -457,6 +469,38 @@ end;
 
 procedure TsrdParserStackItem.ConvertIdentifier;
 begin
+  with Buffer do
+  begin
+    if TokenStyle = tsDeclare then
+    begin
+      with TsoDeclare.Create do
+      begin
+        Name := Token;
+{        Stack.Push;
+        Block := Items;}
+        TokenObject := This;
+      end;
+      SetFlags([flagDeclare]);
+    end
+    else if TokenStyle = tsAssign then
+    begin
+      with TsoAssign.Create do
+      begin
+        Name := Token;
+        TokenObject := This;
+      end;
+      SetFlags([flagAssign]);
+    end
+    else
+    begin
+      with TsoInstance.Create do
+      begin
+        Name := Token;
+        TokenObject := This;
+      end;
+      SetFlags([flagObject]);
+    end;
+  end;
 end;
 
 procedure TsrdParserStackItem.ConvertObject;
@@ -473,23 +517,12 @@ procedure TsrdParser.TriggerOpen(vBracket: TsardBracketKind);
 begin
   case vBracket of
     brCurly:
-{      if Stack.Current.Flags = [flagDeclare, flagIdentifier] then //nop
+     with TsoSection.Create do
       begin
-        with TsoDeclare.Create do
-        begin
-          Name := Stack.Current.Token;
-          Stack.Current.SetObject(This);
-          Stack.Push;
-          Stack.Current.Block := Items;
-        end;
-      end
-      else}
-        with TsoSection.Create do
-        begin
-          Stack.Current.SetObject(This);
-          Stack.Push;
-          Stack.Current.Block := Items;
-        end;
+        Stack.Current.SetObject(This);
+        Stack.Push;
+        Stack.Current.Block := Items;
+      end;
     brBracket:
       with TsoDescend.Create do
       begin
@@ -522,13 +555,6 @@ end;
 procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
 begin
   Stack.Current.SetIdentifier(AToken, AType);
-{
-  with TsoAssign.Create do
-  begin
-    Name := Token;
-    Stack.Current.SetObject(This);
-    Stack.Current.SetFlags([stateIdentifier]);
-  end;}
 end;
 
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
@@ -550,16 +576,18 @@ begin
     begin
       if (Stack.Current.Flags = []) or (Stack.Current.Flags = [flagIdentifier]) then
       begin
-        Stack.Current.SetFlags([flagAssign]);
+        Stack.Current.SetStyle(tsAssign);
+        Flush;
       end
       else
         raise EsardException.Create('You can not use assignment here!');
     end;
     ctlDeclare:
       begin
-        if (Stack.Current.Flags = [flagIdentifier]) then
+        if (Stack.Current.Flags = [flagIdentifier]) then //Only Identifier is opened
         begin
-          Stack.Current.SetFlags([flagDeclare]);
+          Stack.Current.SetStyle(tsDeclare);
+          Flush;
         end
         else
           raise EsardException.Create('You can not use assignment here!');

@@ -44,6 +44,7 @@ end;
 
 procedure TForm1.Button2Click(Sender: TObject);
 begin
+  InputEdit.Lines.SaveToFile(Application.Location + 'recent.sard');
   Build(InputEdit.Lines);
 end;
 
