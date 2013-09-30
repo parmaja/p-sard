@@ -314,6 +314,7 @@ begin
     raise EsardException.Create('Identifier is already set');
   Buffer.Token := AIdentifier;
   Buffer.TokenType := ATokenType;
+  SetFlags([flagIdentifier]);
 end;
 
 procedure TsrdParserStackItem.SetOperator(AOperator: TopOperator);
@@ -336,7 +337,6 @@ begin
   if Buffer.TokenObject <> nil then
     raise EsardException.Create('Object is already set');
   Buffer.TokenObject := AObject;
-  //Buffer.TokenType := tpObject;
 end;
 
 procedure TsrdParserStackItem.SetFlags(AFlags: TsrdFlags);
@@ -350,6 +350,9 @@ begin
   if Buffer <> nil then
     with Buffer do
     begin
+      if (flagObject in Flags) and (TokenOperator = nil) then
+        raise EsardException.Create('You cant add object without operator!');
+
       Convert;
 
       with Buffer do
@@ -360,8 +363,8 @@ begin
           else
             ConvertObject;//It is already object, i know.
         end;
-      if (Block.Count > 0) and (TokenOperator = nil) then
-        raise EsardException.Create('You cant add object without operator!');
+  {    if (Block.Count > 0) and (TokenOperator = nil) then }
+
 
       if TokenObject = nil then
         raise EsardException.Create('Object is nil!');
@@ -436,7 +439,7 @@ begin
     end;
     Token := '';
   end;
-  SetFlags([flagString]);
+  SetFlags([flagObject, flagString]);
 end;
 
 procedure TsrdParserStackItem.ConvertNumber;
@@ -464,7 +467,7 @@ begin
     end;
     Token := '';
   end;
-  SetFlags([flagNumber]);
+  SetFlags([flagObject, flagNumber]);
 end;
 
 procedure TsrdParserStackItem.ConvertIdentifier;
@@ -505,7 +508,6 @@ end;
 
 procedure TsrdParserStackItem.ConvertObject;
 begin
-  SetFlags([flagObject]);
 end;
 
 procedure TsrdParser.Flush;
