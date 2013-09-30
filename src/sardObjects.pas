@@ -203,20 +203,26 @@ type
 
   TsoNamedObject = class(TsoObject)
   private
+    FID: Integer;
     FName: string;
+    procedure SetID(AValue: Integer);
     procedure SetName(AValue: string);
   public
     property Name: string read FName write SetName;
+    property ID: Integer read FID write SetID;
   end;
 
   { TsoNamedBlock }
 
   TsoNamedBlock = class(TsoBlock)
   private
+    FID: Integer;
     FName: string;
+    procedure SetID(AValue: Integer);
     procedure SetName(AValue: string);
   public
     property Name: string read FName write SetName;
+    property ID: Integer read FID write SetID;
   end;
 
   {*  Variables objects *}
@@ -488,6 +494,17 @@ type
 
 {-------- Run Time Engine --------}
 
+  { TrunData }
+
+  TrunData = class(TsardObject)
+  private
+    FCount: Integer;
+  public
+    //Objects:
+    function RegisterID(vName: string): Integer;
+    property Count: Integer read FCount;
+  end;
+
   { TrunVariable }
 
   TrunVariable = class(TsardObject)
@@ -553,12 +570,16 @@ type
 
   TrunStack = class(TsardStack)
   private
+    FData: TrunData;
     function GetCurrent: TrunStackItem;
   public
+    constructor Create;
+    destructor Destroy; override;
     procedure Push(vObject: TrunStackItem);
     function Push: TrunStackItem; overload;
     function Pull: TrunStackItem;
     property Current: TrunStackItem read GetCurrent;
+    property Data: TrunData read FData;
   end;
 
   { TsrdEngine }
@@ -594,6 +615,14 @@ begin
   if FsardEngine = nil then
     FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
+end;
+
+{ TrunData }
+
+function TrunData.RegisterID(vName: string): Integer;
+begin
+  FCount := FCount + 1;
+  Result := FCount;
 end;
 
 { TsoBend }
@@ -656,6 +685,12 @@ begin
   end;
 end;
 
+procedure TsoNamedObject.SetID(AValue: Integer);
+begin
+  if FID =AValue then Exit;
+  FID :=AValue;
+end;
+
 { TsoNamedBlock }
 
 procedure TsoNamedBlock.SetName(AValue: string);
@@ -664,6 +699,12 @@ begin
   begin
     FName := AValue;
   end;
+end;
+
+procedure TsoNamedBlock.SetID(AValue: Integer);
+begin
+  if FID = AValue then Exit;
+  FID :=AValue;
 end;
 
 { TrunResult }
@@ -737,6 +778,18 @@ end;
 function TrunStack.GetCurrent: TrunStackItem;
 begin
   Result := (inherited GetCurrent) as TrunStackItem;
+end;
+
+constructor TrunStack.Create;
+begin
+  inherited;
+  FData := TrunData.Create;
+end;
+
+destructor TrunStack.Destroy;
+begin
+  FreeAndNil(FData);
+  inherited;
 end;
 
 procedure TrunStack.Push(vObject: TrunStackItem);

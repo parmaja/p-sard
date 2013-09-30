@@ -128,6 +128,8 @@ type
   public
   end;
 
+  TsrdParser = class;
+
   TsrdObjectStyle = (tsConst, tsInstance, tsDeclare, tsAssign, tsBlock);
 
   { TsrdParserBuffer }
@@ -149,10 +151,10 @@ type
   private
     FFlags: TsrdFlags;
   protected
-    procedure CheckBuffer;
-  public
+    Parser: TsrdParser;
     Buffer: TsrdParserBuffer;
     Block: TsrdBlock;
+    procedure CheckBuffer;
   public
     procedure ConvertNumber;
     procedure ConvertString;
@@ -166,6 +168,7 @@ type
     procedure SetFlags(AFlags: TsrdFlags);
     procedure Flush;
     procedure NewStatement;
+    constructor Create(AParser: TsrdParser);
     destructor Destroy; override;
     property Flags: TsrdFlags read FFlags;
   end;
@@ -175,9 +178,12 @@ type
   TsrdParserStack = class(TsardStack)
   private
     function GetCurrent: TsrdParserStackItem;
+  protected
+    Parser: TsrdParser;
   public
     procedure Push(vItem: TsrdParserStackItem);
     function Push: TsrdParserStackItem;
+    constructor Create(AParser: TsrdParser);
     property Current: TsrdParserStackItem read GetCurrent;
   end;
 
@@ -186,8 +192,11 @@ type
   TsrdParser = class(TsardParser)
   protected
     FStack: TsrdParserStack;
+    FData: TrunData;
   public
-    constructor Create(ABlock: TsrdBlock);
+    procedure Start; override;
+    procedure Stop; override;
+    constructor Create(AData: TrunData; ABlock: TsrdBlock);
     destructor Destroy; override;
 
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
@@ -197,6 +206,7 @@ type
     procedure TriggerOperator(AOperator: TsardObject); override;
     procedure Flush;
     property Stack: TsrdParserStack read FStack;
+    property Data: TrunData read FData;
   end;
 
   { TsrdStartScanner }
@@ -378,6 +388,12 @@ begin
   FFlags := [];
 end;
 
+constructor TsrdParserStackItem.Create(AParser: TsrdParser);
+begin
+  inherited Create;
+  Parser := AParser;
+end;
+
 destructor TsrdParserStackItem.Destroy;
 begin
   inherited;
@@ -397,16 +413,34 @@ end;
 
 function TsrdParserStack.Push: TsrdParserStackItem;
 begin
-  Result := TsrdParserStackItem.Create;
+  Result := TsrdParserStackItem.Create(Parser);
   Push(Result);
+end;
+
+constructor TsrdParserStack.Create(AParser: TsrdParser);
+begin
+  inherited Create;
+  Parser := AParser;
 end;
 
 { TsrdParser }
 
-constructor TsrdParser.Create(ABlock: TsrdBlock);
+procedure TsrdParser.Start;
+begin
+  if Data = nil then
+    RaiseError('You must define Data object');
+end;
+
+procedure TsrdParser.Stop;
+begin
+
+end;
+
+constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
 begin
   inherited Create;
-  FStack := TsrdParserStack.Create;
+  FData := AData;
+  FStack := TsrdParserStack.Create(Self);
   if ABlock <> nil then
     with Stack.Push do
     begin
@@ -479,6 +513,7 @@ begin
       with TsoDeclare.Create do
       begin
         Name := Token;
+        ID := Parser.Data.RegisterID(Name);
 {        Stack.Push;
         Block := Items;}
         TokenObject := This;
@@ -490,6 +525,7 @@ begin
       with TsoAssign.Create do
       begin
         Name := Token;
+        ID := Parser.Data.RegisterID(Name);
         TokenObject := This;
       end;
       SetFlags([flagAssign]);
@@ -499,6 +535,7 @@ begin
       with TsoInstance.Create do
       begin
         Name := Token;
+        ID := Parser.Data.RegisterID(Name);
         TokenObject := This;
       end;
       SetFlags([flagObject]);

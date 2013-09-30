@@ -158,6 +158,8 @@ type
 
   TsardParser = class(TsardObject)
   protected
+    procedure Start; virtual;
+    procedure Stop; virtual;
   public
     procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
     procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;
@@ -225,6 +227,16 @@ begin
   raise EsardException.Create(AError) at
     get_caller_addr(get_frame),
     get_caller_frame(get_frame);
+end;
+
+{ TsardParser }
+
+procedure TsardParser.Start;
+begin
+end;
+
+procedure TsardParser.Stop;
+begin
 end;
 
 
@@ -453,6 +465,7 @@ procedure TsardFeeder.Stop;
 begin
   if not FActive then
     RaiseError('File already closed');
+  Scanners.Parser.Stop;
   DoStop;
   FActive := False;
 end;
@@ -464,6 +477,7 @@ begin
     RaiseError('File already opened');
   FActive := True;
   DoStart;
+  Scanners.Parser.Start;
 end;
 
 procedure TsardFeeder.SetScanners(AValue: TsardScanners);

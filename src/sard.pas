@@ -32,12 +32,14 @@ var
   Feeder: TsrdFeeder;
   Parser: TsrdParser;
   Main: TsoMain;
+  Data: TrunData;
 begin
   WriteLn('-------------------------------');
 
   Main := TsoMain.Create;
+  Data:=TrunData.Create;
   { Compile }
-  Parser := TsrdParser.Create(Main.Items);
+  Parser := TsrdParser.Create(Data, Main.Items);
   Scanners := TsrdScanners.Create(Parser);
   Feeder := TsrdFeeder.Create(Scanners);
 
@@ -48,6 +50,7 @@ begin
   FreeAndNil(Scanners);
   FreeAndNil(Feeder);
   FreeAndNil(Main);
+  FreeAndNil(Data);
 
   Result := True;
 end;
@@ -59,13 +62,15 @@ var
   Feeder: TsrdFeeder;
   Parser: TsrdParser;
   Stack: TrunStack;
+  Data: TrunData;
   Main: TsoMain;
 begin
   WriteLn('-------------------------------');
 
   Main := TsoMain.Create;
+  Data := TrunData.Create;
   { Compile }
-  Parser := TsrdParser.Create(Main.Items);
+  Parser := TsrdParser.Create(Data, Main.Items);
   Scanners := TsrdScanners.Create(Parser);
   Feeder := TsrdFeeder.Create(Scanners);
 
@@ -85,6 +90,7 @@ begin
   { End }
   FreeAndNil(Stack);
   FreeAndNil(Main);
+  FreeAndNil(Data);
   FreeAndNil(Parser);
   FreeAndNil(Scanners);
   FreeAndNil(Feeder);
