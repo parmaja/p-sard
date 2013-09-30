@@ -154,7 +154,7 @@ type
 
   end;
 
-  TsrdType = (tpNone, tpIdentifier, tpNumber, tpString, tpOperator, tpControl, tpComment);
+  TsrdType = (tpNone, tpIdentifier, tpNumber, tpString, tpObject, tpOperator, tpControl, tpComment);
 
   { TsardParser }
 

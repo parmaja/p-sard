@@ -108,7 +108,7 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdFlag = (flagBlock, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagOperator, flagComment);
+  TsrdFlag = (flagBlock, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagObject, flagOperator, flagComment);
   TsrdFlags = set of TsrdFlag;
 
   { TsrdFeeder }
@@ -128,23 +128,40 @@ type
   public
   end;
 
+  { TsrdParserBuffer }
+
+  TsrdParserBuffer = class(TsardObject)
+  public
+    TokenType: TsrdType;
+    TokenOperator: TopOperator;
+    Token: string;
+    TokenObject: TsoObject;
+    procedure Convert;
+  end;
+
   { TsrdParserStackItem }
 
   TsrdParserStackItem = class(TsardObject)
   private
     FFlags: TsrdFlags;
+  protected
+    procedure CheckBuffer;
   public
-    TokenType: TsrdType; //Type of Identifier
-    AnOperator: TopOperator;
-    Token: string;
+    Buffer: TsrdParserBuffer;
     Block: TsrdBlock;
   public
-    procedure SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
+    procedure ConvertNumber;
+    procedure ConvertString;
+    procedure ConvertIdentifier;
+    procedure ConvertObject;
+
     procedure SetOperator(AOperator: TopOperator);
+    procedure SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
     procedure SetObject(AObject: TsoObject);
     procedure SetFlags(AFlags: TsrdFlags);
-    procedure Reset;
+    procedure Flush;
     procedure NewStatement;
+    destructor Destroy; override;
     property Flags: TsrdFlags read FFlags;
   end;
 
@@ -167,16 +184,13 @@ type
   public
     constructor Create(ABlock: TsrdBlock);
     destructor Destroy; override;
-    procedure SetAsNumber;
-    procedure SetAsString;
-    procedure SetAsIdentifier;
-    procedure AddObject;
+
     procedure TriggerOpen(vBracket: TsardBracketKind); override;
     procedure TriggerClose(vBracket: TsardBracketKind); override;
     procedure TriggerToken(AToken: String; AType: TsrdType); override;
     procedure TriggerControl(AControl: TsardControl); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
-
+    procedure Flush;
     property Stack: TsrdParserStack read FStack;
   end;
 
@@ -265,6 +279,13 @@ implementation
 uses
   StrUtils;
 
+{ TsrdParserBuffer }
+
+procedure TsrdParserBuffer.Convert;
+begin
+
+end;
+
 { TsrdFeeder }
 
 procedure TsrdFeeder.DoStart;
@@ -283,41 +304,68 @@ end;
 
 procedure TsrdParserStackItem.SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
 begin
-  Token := AIdentifier;
-  TokenType := ATokenType;
+  CheckBuffer;
+  if Buffer.Token <> '' then
+    raise EsardException.Create('Identifier is already set');
+  Buffer.Token := AIdentifier;
+  Buffer.TokenType := ATokenType;
 end;
 
 procedure TsrdParserStackItem.SetOperator(AOperator: TopOperator);
 begin
-  if AnOperator = nil then
+  CheckBuffer;
+  if Buffer.TokenOperator <> nil then
     raise EsardException.Create('Operator is already set');
-  AnOperator := AOperator;
+  Buffer.TokenOperator := AOperator;
 end;
 
 procedure TsrdParserStackItem.SetObject(AObject: TsoObject);
 begin
-  //  if Operation = nil then
-  //   raise EsardParserException.Create('Need a operator');
-  Block.Statement.Add(AnOperator, AObject);
-//  AnOperator := nil;
+  CheckBuffer;
+  if Buffer.TokenObject <> nil then
+    raise EsardException.Create('Object is already set');
+  Buffer.TokenObject := AObject;
+  Buffer.TokenType := tpObject;
 end;
 
 procedure TsrdParserStackItem.SetFlags(AFlags: TsrdFlags);
 begin
+  CheckBuffer;
   FFlags := FFlags + AFlags;
 end;
 
-procedure TsrdParserStackItem.Reset;
+procedure TsrdParserStackItem.Flush;
 begin
-  FFlags := [];
-  Token := '';
-  AnOperator := nil;
+  if Buffer <> nil then
+    with Buffer do
+    begin
+      Convert;
+
+      with Buffer do
+        case TokenType of
+          tpString: ConvertString;
+          tpNumber: ConvertNumber;
+          tpIdentifier: ConvertIdentifier;
+          tpObject: ConvertObject;//It is already object, i know.
+        end;
+      if (Block.Count > 0) and (TokenOperator = nil) then
+        raise EsardException.Create('You cant add object without operator!');
+
+      if TokenObject = nil then
+        raise EsardException.Create('Object is nil!');
+      Block.Statement.Add(TokenOperator, TokenObject);
+    end;
+  FreeAndNil(Buffer);
 end;
 
 procedure TsrdParserStackItem.NewStatement;
 begin
-  Reset;
   Block.Add;
+end;
+
+destructor TsrdParserStackItem.Destroy;
+begin
+  inherited;
 end;
 
 { TsrdParserStack }
@@ -357,64 +405,68 @@ begin
   inherited Destroy;
 end;
 
-procedure TsrdParser.SetAsNumber;
+procedure TsrdParserStackItem.CheckBuffer;
 begin
-  with Stack.Current do
+  if Buffer = nil then
+    Buffer := TsrdParserBuffer.Create;
+end;
+
+procedure TsrdParserStackItem.ConvertString;
+begin
+  with Buffer do
   begin
+    if Token ='' then
+      raise EsardException.Create('Nothing to convert to string object');
+    with TsoString.Create do
+    begin
+      Value := Token;
+      TokenObject := This;
+    end;
+    Token := '';
+  end;
+  SetFlags([flagString]);
+end;
+
+procedure TsrdParserStackItem.ConvertNumber;
+begin
+  with Buffer do
+  begin
+    if Token ='' then
+      raise EsardException.Create('Nothing to convert to number object');
+
     if pos('.', Token) > 0 then
     begin
       with TsoFloat.Create do
       begin
-        Stack.Current.SetObject(This);
         Value := StrToFloat(Token);
+        TokenObject := This;
       end;
     end
     else
     begin
       with TsoInteger.Create do
       begin
-        Stack.Current.SetObject(This);
         Value := StrToInt64(Token);
+        TokenObject := This;
       end;
     end;
-    Stack.Current.SetFlags([flagNumber]);
+    Token := '';
   end;
+  SetFlags([flagNumber]);
 end;
 
-procedure TsrdParser.SetAsString;
+procedure TsrdParserStackItem.ConvertIdentifier;
 begin
-  with Stack.Current do
-  begin
-    with TsoString.Create do
-    begin
-      Stack.Current.SetObject(This);
-      Value := Token;
-    end;
-    Stack.Current.SetFlags([flagString]);
-  end;
 end;
 
-procedure TsrdParser.SetAsIdentifier;
+procedure TsrdParserStackItem.ConvertObject;
 begin
-
+  SetFlags([flagObject]);
 end;
 
-procedure TsrdParser.AddObject;
+procedure TsrdParser.Flush;
 begin
-  if (Stack.Current.Block.Count > 0) and (Stack.Current.AnOperator = nil) then
-    raise EsardException.Create('You cant add object with out operator!');
-
-  if (Stack.Current.Token = '') then
-    raise EsardException.Create('You cant add empty!');
-
-  case Stack.Current.TokenType of
-    tpString: SetAsString;
-    tpNumber: SetAsNumber;
-    tpIdentifier: SetAsIdentifier;
-  end;
-  Stack.Current.AnOperator := nil;
-  Stack.Current.Token := '';
-  Stack.Current.TokenType := tpNone;
+  Stack.Current.Flush;
 end;
 
 procedure TsrdParser.TriggerOpen(vBracket: TsardBracketKind);
@@ -450,33 +502,26 @@ end;
 
 procedure TsrdParser.TriggerClose(vBracket: TsardBracketKind);
 begin
-  AddObject;
+  Flush;
   case vBracket of
     brCurly:
     begin
-      TriggerControl(ctlSemicolon);
-      if FStack.Current.AnOperator <> nil then
-        raise EsardException.Create('There is opertator but you finished the block');
-{      if FStack.Current.Block.Count = 0 then
-        raise EsardException.Create('Hmmm why empty block!');}//Warning not Error
       Stack.Pop;
+      if Stack.Count = 0 then
+        raise EsardException.Create('Maybe you closed not opened Curly')
     end;
     brBracket:
     begin
-      TriggerControl(ctlSemicolon);
-      if FStack.Current.AnOperator <> nil then
-        raise EsardException.Create('There is opertator but you finished the block');
       Stack.Pop;
+      if Stack.Count = 0 then
+        raise EsardException.Create('Maybe you closed not opened Bracket')
     end;
   end;
 end;
 
 procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
 begin
-  if Stack.Current.Token <> '' then
-    raise EsardException.Create('Already we have object "' + Stack.Current.Token + '"');
-  Stack.Current.Token := AToken;
-  Stack.Current.TokenType := AType;
+  Stack.Current.SetIdentifier(AToken, AType);
 {
   with TsoAssign.Create do
   begin
@@ -494,15 +539,11 @@ begin
     end;
     ctlStop:
     begin
-      if FStack.Current.AnOperator <> nil then
-        raise EsardException.Create('There is opertator but you finished the block');
-      AddObject;
+      Flush;
     end;
     ctlSemicolon:
     begin
-      if FStack.Current.AnOperator <> nil then
-        raise EsardException.Create('There is opertator but you finished the block');
-      AddObject;
+      Flush;
       Stack.Current.NewStatement;
     end;
     ctlAssign:
@@ -530,11 +571,10 @@ end;
 
 procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
-  AddObject;
-  if Stack.Current.AnOperator <> nil then
-    raise EsardException.Create('Operator already set');
-  Stack.Current.AnOperator := AOperator as TopOperator;
-  Stack.Current.SetFlags([flagOperator]);
+  Flush;
+{  if Stack.Current.TokenOperator <> nil then
+    raise EsardException.Create('Operator already set');}
+  Stack.Current.SetOperator(AOperator as TopOperator);
 end;
 
 { TsrdControlScanner }
@@ -592,7 +632,6 @@ begin
   RegisterScanner(TsrdControl_Scanner);
   RegisterScanner(TopOperator_Scanner); //Register it after comment because comment take /*
   RegisterScanner(TsrdIdentifier_Scanner);//Last one
-  //FOffScanner := scanIdentifier;
 end;
 
 { TsrdNumberScanner }
