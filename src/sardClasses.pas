@@ -163,7 +163,7 @@ type
 
   end;
 
-  TsrdType = (tpNone, tpObject, tpNumber, tpString, tpComment);
+  TsrdType = (tpNone, tpObject, tpNumber, tpColor, tpString, tpComment);
 
   { TsardParser }
 
@@ -172,8 +172,6 @@ type
     procedure Start; virtual;
     procedure Stop; virtual;
   public
-{    procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
-    procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;}
     procedure TriggerToken(AToken: String; AType: TsrdType); virtual; abstract;
     procedure TriggerOperator(AOperator: TsardObject); virtual; abstract;
     procedure TriggerControl(AControl: TsardControl); virtual; abstract;

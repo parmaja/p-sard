@@ -54,7 +54,7 @@ uses
 
 type
 
-  TsrdObjectType = (otUnkown, otInteger, otFloat, otBoolean, otString, otBlock, otObject, otClass, otVariable);
+  TsrdObjectType = (otUnkown, otInteger, otFloat, otBoolean, otString, otComment, otBlock, otObject, otClass, otVariable);
   TsrdCompare = (cmpLess, cmpEqual, cmpGreater);
 
   TsrdDebug = class(TsardObject)
@@ -394,6 +394,15 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
+  { TsoComment }
+
+  TsoComment = class(TsoObject)
+  public
+    Value: string;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
+    procedure Created; override;
+  end;
+
 {-------- Controls  --------}
 
   { TctlControl }
@@ -698,6 +707,19 @@ begin
   if FsardEngine = nil then
     FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
+end;
+
+{ TsoComment }
+
+function TsoComment.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+begin
+  Result := inherited Execute(vStack, AOperator);//Nothing to do compiled comments not executed
+end;
+
+procedure TsoComment.Created;
+begin
+  inherited Created;
+  FObjectType := otComment;
 end;
 
 { TrunScope }
@@ -1568,11 +1590,11 @@ function TsoInstance.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean
 var
   v: TrunVariable;
 begin
-  v := vStack.Scope.Current.Variables.Register(Name);
+  v := vStack.Scope.Current.Variables.Register(Name);//TODO find it not register it
   if v <> nil then
   begin
     if v.Value.AnObject = nil then
-      RaiseError(v.Name + ' variable have no value yet');
+      RaiseError(v.Name + ' variable have no value yet');//TODO make it as empty
     Result := v.Value.AnObject.Execute(vStack, AOperator);
   end
   else

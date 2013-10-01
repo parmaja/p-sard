@@ -158,6 +158,7 @@ type
   public
     procedure ConvertNumber;
     procedure ConvertString;
+    procedure ConvertComment;
     procedure ConvertObject;
 
     procedure SetOperator(AOperator: TopOperator);
@@ -270,6 +271,15 @@ type
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
+  { TsrdComment_Scanner }
+  { it is stored with compiled objects}
+
+  TsrdComment_Scanner = class(TsardScanner)
+  protected
+    procedure Scan(const Text: string; var Column: Integer);  override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
+  end;
+
   { TsrdSQStringScanner }
 
   TsrdSQString_Scanner = class(TsardScanner)
@@ -290,6 +300,30 @@ implementation
 
 uses
   StrUtils;
+
+{ TsrdComment_Scanner }
+
+procedure TsrdComment_Scanner.Scan(const Text: string; var Column: Integer);
+var
+  c: Integer;
+begin
+  Inc(Column, 2);//2 chars
+  while (Column <= Length(Text)) do
+  begin
+    if (ScanCompare('*}', Text, Column)) then
+    begin
+      Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpComment);
+      Inc(Column, 2);//2 chars
+      break;
+    end;
+    Inc(Column);
+  end;
+end;
+
+function TsrdComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+begin
+  Result := ScanCompare('{*', Text, Column);
+end;
 
 { TsrdParserBuffer }
 
@@ -365,6 +399,7 @@ begin
         case TokenType of
           tpString: ConvertString;
           tpNumber: ConvertNumber;
+          tpComment: ConvertComment;
           else
             ConvertObject;
         end;
@@ -469,6 +504,20 @@ begin
     Token := '';
   end;
   SetFlags([flagObject, flagString]);
+end;
+
+procedure TsrdParserStackItem.ConvertComment;
+begin
+  with Buffer do
+  begin
+    with TsoComment.Create do
+    begin
+      Value := Token;
+      TokenObject := This;
+    end;
+    Token := '';
+  end;
+  SetFlags([flagObject, flagComment]);
 end;
 
 procedure TsrdParserStackItem.ConvertNumber;
@@ -657,6 +706,7 @@ begin
   RegisterScanner(TsrdStart_Scanner);
   RegisterScanner(TsrdWhitespace_Scanner);
   RegisterScanner(TsrdBlockComment_Scanner);
+  RegisterScanner(TsrdComment_Scanner);
   RegisterScanner(TsrdLineComment_Scanner);
   RegisterScanner(TsrdNumber_Scanner);
   RegisterScanner(TsrdSQString_Scanner);
