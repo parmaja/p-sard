@@ -622,6 +622,7 @@ type
   public
     destructor Destroy; override;
     function HasValue: Boolean;
+    procedure Assign(AResult: TrunResult); virtual;
     property AnObject: TsoObject read FAnObject write SetAnObject;
   end;
 
@@ -655,13 +656,13 @@ type
   TrunStackItem = class(TsardObject)
   private
     FResult: TrunResult;
-    FReference: TrunResult; //nil but if it exist we use it to assign it after block executed
-    function GetResult: TrunResult;
-    procedure SetResult(AValue: TrunResult);
+    FReference: TrunResult; //nil but if it exist we use it to assign it after statment executed
+    procedure SetReference(AValue: TrunResult);
   public
     constructor Create;
     destructor Destroy; override;
-    property Result: TrunResult read GetResult write SetResult;
+    property Result: TrunResult read FResult;
+    property Reference: TrunResult read FReference write SetReference;
   end;
 
   { TrunStack }
@@ -991,6 +992,11 @@ begin
   Result := AnObject <> nil;
 end;
 
+procedure TrunResult.Assign(AResult: TrunResult);
+begin
+  AnObject := AResult.AnObject.Clone;
+end;
+
 { TrunScopeItem }
 
 constructor TrunScopeItem.Create;
@@ -1025,21 +1031,12 @@ end;
 
 { TrunStackItem }
 
-function TrunStackItem.GetResult: TrunResult;
+procedure TrunStackItem.SetReference(AValue: TrunResult);
 begin
-  if FReference <> nil then
-    Result := FReference
-  else
-    Result := FResult
-end;
-
-procedure TrunStackItem.SetResult(AValue: TrunResult);
-begin
-  if FResult.HasValue then
-    RaiseError('Can not set result reference');
+  if FReference =AValue then Exit;
   if FReference <> nil then
     RaiseError('Already set a reference');
-  FReference := AValue;
+  FReference :=AValue;
 end;
 
 constructor TrunStackItem.Create;
@@ -1315,14 +1312,14 @@ begin
   Result := True;
   if Name = '' then
   begin
-    vStack.Current.Result := vStack.Parent.Result;
+    vStack.Current.Reference := vStack.Parent.Result;
   end
   else
   begin
     v := vStack.Scope.Current.Variables.Register(Name);
     if v <> nil then
     begin
-      vStack.Current.Result := v.Value;
+      vStack.Current.Reference := v.Value;
     end;
   end;
 end;
@@ -1856,12 +1853,10 @@ begin
 end;
 
 procedure TsrdStatement.AfterExecute(vStack: TrunStack);
-{var
-  T: TrunStackItem;}
 begin
+  if vStack.Current.Reference <> nil then
+    vStack.Current.Reference.Assign(vStack.Current.Result);
   vStack.Pop;
-  {T := vStack.Pull;
-  FreeAndNil(T);}
 end;
 
 function TsrdStatement.Add(AObject: TsrdStatementItem): Integer;
