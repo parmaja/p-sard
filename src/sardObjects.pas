@@ -89,6 +89,9 @@ type
     FDebug: TsrdDebug;
     function GetItem(Index: Integer): TsrdStatementItem;
     procedure SetDebug(AValue: TsrdDebug);
+  protected
+    procedure BeforeExecute(vStack: TrunStack); virtual;
+    procedure AfterExecute(vStack: TrunStack); virtual;
   public
     function Add(AObject: TsrdStatementItem): Integer;
     function Add(AOperator:TopOperator; AObject: TsoObject): TsrdStatementItem;
@@ -254,13 +257,15 @@ type
 
   TsoDeclare = class(TsoNamedBlock)
   private
-  public
+  protected
     procedure Created; override;
+  public
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   end;
 
-  {* Just continued the parent block *}
 
   { TsoBend }
+  {* Just continued the parent block *}
 
   TsoBend = class(TsoBlock)
   protected
@@ -269,9 +274,8 @@ type
   public
   end;
 
-  {* Used by ( ) *}
-
   { TsoDescend }
+  {* Used by ( ) *}
 
   TsoDescend = class(TsoBlock)
   protected
@@ -538,6 +542,7 @@ type
     procedure SetAnObject(AValue: TsoObject);
   public
     destructor Destroy; override;
+    function HasValue: Boolean;
     property AnObject: TsoObject read FAnObject write SetAnObject;
   end;
 
@@ -557,12 +562,14 @@ type
   TrunStackItem = class(TsardObject)
   private
     FResult: TrunResult;
+    FReference: TrunResult; //nil but if it exist we use it to assign it after block executed
     FScope: TsrdScope;
+    function GetResult: TrunResult;
+    procedure SetResult(AValue: TrunResult);
   public
-    Reference: TrunResult; //nil but if it exist we use it to assign it after block executed
     constructor Create;
     destructor Destroy; override;
-    property Result: TrunResult read FResult;
+    property Result: TrunResult read GetResult write SetResult;
     property Scope: TsrdScope read FScope;
   end;
 
@@ -572,6 +579,7 @@ type
   private
     FData: TrunData;
     function GetCurrent: TrunStackItem;
+    function GetParent: TrunStackItem;
   public
     constructor Create;
     destructor Destroy; override;
@@ -579,6 +587,7 @@ type
     function Push: TrunStackItem; overload;
     function Pull: TrunStackItem;
     property Current: TrunStackItem read GetCurrent;
+    property Parent: TrunStackItem read GetParent;
     property Data: TrunData read FData;
   end;
 
@@ -725,6 +734,11 @@ begin
   inherited Destroy;
 end;
 
+function TrunResult.HasValue: Boolean;
+begin
+  Result := AnObject <> nil;
+end;
+
 { TsrdScope }
 
 constructor TsrdScope.Create;
@@ -759,6 +773,23 @@ end;
 
 { TrunStackItem }
 
+function TrunStackItem.GetResult: TrunResult;
+begin
+  if FReference <> nil then
+    Result := FReference
+  else
+    Result := FResult
+end;
+
+procedure TrunStackItem.SetResult(AValue: TrunResult);
+begin
+  if FResult.HasValue then
+    RaiseError('Can not set result reference');
+  if FReference <> nil then
+    RaiseError('Already set a reference');
+  FReference := AValue;
+end;
+
 constructor TrunStackItem.Create;
 begin
   inherited;
@@ -778,6 +809,11 @@ end;
 function TrunStack.GetCurrent: TrunStackItem;
 begin
   Result := (inherited GetCurrent) as TrunStackItem;
+end;
+
+function TrunStack.GetParent: TrunStackItem;
+begin
+  Result := (inherited GetParent) as TrunStackItem;
 end;
 
 constructor TrunStack.Create;
@@ -829,10 +865,7 @@ begin
   inherited;
   Result := False;
   BeforeExecute(vStack, AOperator);
-  try
-    Result := Items.Execute(vStack);
-  finally
-  end;
+  Result := Items.Execute(vStack);
   AfterExecute(vStack, AOperator);
 
   WriteLn('Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level));
@@ -1026,13 +1059,18 @@ var
   v: TrunVariable;
 begin
   inherited;
-  v := vStack.Current.Scope.Variables.Register(Name);
-  if v <> nil then
+  { if not name it assign to parent result }
+  if Name = '' then
   begin
-    vStack.Current.Reference := v.Value;
-    v.Value.SetAnObject(vStack.Current.Result.AnObject);//Set the variable value
-{    if v.Value.AnObject <> nil then
-      v.Value.AnObject.Execute(vStack, AOperator);}
+    vStack.Current.Result := vStack.Parent.Result;
+  end
+  else
+  begin
+    v := vStack.Current.Scope.Variables.Register(Name);
+    if v <> nil then
+    begin
+      vStack.Current.Result := v.Value;
+    end;
   end;
 end;
 
@@ -1236,6 +1274,11 @@ procedure TsoDeclare.Created;
 begin
   inherited Created;
   FObjectType := otClass;
+end;
+
+function TsoDeclare.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+begin
+  Result :=inherited Execute(vStack, AOperator);
 end;
 
 { TsrdInstance }
@@ -1454,6 +1497,20 @@ begin
   FDebug :=AValue;
 end;
 
+procedure TsrdStatement.BeforeExecute(vStack: TrunStack);
+begin
+  vStack.Push;
+end;
+
+procedure TsrdStatement.AfterExecute(vStack: TrunStack);
+{var
+  T: TrunStackItem;}
+begin
+  vStack.Pop;
+  {T := vStack.Pull;
+  FreeAndNil(T);}
+end;
+
 function TsrdStatement.Add(AObject: TsrdStatementItem): Integer;
 begin
   Result := inherited Add(AObject);
@@ -1471,11 +1528,13 @@ function TsrdStatement.Execute(vStack: TrunStack): Boolean;
 var
   i: Integer;
 begin
+  BeforeExecute(vStack);
   Result := Count > 0;
   for i := 0 to Count -1 do
   begin
     Result := Items[i].Execute(vStack) and Result;
   end;
+  AfterExecute(vStack);
 end;
 
 { TsoRun }

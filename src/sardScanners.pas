@@ -158,7 +158,6 @@ type
   public
     procedure ConvertNumber;
     procedure ConvertString;
-    procedure ConvertIdentifier;
     procedure ConvertObject;
 
     procedure SetOperator(AOperator: TopOperator);
@@ -298,7 +297,6 @@ uses
 
 procedure TsrdParserBuffer.Convert;
 begin
-
 end;
 
 { TsrdFeeder }
@@ -369,9 +367,8 @@ begin
         case TokenType of
           tpString: ConvertString;
           tpNumber: ConvertNumber;
-          tpIdentifier: ConvertIdentifier;
           else
-            ConvertObject;//It is already object, i know.
+            ConvertObject;
         end;
   {    if (Block.Count > 0) and (TokenOperator = nil) then }
 
@@ -504,11 +501,14 @@ begin
   SetFlags([flagObject, flagNumber]);
 end;
 
-procedure TsrdParserStackItem.ConvertIdentifier;
+procedure TsrdParserStackItem.ConvertObject;
 begin
   with Buffer do
   begin
-    if TokenStyle = tsDeclare then
+    if TokenObject <> nil then
+    begin
+    end
+    else if TokenStyle = tsDeclare then
     begin
       with TsoDeclare.Create do
       begin
@@ -541,10 +541,6 @@ begin
       SetFlags([flagObject]);
     end;
   end;
-end;
-
-procedure TsrdParserStackItem.ConvertObject;
-begin
 end;
 
 procedure TsrdParser.Flush;
@@ -752,7 +748,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and (sardEngine.IsIdentifier(Text[Column], False)) do
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpIdentifier);
+  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpObject);
 end;
 
 function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;

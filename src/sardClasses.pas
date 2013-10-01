@@ -152,7 +152,7 @@ type
 
   end;
 
-  TsrdType = (tpNone, tpIdentifier, tpNumber, tpString, tpOperator, tpControl, tpComment);
+  TsrdType = (tpNone, tpObject, tpNumber, tpString, tpComment);
 
   { TsardParser }
 
@@ -186,6 +186,7 @@ type
     FCount: Integer;
     FCurrentItem: TsardStackItem;
   protected
+    function GetParent: TObject;
     function GetCurrent: TObject;
   public
     function IsEmpty: Boolean;
@@ -194,6 +195,7 @@ type
     function Pull: TObject; //Pop but do not delete delete the ibject
     function Peek: TObject;
     property Current: TObject read GetCurrent;
+    property Parent: TObject read GetParent;
     property CurrentItem: TsardStackItem read FCurrentItem;
     property Count: Integer read FCount;
   end;
@@ -288,6 +290,16 @@ begin
   Dec(FCount);
   aItem.Free;
   aObject.Free;
+end;
+
+function TsardStack.GetParent: TObject;
+begin
+  if FCurrentItem = nil then
+    Result := nil
+  else if FCurrentItem.Parent = nil then
+    Result := nil
+  else
+    Result := FCurrentItem.Parent.AnObject;
 end;
 
 function TsardStack.GetCurrent: TObject;
