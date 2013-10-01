@@ -66,8 +66,21 @@ type
     procedure AfterConstruction; override;
   end;
 
-  TsardControl = (ctlDeclare, ctlAssign, ctlOpenBracket, ctlCloseBracket, ctlOpenSquare, ctlCloseSquare, ctlOpenBlock, ctlCloseBlock, ctlStart, ctlStop, ctlComma, ctlSemicolon);
-  TsardBracketKind = (brBracket, brSquare, brCurly);// and (), [], {} or maybe <>
+  TsardControl = (
+    ctlStart, //Start parsing
+    ctlStop, //Start parsing
+    ctlDeclare, //Declare a class of object
+    ctlAssign, //Assign to object/variable
+    ctlEnd, //End Statment
+    ctlOpenBlock, // {
+    ctlCloseBlock, // }
+    ctlOpenParams, // (
+    ctlCloseParams, // )
+    ctlOpenArray, // [
+    ctlCloseArray, // ]
+    ctlNone
+  );
+
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
 
   TsardScannerID = type Integer;
@@ -159,8 +172,8 @@ type
     procedure Start; virtual;
     procedure Stop; virtual;
   public
-    procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
-    procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;
+{    procedure TriggerOpen(vBracket: TsardBracketKind); virtual; abstract;
+    procedure TriggerClose(vBracket: TsardBracketKind); virtual; abstract;}
     procedure TriggerToken(AToken: String; AType: TsrdType); virtual; abstract;
     procedure TriggerOperator(AOperator: TsardObject); virtual; abstract;
     procedure TriggerControl(AControl: TsardControl); virtual; abstract;
@@ -214,7 +227,7 @@ type
     }
     function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
     function IsControl(vChar: AnsiChar): Boolean; virtual; abstract;
-    function IsOperator(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
+    function IsOperator(vChar: AnsiChar): Boolean; virtual; abstract;
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual;
   end;
@@ -300,7 +313,7 @@ end;
 
 function TsardCustomEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
-  Result := not IsWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar, vOpen);
+  Result := not IsWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar);
   if vOpen then
     Result := Result and not IsNumber(vChar, vOpen);
 end;

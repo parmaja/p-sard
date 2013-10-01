@@ -198,8 +198,6 @@ type
     constructor Create(AData: TrunData; ABlock: TsrdBlock);
     destructor Destroy; override;
 
-    procedure TriggerOpen(vBracket: TsardBracketKind); override;
-    procedure TriggerClose(vBracket: TsardBracketKind); override;
     procedure TriggerToken(AToken: String; AType: TsrdType); override;
     procedure TriggerControl(AControl: TsardControl); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
@@ -532,6 +530,8 @@ begin
     end
     else
     begin
+      if Token = '' then
+        RaiseError('Identifier is empty');
       with TsoInstance.Create do
       begin
         Name := Token;
@@ -548,45 +548,6 @@ begin
   Stack.Current.Flush;
 end;
 
-procedure TsrdParser.TriggerOpen(vBracket: TsardBracketKind);
-begin
-  case vBracket of
-    brCurly:
-     with TsoSection.Create do
-      begin
-        Stack.Current.SetObject(This);
-        Stack.Push;
-        Stack.Current.Block := Items;
-      end;
-    brBracket:
-      with TsoDescend.Create do
-      begin
-        Stack.Current.SetObject(This);
-        Stack.Push;
-        Stack.Current.Block := Items;
-      end;
-  end;
-end;
-
-procedure TsrdParser.TriggerClose(vBracket: TsardBracketKind);
-begin
-  Flush;
-  case vBracket of
-    brCurly:
-    begin
-      Stack.Pop;
-      if Stack.Count = 0 then
-        RaiseError('Maybe you closed not opened Curly');
-    end;
-    brBracket:
-    begin
-      Stack.Pop;
-      if Stack.Count = 0 then
-        RaiseError('Maybe you closed not opened Bracket');
-    end;
-  end;
-end;
-
 procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
 begin
   Stack.Current.SetIdentifier(AToken, AType);
@@ -595,6 +556,35 @@ end;
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
 begin
   case AControl of
+    ctlOpenBlock:
+     with TsoSection.Create do
+      begin
+        Stack.Current.SetObject(This);
+        Stack.Push;
+        Stack.Current.Block := Items;
+      end;
+    ctlOpenParams:
+      with TsoDescend.Create do
+      begin
+        Stack.Current.SetObject(This);
+        Stack.Push;
+        Stack.Current.Block := Items;
+      end;
+
+    ctlCloseBlock:
+    begin
+      Flush;
+      Stack.Pop;
+      if Stack.Count = 0 then
+        RaiseError('Maybe you closed not opened Curly');
+    end;
+    ctlCloseParams:
+    begin
+      Flush;
+      Stack.Pop;
+      if Stack.Count = 0 then
+        RaiseError('Maybe you closed not opened Bracket');
+    end;
     ctlStart:
     begin
     end;
@@ -602,7 +592,7 @@ begin
     begin
       Flush;
     end;
-    ctlSemicolon:
+    ctlEnd:
     begin
       Flush;
       Stack.Current.NewStatement;
@@ -644,39 +634,15 @@ end;
 
 procedure TsrdControl_Scanner.Scan(const Text: string; var Column: Integer);
 var
-  b: string;
-  l, c: Integer;
   aControl: TctlControl;
 begin
   aControl := sardEngine.Controls.Scan(Text, Column);
   if aControl <> nil then
-  begin
-    Column := Column + Length(aControl.Code);
-    b := aControl.Code;
-  end
+    Column := Column + Length(aControl.Name)
   else
-    RaiseError('Unkown operator started with '+Text[Column]);
+    RaiseError('Unkown control started with ' + Text[Column]);
 
-  if b = '(' then //TODO need to improve it, my brain is off
-    Scanners.Parser.TriggerOpen(brBracket)
-  else if b = '[' then
-    Scanners.Parser.TriggerOpen(brSquare)
-  else if b = '{' then
-    Scanners.Parser.TriggerOpen(brCurly)
-  else if b = ')' then
-    Scanners.Parser.TriggerClose(brBracket)
-  else if b = ']' then
-    Scanners.Parser.TriggerClose(brSquare)
-  else if b = '}' then
-    Scanners.Parser.TriggerClose(brCurly)
-  else if b = ';' then
-    Scanners.Parser.TriggerControl(ctlSemicolon)
-  else if b = ',' then
-    Scanners.Parser.TriggerControl(ctlComma)
-  else if b = ':' then
-    Scanners.Parser.TriggerControl(ctlDeclare)
-  else if b = ':=' then
-    Scanners.Parser.TriggerControl(ctlAssign);
+  Scanners.Parser.TriggerControl(aControl.Code);
 end;
 
 function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -722,19 +688,15 @@ end;
 
 procedure TopOperator_Scanner.Scan(const Text: string; var Column: Integer);
 var
-  c: Integer;
-  s: string;
-  o: TopOperator;
+  aOperator: TopOperator;
 begin
-  c := Column;
-  while (Column <= Length(Text)) and (sardEngine.IsOperator(Text[Column])) do //operator is multi char here
-    Inc(Column);
-  s := MidStr(Text, c, Column - c);
+  aOperator := sardEngine.Operators.Scan(Text, Column);
+  if aOperator <> nil then
+    Column := Column + Length(aOperator.Name)
+  else
+    RaiseError('Unkown operator started with ' + Text[Column]);
 
-  o := sardEngine.Operators.Find(s);
-  if o = nil then
-    RaiseError('Unkown operator: ' + s);
-  Scanners.Parser.TriggerOperator(o);
+  Scanners.Parser.TriggerOperator(aOperator);
 end;
 
 function TopOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;

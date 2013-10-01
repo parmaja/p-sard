@@ -401,8 +401,8 @@ type
   TctlControl = class(TsardObject)
   protected
   public
-    Code: string;
     Name: string;
+    Code: TsardControl;
     Level: Integer;
     Description: string;
     constructor Create; virtual;
@@ -418,11 +418,10 @@ type
   protected
     function Check(AControl: TctlControl): Boolean; virtual;
   public
-    function Find(const Code: string): TctlControl;
-    function FindByName(const vName: string): TctlControl;
+    function Find(const vName: string): TctlControl;
     function Add(AControl: TctlControl): Boolean;
     function Add(AControlClass: TctlControlClass): Boolean;
-    function Add(ACode: string): TctlControl;
+    function Add(AName: string; ACode: TsardControl): TctlControl;
     function Scan(const vText: string; vIndex: Integer): TctlControl;
     function IsOpenBy(const C: Char): Boolean;
     property Items[Index: Integer]: TctlControl read GetItem; default;
@@ -436,8 +435,8 @@ type
   protected
     function DoExecute(vStack: TrunStack; vObject: TsoObject): Boolean; virtual;
   public
-    Code: string;
     Name: string;
+    Title: string;
     Level: Integer;
     Description: string;
     function Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
@@ -454,10 +453,12 @@ type
   protected
     function Check(AOperator: TopOperator): Boolean; virtual;
   public
-    function Find(const Code: string): TopOperator;
-    function FindByName(const vName: string): TopOperator;
+    function Find(const vName: string): TopOperator;
+    function FindByTitle(const vTitle: string): TopOperator;
     function Add(AOperator: TopOperator): Boolean;
     function Add(AOperatorClass: TopOperatorClass): Boolean;
+    function IsOpenBy(const C: Char): Boolean;
+    function Scan(const vText: string; vIndex: Integer): TopOperator;
     property Items[Index: Integer]: TopOperator read GetItem; default;
   end;
 
@@ -600,9 +601,9 @@ type
     property AnObject: TsoObject read FAnObject write SetAnObject;
   end;
 
-  { TsrdScope }
+  { TrunScope }
 
-  TsrdScope = class(TsardObject)
+  TrunScopeItem = class(TsardObject)
   private
     FVariables: TrunVariables;
   public
@@ -611,20 +612,32 @@ type
     property Variables: TrunVariables read FVariables;
   end;
 
+  { TrunScopes }
+
+  TrunScope = class(TsardStack)
+  private
+    function GetCurrent: TrunScopeItem;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Push(vObject: TrunScopeItem);
+    function Push: TrunScopeItem; overload;
+    function Pull: TrunScopeItem;
+    property Current: TrunScopeItem read GetCurrent;
+  end;
+
   { TrunStackItem }
 
   TrunStackItem = class(TsardObject)
   private
     FResult: TrunResult;
     FReference: TrunResult; //nil but if it exist we use it to assign it after block executed
-    FScope: TsrdScope;
     function GetResult: TrunResult;
     procedure SetResult(AValue: TrunResult);
   public
     constructor Create;
     destructor Destroy; override;
     property Result: TrunResult read GetResult write SetResult;
-    property Scope: TsrdScope read FScope;
   end;
 
   { TrunStack }
@@ -632,6 +645,7 @@ type
   TrunStack = class(TsardStack)
   private
     FData: TrunData;
+    FScope: TrunScope;
     function GetCurrent: TrunStackItem;
     function GetParent: TrunStackItem;
   public
@@ -643,6 +657,7 @@ type
     property Current: TrunStackItem read GetCurrent;
     property Parent: TrunStackItem read GetParent;
     property Data: TrunData read FData;
+    property Scope: TrunScope read FScope;
   end;
 
   { TsrdEngine }
@@ -660,7 +675,7 @@ type
     constructor Create;
     function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsControl(vChar: AnsiChar): Boolean; override;
-    function IsOperator(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+    function IsOperator(vChar: AnsiChar): Boolean; override;
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
 
@@ -685,6 +700,39 @@ begin
   Result := FsardEngine;
 end;
 
+{ TrunScope }
+
+function TrunScope.GetCurrent: TrunScopeItem;
+begin
+  Result := (inherited GetCurrent) as TrunScopeItem;
+end;
+
+constructor TrunScope.Create;
+begin
+
+end;
+
+destructor TrunScope.Destroy;
+begin
+  inherited Destroy;
+end;
+
+procedure TrunScope.Push(vObject: TrunScopeItem);
+begin
+  inherited Push(vObject);
+end;
+
+function TrunScope.Push: TrunScopeItem;
+begin
+  Result := TrunScopeItem.Create;
+  Push(Result);
+end;
+
+function TrunScope.Pull: TrunScopeItem;
+begin
+  Result := (inherited Pull) as TrunScopeItem;
+end;
+
 { TctlControl }
 
 constructor TctlControl.Create;
@@ -704,22 +752,7 @@ begin
 
 end;
 
-function TctlControls.Find(const Code: string): TctlControl;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if Code = Items[i].Code then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
-function TctlControls.FindByName(const vName: string): TctlControl;
+function TctlControls.Find(const vName: string): TctlControl;
 var
   i: Integer;
 begin
@@ -746,9 +779,10 @@ begin
   Result := Add(AControlClass.Create);
 end;
 
-function TctlControls.Add(ACode: string): TctlControl;
+function TctlControls.Add(AName: string; ACode: TsardControl): TctlControl;
 begin
   Result := TctlControl.Create;
+  Result.Name := AName;
   Result.Code := ACode;
   Add(Result);
 end;
@@ -762,11 +796,11 @@ begin
   max := 0;
   for i := 0 to Count -1 do
   begin
-    if ScanCompare(Items[i].Code, vText, vIndex) then
+    if ScanCompare(Items[i].Name, vText, vIndex) then
     begin
-      if max < length(Items[i].Code) then
+      if max < length(Items[i].Name) then
       begin
-        max := length(Items[i].Code);
+        max := length(Items[i].Name);
         Result := Items[i];
       end;
     end;
@@ -780,7 +814,7 @@ begin
   Result := False;
   for i := 0 to Count-1 do
   begin
-    if Items[i].Code[1] = LowerCase(C) then
+    if Items[i].Name[1] = LowerCase(C) then
     begin
       Result := True;
       break;
@@ -831,6 +865,7 @@ procedure TsoSection.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
 begin
   inherited;
   vStack.Push; //<--here we can push a variable result or create temp result to drop it
+  vStack.Scope.Push;
 end;
 
 procedure TsoSection.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
@@ -842,6 +877,7 @@ begin
   if T.Result.AnObject <> nil then
     T.Result.AnObject.Execute(vStack, AOperator);
   FreeAndNil(T);
+  vStack.Scope.Pop;
 end;
 
 { TsoDescend }
@@ -918,15 +954,15 @@ begin
   Result := AnObject <> nil;
 end;
 
-{ TsrdScope }
+{ TrunScopeItem }
 
-constructor TsrdScope.Create;
+constructor TrunScopeItem.Create;
 begin
   inherited Create;
   FVariables := TrunVariables.Create;
 end;
 
-destructor TsrdScope.Destroy;
+destructor TrunScopeItem.Destroy;
 begin
   FreeAndNil(FVariables);
   inherited Destroy;
@@ -973,13 +1009,11 @@ constructor TrunStackItem.Create;
 begin
   inherited;
   FResult := TrunResult.Create;
-  FScope := TsrdScope.Create;
 end;
 
 destructor TrunStackItem.Destroy;
 begin
   FreeAndNil(FResult);
-  FreeAndNil(FScope);
   inherited Destroy;
 end;
 
@@ -999,11 +1033,13 @@ constructor TrunStack.Create;
 begin
   inherited;
   FData := TrunData.Create;
+  FScope := TrunScope.Create;
 end;
 
 destructor TrunStack.Destroy;
 begin
   FreeAndNil(FData);
+  FreeAndNil(FScope);
   inherited;
 end;
 
@@ -1129,8 +1165,8 @@ end;
 constructor TopAssign.Create;
 begin
   inherited Create;
-  Code := ':=';
-  Name := 'Assign';
+  Name := ':=';
+  Title := 'Assign';
   Level := 10;
   Description := 'Clone to another object';
 end;
@@ -1152,8 +1188,8 @@ end;
 constructor TopNot.Create;
 begin
   inherited Create;
-  Code := '!'; //or '~'
-  Name := 'Not';
+  Name := '!'; //or '~'
+  Title := 'Not';
   Level := 100;
 end;
 
@@ -1162,8 +1198,8 @@ end;
 constructor TopOr.Create;
 begin
   inherited Create;
-  Code := '|';
-  Name := 'Or';
+  Name := '|';
+  Title := 'Or';
   Level := 51;
 end;
 
@@ -1172,8 +1208,8 @@ end;
 constructor TopAnd.Create;
 begin
   inherited Create;
-  Code := '&';
-  Name := 'And';
+  Name := '&';
+  Title := 'And';
   Level := 51;
 end;
 
@@ -1182,8 +1218,8 @@ end;
 constructor TopNotEqual.Create;
 begin
   inherited Create;
-  Code := '<>';
-  Name := 'NotEqual';
+  Name := '<>';
+  Title := 'NotEqual';
   Level := 51;
 end;
 
@@ -1192,8 +1228,8 @@ end;
 constructor TopEqual.Create;
 begin
   inherited Create;
-  Code := '=';
-  Name := 'Equal';
+  Name := '=';
+  Title := 'Equal';
   Level := 51;
 end;
 
@@ -1202,8 +1238,8 @@ end;
 constructor TopGreater.Create;
 begin
   inherited Create;
-  Code := '>';
-  Name := 'Greater';
+  Name := '>';
+  Title := 'Greater';
   Level := 51;
 end;
 
@@ -1212,8 +1248,8 @@ end;
 constructor TopLesser.Create;
 begin
   inherited Create;
-  Code := '<';
-  Name := 'Lesser';
+  Name := '<';
+  Title := 'Lesser';
   Level := 51;
 end;
 
@@ -1222,8 +1258,8 @@ end;
 constructor TopPower.Create;
 begin
   inherited Create;
-  Code := '^';
-  Name := 'Power';
+  Name := '^';
+  Title := 'Power';
   Level := 52;
 end;
 
@@ -1245,7 +1281,7 @@ begin
   end
   else
   begin
-    v := vStack.Current.Scope.Variables.Register(Name);
+    v := vStack.Scope.Current.Variables.Register(Name);
     if v <> nil then
     begin
       vStack.Current.Result := v.Value;
@@ -1258,8 +1294,8 @@ end;
 constructor TopDivide.Create;
 begin
   inherited Create;
-  Code := '/';
-  Name := 'Divition';
+  Name := '/';
+  Title := 'Divition';
   Level := 51;
 end;
 
@@ -1268,8 +1304,8 @@ end;
 constructor TopMultiply.Create;
 begin
   inherited Create;
-  Code := '*';
-  Name := 'Multiply';
+  Name := '*';
+  Title := 'Multiply';
   Level := 51;
 end;
 
@@ -1278,8 +1314,8 @@ end;
 constructor TopMinus.Create;
 begin
   inherited Create;
-  Code := '-';
-  Name := 'Minus';
+  Name := '-';
+  Title := 'Minus';
   Level := 50;
   Description := 'Sub object to another object';
 end;
@@ -1301,22 +1337,7 @@ begin
   inherited Create;
 end;
 
-function TopOperators.Find(const Code: string): TopOperator;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if Code = Items[i].Code then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
-function TopOperators.FindByName(const vName: string): TopOperator;
+function TopOperators.Find(const vName: string): TopOperator;
 var
   i: Integer;
 begin
@@ -1324,6 +1345,21 @@ begin
   for i := 0 to Count - 1 do
   begin
     if vName = Items[i].Name then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+function TopOperators.FindByTitle(const vTitle: string): TopOperator;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if vTitle = Items[i].Title then
     begin
       Result := Items[i];
       break;
@@ -1343,13 +1379,48 @@ begin
   Result := Add(AOperatorClass.Create);
 end;
 
+function TopOperators.IsOpenBy(const C: Char): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 0 to Count-1 do
+  begin
+    if Items[i].Name[1] = LowerCase(C) then
+    begin
+      Result := True;
+      break;
+    end;
+  end;
+end;
+
+function TopOperators.Scan(const vText: string; vIndex: Integer): TopOperator;
+var
+  i: Integer;
+  max: Integer;
+begin
+  Result := nil;
+  max := 0;
+  for i := 0 to Count -1 do
+  begin
+    if ScanCompare(Items[i].Name, vText, vIndex) then
+    begin
+      if max < length(Items[i].Name) then
+      begin
+        max := length(Items[i].Name);
+        Result := Items[i];
+      end;
+    end;
+  end;
+end;
+
 { TopPlus }
 
 constructor TopPlus.Create;
 begin
   inherited Create;
-  Code := '+';
-  Name := 'Plus';
+  Name := '+';
+  Title := 'Plus';
   Level := 50;
   Description := 'Add object to another object';
 end;
@@ -1379,16 +1450,16 @@ begin
   inherited;
   with Controls do
   begin
-    Add('(');
-    Add('[');
-    Add('{');
-    Add(')');
-    Add(']');
-    Add('}');
-    Add(';');
-    Add(',');
-    Add(':');
-    Add(':=');
+    Add('(', ctlOpenParams);
+    Add('[', ctlOpenArray);
+    Add('{', ctlOpenBlock);
+    Add(')', ctlCloseParams);
+    Add(']', ctlCloseArray);
+    Add('}', ctlCloseBlock);
+    Add(';', ctlEnd);
+    Add(',', ctlEnd);
+    Add(':', ctlDeclare);
+    Add(':=', ctlAssign);
   end;
 
   with Operators do
@@ -1440,12 +1511,9 @@ begin
   Result := Controls.IsOpenBy(vChar);
 end;
 
-function TsrdEngine.IsOperator(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdEngine.IsOperator(vChar: AnsiChar): Boolean;
 begin
-  //if vOpen then
-    Result := vChar in sOperatorOpenChars
-//  else
-//    Result := not IsWhiteSpace(vChar, False) and not IsNumber(vChar, False) and not IsControl(vChar, False); //Can be any thing except those
+  Result := Operators.IsOpenBy(vChar);
 end;
 
 function TsrdEngine.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
@@ -1497,8 +1565,18 @@ begin
 end;
 
 function TsoInstance.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+var
+  v: TrunVariable;
 begin
-  Result :=inherited Execute(vStack, AOperator);
+  v := vStack.Scope.Current.Variables.Register(Name);
+  if v <> nil then
+  begin
+    if v.Value.AnObject = nil then
+      RaiseError(v.Name + ' variable have no value yet');
+    Result := v.Value.AnObject.Execute(vStack, AOperator);
+  end
+  else
+    Result := False;
 end;
 
 { TsrdBoolean }
@@ -1619,8 +1697,8 @@ begin
   if vStack.Current.Result.AnObject is TsoInteger then
   begin
     Result := True;
-    WriteLn(IntToStr(TsoInteger(vStack.Current.Result.AnObject).Value) + ' '+ AOperator.Code + ' ' +IntToStr(Value));
-    case AOperator.Code of
+    WriteLn(IntToStr(TsoInteger(vStack.Current.Result.AnObject).Value) + ' '+ AOperator.Name + ' ' +IntToStr(Value));
+    case AOperator.Name of
       '+': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value + Value;
       '-': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value - Value;
       '*': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value * Value;
