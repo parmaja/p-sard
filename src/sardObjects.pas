@@ -73,6 +73,8 @@ type
   TrunStack = class;
   TrunVariables = class;
 
+  TsoBlock = class;
+
   { TsrdStatementItem }
 
   TsrdStatementItem = class(TsardObject)
@@ -82,9 +84,19 @@ type
     function Execute(vStack: TrunStack): Boolean;
   end;
 
+  { TsrdObjectList }
+
+  TsrdObjectList = class(TsardObjectList)
+  private
+    FParent: TsoBlock;
+  public
+    constructor Create(AParent: TsoBlock);
+    property Parent: TsoBlock read FParent;
+  end;
+
   { TsrdStatement }
 
-  TsrdStatement = class(TsardObjectList)
+  TsrdStatement = class(TsrdObjectList)
   private
     FDebug: TsrdDebug;
     function GetItem(Index: Integer): TsrdStatementItem;
@@ -102,7 +114,7 @@ type
 
   { TsrdBlock }
 
-  TsrdBlock = class(TsardObjectList)
+  TsrdBlock = class(TsrdObjectList)
   private
     function GetStatement: TsrdStatement;
     function GetItem(Index: Integer): TsrdStatement;
@@ -187,9 +199,19 @@ type
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override; final;
   end;
 
+  { TsoStatementObject }
+
+  TsoStatementObject = class(TsoObject)
+  private
+    FParent: TsoObject;
+    procedure SetParent(AValue: TsoObject);
+  public
+    property Parent: TsoObject read FParent write SetParent;
+  end;
+
   { TsoBlock }
 
-  TsoBlock = class abstract(TsoObject, IsrdBlock)
+  TsoBlock = class abstract(TsoStatementObject, IsrdBlock)
   protected
     FItems: TsrdBlock;
     procedure Created; override;
@@ -204,7 +226,7 @@ type
 
   { TsoNamedObject }
 
-  TsoNamedObject = class(TsoObject)
+  TsoNamedObject = class(TsoStatementObject)
   private
     FID: Integer;
     FName: string;
@@ -237,8 +259,9 @@ type
   TsoInstance = class(TsoNamedObject)
   private
   public
-    Reference: TsoObject;
     procedure Created; override;
+    procedure FindMe;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   end;
 
   { TsoAssign }
@@ -626,6 +649,23 @@ begin
   Result := FsardEngine;
 end;
 
+{ TsrdObjectList }
+
+constructor TsrdObjectList.Create(AParent: TsoBlock);
+begin
+  inherited Create;
+  FParent := AParent;
+end;
+
+{ TsoStatementObject }
+
+procedure TsoStatementObject.SetParent(AValue: TsoObject);
+begin
+  if FParent <> nil then
+    RaiseError('Already have a parent');
+  FParent :=AValue;
+end;
+
 { TrunData }
 
 function TrunData.RegisterID(vName: string): Integer;
@@ -876,7 +916,7 @@ end;
 constructor TsoBlock.Create;
 begin
   inherited Create;
-  FItems := TsrdBlock.Create;
+  FItems := TsrdBlock.Create(Self);
 end;
 
 destructor TsoBlock.Destroy;
@@ -1289,6 +1329,16 @@ begin
   FObjectType := otObject;
 end;
 
+procedure TsoInstance.FindMe;
+begin
+
+end;
+
+function TsoInstance.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+begin
+  Result :=inherited Execute(vStack, AOperator);
+end;
+
 { TsrdBoolean }
 
 procedure TsoBoolean.Created;
@@ -1463,7 +1513,7 @@ end;
 
 function TsrdBlock.Add: TsrdStatement;
 begin
-  Result := TsrdStatement.Create;
+  Result := TsrdStatement.Create(Parent);
   Add(Result);
 end;
 
@@ -1521,6 +1571,8 @@ begin
   Result := TsrdStatementItem.Create;
   Result.AnOperator := AOperator;
   Result.AnObject := AObject;
+  if AObject is TsoStatementObject then
+    (AObject as TsoStatementObject).Parent := Parent;
   Add(Result);
 end;
 
