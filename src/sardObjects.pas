@@ -162,21 +162,33 @@ type
   private
   protected
     FObjectType: TsrdObjectType;
+    function GetAsString: String;
+    function GetAsFloat: Float;
+    function GetAsInteger: int;
+    function GetAsBoolean: Boolean;
+
+    {procedure SetAsString(AValue: String);
+    procedure SetAsFloat(AValue: Float);
+    procedure SetAsInteger(AValue: int);
+    procedure SetAsBoolean(AValue: Boolean);}
   public
     constructor Create; virtual;
     function This: TsoObject; //return the same object, stupid but save some code :P
+    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; virtual;
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual;
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone(WithValue: Boolean = True): TsoObject; virtual;
     property ObjectType: TsrdObjectType read FObjectType;
-    function AsString: String;
-    function AsFloat: Float;
-    function AsInteger: int;
-    function AsBoolean: Boolean;
+
     function ToBoolean(out outValue: Boolean): Boolean; virtual;
     function ToString(out outValue: string): Boolean; virtual; reintroduce;
     function ToFloat(out outValue: Float): Boolean; virtual;
     function ToInteger(out outValue: int): Boolean; virtual;
+
+    property AsInteger: Int read GetAsInteger;
+    property AsFloat: Float read GetAsFloat;
+    property AsString: string read GetAsString;
+    property AsBoolean: Boolean read GetAsBoolean;
   end;
 
   { TsoObjects }
@@ -194,7 +206,6 @@ type
 
   TsoConstObject = class abstract(TsoObject)
   protected
-    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual; abstract;
   public
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override; final;
   end;
@@ -351,7 +362,7 @@ type
     Value: int;
     constructor Create(AValue: int); overload;
     procedure Assign(FromObject: TsoObject); override;
-    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
+    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
     function ToInteger(out outValue: int): Boolean; override;
@@ -360,10 +371,14 @@ type
 
   { TsrdFloat }
 
+  { TsoFloat }
+
   TsoFloat = class(TsoNumber)
   public
     Value: Float;
     procedure Created; override;
+    procedure Assign(FromObject: TsoObject); override;
+    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
     function ToInteger(out outValue: int): Boolean; override;
@@ -771,7 +786,7 @@ end;
 
 function TctlControls.Check(AControl: TctlControl): Boolean;
 begin
-
+  Result := True;
 end;
 
 function TctlControls.Find(const vName: string): TctlControl;
@@ -1004,7 +1019,7 @@ begin
   begin
     if vStack.Current.Result.AnObject = nil then
       vStack.Current.Result.AnObject := Clone(False);
-    Result := DoExecute(vStack, AOperator);
+    Result := vStack.Current.Result.AnObject.Operate(Self, AOperator);
   end;
 end;
 
@@ -1297,6 +1312,7 @@ var
 begin
   inherited;
   { if not name it assign to parent result }
+  Result := True;
   if Name = '' then
   begin
     vStack.Current.Result := vStack.Parent.Result;
@@ -1668,19 +1684,47 @@ begin
   FObjectType := otFloat;
 end;
 
+procedure TsoFloat.Assign(FromObject: TsoObject);
+begin
+  if FromObject <> nil then
+  begin
+    if FromObject is TsoFloat then
+      Value := (FromObject as TsoFloat).Value
+    else
+      Value := FromObject.AsFloat;
+  end;
+end;
+
+function TsoFloat.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
+begin
+  Result := True;
+  WriteLn(FloatToStr(Value) + ' '+ AOperator.Name + ' ' +IntToStr(AObject.AsInteger));
+  case AOperator.Name of
+    '+': Value := Value + AObject.AsFloat;
+    '-': Value := Value - AObject.AsFloat;
+    '*': Value := Value * AObject.AsFloat;
+    '/': Value := Value / AObject.AsFloat;
+    else
+      Result := False;
+  end;
+end;
+
 function TsoFloat.ToString(out outValue: string): Boolean;
 begin
-  Result :=inherited ToString(outValue);
+  outValue := FloatToStr(Value);
+  Result := True;
 end;
 
 function TsoFloat.ToFloat(out outValue: Float): Boolean;
 begin
-  Result :=inherited ToFloat(outValue);
+  outValue := Value;
+  Result := True;
 end;
 
 function TsoFloat.ToInteger(out outValue: int): Boolean;
 begin
-  Result :=inherited ToInteger(outValue);
+  outValue := round(Value);
+  Result := True;
 end;
 
 function TsoFloat.ToBoolean(out outValue: Boolean): Boolean;
@@ -1714,20 +1758,17 @@ begin
   end;
 end;
 
-function TsoInteger.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+function TsoInteger.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
 begin
-  if vStack.Current.Result.AnObject is TsoInteger then
-  begin
-    Result := True;
-    WriteLn(IntToStr(TsoInteger(vStack.Current.Result.AnObject).Value) + ' '+ AOperator.Name + ' ' +IntToStr(Value));
-    case AOperator.Name of
-      '+': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value + Value;
-      '-': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value - Value;
-      '*': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value * Value;
-      '/': TsoInteger(vStack.Current.Result.AnObject).Value := TsoInteger(vStack.Current.Result.AnObject).Value div Value;
-      else
-        Result := False;
-    end;
+  Result := True;
+  WriteLn(IntToStr(Value) + ' '+ AOperator.Name + ' ' +IntToStr(AObject.AsInteger));
+  case AOperator.Name of
+    '+': Value := Value + AObject.AsInteger;
+    '-': Value := Value - AObject.AsInteger;
+    '*': Value := Value * AObject.AsInteger;
+    '/': Value := Value div AObject.AsInteger;
+    else
+      Result := False;
   end;
 end;
 
@@ -1883,10 +1924,16 @@ begin
   Result := Self;
 end;
 
+function TsoObject.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
+begin
+  Result := False;
+end;
+
 function TsoObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 var
   s: string;
 begin
+  Result := True;//Nothing to do
   s := StringOfChar('-', vStack.CurrentItem.Level)+'->';
   s := s + 'Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level);
   if AOperator <> nil then
@@ -1906,7 +1953,7 @@ begin
     Result.Assign(Self);
 end;
 
-function TsoObject.AsString: String;
+function TsoObject.GetAsString: String;
 var
   o: string;
 begin
@@ -1916,7 +1963,7 @@ begin
     Result := '';
 end;
 
-function TsoObject.AsFloat: Float;
+function TsoObject.GetAsFloat: Float;
 var
   o: Float;
 begin
@@ -1926,7 +1973,7 @@ begin
     Result := 0;
 end;
 
-function TsoObject.AsInteger: int;
+function TsoObject.GetAsInteger: int;
 var
   o: int;
 begin
@@ -1936,7 +1983,7 @@ begin
     Result := 0;
 end;
 
-function TsoObject.AsBoolean: Boolean;
+function TsoObject.GetAsBoolean: Boolean;
 var
   o: Boolean;
 begin

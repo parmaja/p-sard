@@ -150,6 +150,7 @@ type
   TsrdParserStackItem = class(TsardObject)
   private
     FFlags: TsrdFlags;
+    FFlag: TsrdFlag;
   protected
     Parser: TsrdParser;
     Buffer: TsrdParserBuffer;
@@ -163,14 +164,15 @@ type
 
     procedure SetOperator(AOperator: TopOperator);
     procedure SetStyle(AStyle: TsrdObjectStyle);
-    procedure SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
+    procedure SetToken(AIdentifier: string; ATokenType: TsrdType);
     procedure SetObject(AObject: TsoObject);
-    procedure SetFlags(AFlags: TsrdFlags);
+    procedure SetFlag(AFlag: TsrdFlag);
     procedure Flush;
     procedure NewStatement;
     constructor Create(AParser: TsrdParser);
     destructor Destroy; override;
     property Flags: TsrdFlags read FFlags;
+    property Flag: TsrdFlag read FFlag;
   end;
 
   { TsrdParserStack }
@@ -308,6 +310,7 @@ var
   c: Integer;
 begin
   Inc(Column, 2);//2 chars
+  c := Column;
   while (Column <= Length(Text)) do
   begin
     if (ScanCompare('*}', Text, Column)) then
@@ -347,14 +350,14 @@ end;
 
 { TsrdParserStackItem }
 
-procedure TsrdParserStackItem.SetIdentifier(AIdentifier: string; ATokenType: TsrdType);
+procedure TsrdParserStackItem.SetToken(AIdentifier: string; ATokenType: TsrdType);
 begin
   CheckBuffer;
   if Buffer.Token <> '' then
     RaiseError('Identifier is already set');
   Buffer.Token := AIdentifier;
   Buffer.TokenType := ATokenType;
-  SetFlags([flagIdentifier]);
+  SetFlag(flagIdentifier);
 end;
 
 procedure TsrdParserStackItem.SetOperator(AOperator: TopOperator);
@@ -379,10 +382,11 @@ begin
   Buffer.TokenObject := AObject;
 end;
 
-procedure TsrdParserStackItem.SetFlags(AFlags: TsrdFlags);
+procedure TsrdParserStackItem.SetFlag(AFlag: TsrdFlag);
 begin
   CheckBuffer;
-  FFlags := FFlags + AFlags;
+  FFlags := FFlags + [AFlag];
+  FFlag := AFlag;
 end;
 
 procedure TsrdParserStackItem.Flush;
@@ -390,8 +394,8 @@ begin
   if Buffer <> nil then
     with Buffer do
     begin
-      if (flagObject in Flags) and (TokenOperator = nil) then
-        RaiseError('You cant add object without operator!');
+      {if (flagObject in Flags) and (TokenOperator = nil) then
+        RaiseError('You cant add object without operator!');}
 
       Convert;
 
@@ -403,8 +407,6 @@ begin
           else
             ConvertObject;
         end;
-  {    if (Block.Count > 0) and (TokenOperator = nil) then }
-
       if TokenObject = nil then
         RaiseError('Object is nil!');
       Block.Statement.Add(TokenOperator, TokenObject);
@@ -463,7 +465,6 @@ end;
 
 procedure TsrdParser.Stop;
 begin
-
 end;
 
 constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
@@ -503,7 +504,7 @@ begin
     end;
     Token := '';
   end;
-  SetFlags([flagObject, flagString]);
+  SetFlag(flagString);
 end;
 
 procedure TsrdParserStackItem.ConvertComment;
@@ -517,7 +518,7 @@ begin
     end;
     Token := '';
   end;
-  SetFlags([flagObject, flagComment]);
+  SetFlag(flagComment);
 end;
 
 procedure TsrdParserStackItem.ConvertNumber;
@@ -545,7 +546,7 @@ begin
     end;
     Token := '';
   end;
-  SetFlags([flagObject, flagNumber]);
+  SetFlag(flagNumber);
 end;
 
 procedure TsrdParserStackItem.ConvertObject;
@@ -565,7 +566,7 @@ begin
         Block := Items;}
         TokenObject := This;
       end;
-      SetFlags([flagDeclare]);
+      SetFlag(flagDeclare);
     end
     else if TokenStyle = tsAssign then
     begin
@@ -575,7 +576,7 @@ begin
         ID := Parser.Data.RegisterID(Name);
         TokenObject := This;
       end;
-      SetFlags([flagAssign]);
+      SetFlag(flagAssign);
     end
     else
     begin
@@ -587,7 +588,7 @@ begin
         ID := Parser.Data.RegisterID(Name);
         TokenObject := This;
       end;
-      SetFlags([flagObject]);
+      SetFlag(flagObject);
     end;
   end;
 end;
@@ -599,7 +600,7 @@ end;
 
 procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
 begin
-  Stack.Current.SetIdentifier(AToken, AType);
+  Stack.Current.SetToken(AToken, AType);
 end;
 
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
@@ -619,43 +620,42 @@ begin
         Stack.Push;
         Stack.Current.Block := Items;
       end;
-
     ctlCloseBlock:
-    begin
-      Flush;
-      Stack.Pop;
-      if Stack.Count = 0 then
-        RaiseError('Maybe you closed not opened Curly');
-    end;
-    ctlCloseParams:
-    begin
-      Flush;
-      Stack.Pop;
-      if Stack.Count = 0 then
-        RaiseError('Maybe you closed not opened Bracket');
-    end;
-    ctlStart:
-    begin
-    end;
-    ctlStop:
-    begin
-      Flush;
-    end;
-    ctlEnd:
-    begin
-      Flush;
-      Stack.Current.NewStatement;
-    end;
-    ctlAssign:
-    begin
-      if (Stack.Current.Flags = []) or (Stack.Current.Flags = [flagIdentifier]) then
       begin
-        Stack.Current.SetStyle(tsAssign);
         Flush;
-      end
-      else
-        RaiseError('You can not use assignment here!');
-    end;
+        Stack.Pop;
+        if Stack.Count = 0 then
+          RaiseError('Maybe you closed not opened Curly');
+      end;
+    ctlCloseParams:
+      begin
+        Flush;
+        Stack.Pop;
+        if Stack.Count = 0 then
+          RaiseError('Maybe you closed not opened Bracket');
+      end;
+    ctlStart:
+      begin
+      end;
+    ctlStop:
+      begin
+        Flush;
+      end;
+    ctlEnd:
+      begin
+        Flush;
+        Stack.Current.NewStatement;
+      end;
+    ctlAssign:
+      begin
+        if (Stack.Current.Flags = []) or (Stack.Current.Flags = [flagIdentifier]) then
+        begin
+          Stack.Current.SetStyle(tsAssign);
+          Flush;
+        end
+        else
+          RaiseError('You can not use assignment here!');
+      end;
     ctlDeclare:
       begin
         if (Stack.Current.Flags = [flagIdentifier]) then //Only Identifier is opened
@@ -674,8 +674,6 @@ end;
 procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
   Flush;
-{  if Stack.Current.TokenOperator <> nil then
-    RaiseError('Operator already set');}
   Stack.Current.SetOperator(AOperator as TopOperator);
 end;
 
