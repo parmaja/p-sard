@@ -576,13 +576,13 @@ begin
     begin
       Stack.Pop;
       if Stack.Count = 0 then
-        RaiseError('Maybe you closed not opened Curly')
+        RaiseError('Maybe you closed not opened Curly');
     end;
     brBracket:
     begin
       Stack.Pop;
       if Stack.Count = 0 then
-        RaiseError('Maybe you closed not opened Bracket')
+        RaiseError('Maybe you closed not opened Bracket');
     end;
   end;
 end;
@@ -646,13 +646,16 @@ procedure TsrdControl_Scanner.Scan(const Text: string; var Column: Integer);
 var
   b: string;
   l, c: Integer;
+  aControl: TctlControl;
 begin
-  c := Column;
-  l := Length(Text);
-  while (Column <= l) and (sardEngine.IsControl(Text[Column], False)) do
-    Inc(Column);
-
-  b := MidStr(Text, c, Column - c);
+  aControl := sardEngine.Controls.Scan(Text, Column);
+  if aControl <> nil then
+  begin
+    Column := Column + Length(aControl.Code);
+    b := aControl.Code;
+  end
+  else
+    RaiseError('Unkown operator started with '+Text[Column]);
 
   if b = '(' then //TODO need to improve it, my brain is off
     Scanners.Parser.TriggerOpen(brBracket)
@@ -678,7 +681,7 @@ end;
 
 function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := sardEngine.IsControl(Text[Column], True);
+  Result := sardEngine.IsControl(Text[Column]);
 end;
 
 { TsrdFeeder }
@@ -772,7 +775,7 @@ end;
 
 function TsrdDQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := CheckText('"', Text, Column);
+  Result := ScanCompare('"', Text, Column);
 end;
 
 { TsrdSQStringScanner }
@@ -791,7 +794,7 @@ end;
 
 function TsrdSQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := CheckText('''', Text, Column);
+  Result := ScanCompare('''', Text, Column);
 end;
 
 { TsrdBlockCommentScanner }
@@ -801,7 +804,7 @@ begin
   Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) do
   begin
-    if (CheckText('*/', Text, Column)) then
+    if (ScanCompare('*/', Text, Column)) then
     begin
       Inc(Column, 2);//2 chars
       break;
@@ -812,7 +815,7 @@ end;
 
 function TsrdBlockComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := CheckText('/*', Text, Column);
+  Result := ScanCompare('/*', Text, Column);
 end;
 
 { TsrdLineComment_Scanner }
@@ -827,7 +830,7 @@ end;
 
 function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := CheckText('//', Text, Column);
+  Result := ScanCompare('//', Text, Column);
 end;
 
 { TsrdWhitespace_Scanner }

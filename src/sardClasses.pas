@@ -84,8 +84,6 @@ type
   private
     FScanners: TsardScanners;
   protected
-    function CheckText(S: string; const Text: string; const Column: Integer): Boolean;
-    function ScanText(S: string; const Text: string; var Column: Integer): Boolean;
     procedure Scan(const Text: string; var Column: Integer); virtual; abstract;
     function Accept(const Text: string; var Column: Integer): Boolean; virtual;
     function DetectScanner(const Text: string; var Column: Integer): Integer;
@@ -188,6 +186,8 @@ type
   protected
     function GetParent: TObject;
     function GetCurrent: TObject;
+    procedure AfterPush; virtual;
+    procedure BeforePop; virtual;
   public
     function IsEmpty: Boolean;
     procedure Push(vObject: TObject);
@@ -205,19 +205,23 @@ type
   TsardCustomEngine = class(TsardObject)
   private
   protected
+    procedure Check; virtual;
+    procedure Created; override;
   public
     {
       Open mean first char in it, like Numbers must start with number 0..9 but can contain a..z
         or Identifier start a..z or _ but can contain numbers
     }
     function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
-    function IsControl(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
+    function IsControl(vChar: AnsiChar): Boolean; virtual; abstract;
     function IsOperator(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual;
   end;
 
 procedure RaiseError(AError: string);
+function ScanCompare(S: string; const Text: string; const Index: Integer): Boolean;
+function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
 
 implementation
 
@@ -229,6 +233,22 @@ begin
   raise EsardException.Create(AError) at
     get_caller_addr(get_frame),
     get_caller_frame(get_frame);
+end;
+
+function ScanCompare(S: string; const Text: string; const Index: Integer): Boolean;
+begin
+  Result := (Length(Text) - Index) >= length(S);
+  if Result then
+    Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive
+end;
+
+function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
+begin
+  Result := (Length(Text) - Index) >= length(S);
+  if Result then
+    Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive
+  if Result then
+    Index := Index + Length(S);
 end;
 
 { TsardParser }
@@ -268,6 +288,16 @@ end;
 
 { TsardCustomEngine }
 
+procedure TsardCustomEngine.Check;
+begin
+end;
+
+procedure TsardCustomEngine.Created;
+begin
+  inherited Created;
+  Check;
+end;
+
 function TsardCustomEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := not IsWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar, vOpen);
@@ -290,6 +320,7 @@ begin
   Dec(FCount);
   aItem.Free;
   aObject.Free;
+  BeforePop;
 end;
 
 function TsardStack.GetParent: TObject;
@@ -310,6 +341,14 @@ begin
     Result := nil
   else
     Result := FCurrentItem.AnObject;
+end;
+
+procedure TsardStack.AfterPush;
+begin
+end;
+
+procedure TsardStack.BeforePop;
+begin
 end;
 
 function TsardStack.IsEmpty: Boolean;
@@ -335,6 +374,7 @@ begin
   FCurrentItem := aItem.Parent;
   aItem.Free;
   Dec(FCount);
+  BeforePop;
 end;
 
 procedure TsardStack.Push(vObject: TObject);
@@ -353,6 +393,7 @@ begin
     aItem.Level := FCurrentItem.Level + 1;
   FCurrentItem := aItem;
   Inc(FCount);
+  AfterPush;
 end;
 
 function FormatColLine(Column, Line: Integer): string;
@@ -368,22 +409,6 @@ begin
 end;
 
 { TsardScanner }
-
-function TsardScanner.CheckText(S: string; const Text: string; const Column: Integer): Boolean;
-begin
-  Result := (Length(Text) - Column) >= length(S);
-  if Result then
-    Result := LowerCase(MidStr(Text, Column, Length(S))) = LowerCase(S); //caseinsensitive
-end;
-
-function TsardScanner.ScanText(S: string; const Text: string; var Column: Integer): Boolean;
-begin
-  Result := (Length(Text) - Column) >= length(S);
-  if Result then
-    Result := LowerCase(MidStr(Text, Column, Length(S))) = LowerCase(S); //caseinsensitive
-  if Result then
-    Column := Column + Length(S);
-end;
 
 function TsardScanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin

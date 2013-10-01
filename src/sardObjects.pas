@@ -394,8 +394,38 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-  TctlControl = class abstract(TsardObject)
+{-------- Controls  --------}
+
+  { TctlControl }
+
+  TctlControl = class(TsardObject)
+  protected
   public
+    Code: string;
+    Name: string;
+    Level: Integer;
+    Description: string;
+    constructor Create; virtual;
+  end;
+
+  TctlControlClass = class of TctlControl;
+
+  { TctlControls }
+
+  TctlControls = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TctlControl;
+  protected
+    function Check(AControl: TctlControl): Boolean; virtual;
+  public
+    function Find(const Code: string): TctlControl;
+    function FindByName(const vName: string): TctlControl;
+    function Add(AControl: TctlControl): Boolean;
+    function Add(AControlClass: TctlControlClass): Boolean;
+    function Add(ACode: string): TctlControl;
+    function Scan(const vText: string; vIndex: Integer): TctlControl;
+    function IsOpenBy(const C: Char): Boolean;
+    property Items[Index: Integer]: TctlControl read GetItem; default;
   end;
 
 {-------- Operators --------}
@@ -415,18 +445,19 @@ type
   end;
 
   TopOperatorClass = class of TopOperator;
+
   { TopOperators }
 
   TopOperators = class(TsardObjectList)
   private
     function GetItem(Index: Integer): TopOperator;
   protected
-    function CheckBeforeRegister(AOperator: TopOperator): Boolean; virtual;
+    function Check(AOperator: TopOperator): Boolean; virtual;
   public
     function Find(const Code: string): TopOperator;
     function FindByName(const vName: string): TopOperator;
-    function RegisterOperator(AOperator: TopOperator): Boolean;
-    function RegisterOperator(AOperatorClass: TopOperatorClass): Boolean;
+    function Add(AOperator: TopOperator): Boolean;
+    function Add(AOperatorClass: TopOperatorClass): Boolean;
     property Items[Index: Integer]: TopOperator read GetItem; default;
   end;
 
@@ -617,19 +648,24 @@ type
   { TsrdEngine }
 
   TsrdEngine = class(TsardCustomEngine)
-  protected
+  private
+    FControls: TctlControls;
     FOperators: TopOperators;
+  protected
+    procedure Check; override;
     procedure Created; override;
     function CreateOperators: TopOperators;
+    function CreateControls: TctlControls;
   public
     constructor Create;
     function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
-    function IsControl(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+    function IsControl(vChar: AnsiChar): Boolean; override;
     function IsOperator(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
 
     property Operators: TopOperators read FOperators;
+    property Controls: TctlControls read FControls;
   end;
 
 function sardEngine: TsrdEngine;
@@ -647,6 +683,109 @@ begin
   if FsardEngine = nil then
     FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
+end;
+
+{ TctlControl }
+
+constructor TctlControl.Create;
+begin
+  inherited Create;
+end;
+
+{ TctlControls }
+
+function TctlControls.GetItem(Index: Integer): TctlControl;
+begin
+  Result := inherited Items[Index] as TctlControl;
+end;
+
+function TctlControls.Check(AControl: TctlControl): Boolean;
+begin
+
+end;
+
+function TctlControls.Find(const Code: string): TctlControl;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if Code = Items[i].Code then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+function TctlControls.FindByName(const vName: string): TctlControl;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if vName = Items[i].Name then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+function TctlControls.Add(AControl: TctlControl): Boolean;
+begin
+  Result := Check(AControl);
+  if Result then
+    Inherited Add(AControl);
+end;
+
+function TctlControls.Add(AControlClass: TctlControlClass): Boolean;
+begin
+  Result := Add(AControlClass.Create);
+end;
+
+function TctlControls.Add(ACode: string): TctlControl;
+begin
+  Result := TctlControl.Create;
+  Result.Code := ACode;
+  Add(Result);
+end;
+
+function TctlControls.Scan(const vText: string; vIndex: Integer): TctlControl;
+var
+  i: Integer;
+  max: Integer;
+begin
+  Result := nil;
+  max := 0;
+  for i := 0 to Count -1 do
+  begin
+    if ScanCompare(Items[i].Code, vText, vIndex) then
+    begin
+      if max < length(Items[i].Code) then
+      begin
+        max := length(Items[i].Code);
+        Result := Items[i];
+      end;
+    end;
+  end;
+end;
+
+function TctlControls.IsOpenBy(const C: Char): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 0 to Count-1 do
+  begin
+    if Items[i].Code[1] = LowerCase(C) then
+    begin
+      Result := True;
+      break;
+    end;
+  end;
 end;
 
 { TsrdObjectList }
@@ -1192,16 +1331,16 @@ begin
   end;
 end;
 
-function TopOperators.RegisterOperator(AOperator: TopOperator): Boolean;
+function TopOperators.Add(AOperator: TopOperator): Boolean;
 begin
-  Result := CheckBeforeRegister(AOperator);
+  Result := Check(AOperator);
   if Result then
-    Add(AOperator);
+    inherited Add(AOperator);
 end;
 
-function TopOperators.RegisterOperator(AOperatorClass: TopOperatorClass): Boolean;
+function TopOperators.Add(AOperatorClass: TopOperatorClass): Boolean;
 begin
-  Result := RegisterOperator(AOperatorClass.Create);
+  Result := Add(AOperatorClass.Create);
 end;
 
 { TopPlus }
@@ -1222,35 +1361,55 @@ begin
   Result := inherited Items[Index] as TopOperator;
 end;
 
-function TopOperators.CheckBeforeRegister(AOperator: TopOperator): Boolean;
+function TopOperators.Check(AOperator: TopOperator): Boolean;
 begin
   Result := True;
 end;
 
 { TsrdEngine }
 
+procedure TsrdEngine.Check;
+begin
+  inherited Check;
+  //TODO: ?, We will check if first char of Operator not in first char of Control
+end;
+
 procedure TsrdEngine.Created;
 begin
   inherited;
+  with Controls do
+  begin
+    Add('(');
+    Add('[');
+    Add('{');
+    Add(')');
+    Add(']');
+    Add('}');
+    Add(';');
+    Add(',');
+    Add(':');
+    Add(':=');
+  end;
+
   with Operators do
   begin
-    Operators.RegisterOperator(TopPlus);
-    Operators.RegisterOperator(TopMinus);
-    Operators.RegisterOperator(TopMultiply);
-    Operators.RegisterOperator(TopDivide);
+    Add(TopPlus);
+    Add(TopMinus);
+    Add(TopMultiply);
+    Add(TopDivide);
 
-    Operators.RegisterOperator(TopEqual);
-    Operators.RegisterOperator(TopNotEqual);
-    Operators.RegisterOperator(TopAnd);
-    Operators.RegisterOperator(TopOr);
-    Operators.RegisterOperator(TopNot);
+    Add(TopEqual);
+    Add(TopNotEqual);
+    Add(TopAnd);
+    Add(TopOr);
+    Add(TopNot);
 
-    Operators.RegisterOperator(TopGreater);
-    Operators.RegisterOperator(TopLesser);
+    Add(TopGreater);
+    Add(TopLesser);
 
-    Operators.RegisterOperator(TopPower);
+    Add(TopPower);
 
-    Operators.RegisterOperator(TopAssign);
+    Add(TopAssign);
   end;
 end;
 
@@ -1259,10 +1418,16 @@ begin
   Result := TopOperators.Create;
 end;
 
+function TsrdEngine.CreateControls: TctlControls;
+begin
+  Result := TctlControls.Create;
+end;
+
 constructor TsrdEngine.Create;
 begin
   inherited Create;
   FOperators := CreateOperators;
+  FControls := CreateControls;
 end;
 
 function TsrdEngine.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
@@ -1270,12 +1435,9 @@ begin
   Result := vChar in sWhitespace;
 end;
 
-function TsrdEngine.IsControl(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdEngine.IsControl(vChar: AnsiChar): Boolean;
 begin
-  if vOpen then
-    Result := vChar in aControlsOpenChars
-  else
-    Result := vChar in sControlsChars;
+  Result := Controls.IsOpenBy(vChar);
 end;
 
 function TsrdEngine.IsOperator(vChar: AnsiChar; vOpen: Boolean): Boolean;
