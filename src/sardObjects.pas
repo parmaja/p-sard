@@ -1761,7 +1761,7 @@ end;
 function TsoInteger.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
 begin
   Result := True;
-  WriteLn(IntToStr(Value) + ' '+ AOperator.Name + ' ' +IntToStr(AObject.AsInteger));
+  WriteLn(IntToStr(Value) + ' ' + AOperator.Name + ' ' +IntToStr(AObject.AsInteger));
   case AOperator.Name of
     '+': Value := Value + AObject.AsInteger;
     '-': Value := Value - AObject.AsInteger;
