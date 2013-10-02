@@ -97,6 +97,7 @@ const
   sColorChars = sColorOpenChars + ['0'..'9', 'a'..'f'];
 
   sIdentifierSeparator = '.';
+
 type
   TsrdFlag = (flagNone, flagBlock, flagInstance, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagObject, flagOperator, flagComment);
   TsrdFlags = set of TsrdFlag;
@@ -108,8 +109,6 @@ type
     procedure DoStart; override;
     procedure DoStop; override;
   end;
-
-  { TsrdScanners }
 
   { TsrdLexer }
 
@@ -146,7 +145,6 @@ type
     TokenOperator: TopOperator;
     TokenStyle: TsrdObjectStyle;
     TokenObject: TsoObject;
-    procedure Convert;
   end;
 
   { TsrdGrabberItem }
@@ -158,7 +156,7 @@ type
   protected
     Parser: TsrdParser;
     Expression: TsrdExpression;
-    Block: TsrdBlock;
+    Block: TsrdBlock;//TODO move it to TsrdGrabberBlock
     Statement: TsrdStatement;
     procedure CheckBuffer;
   public
@@ -175,18 +173,26 @@ type
     procedure SetToken(AIdentifier: string; ATokenType: TsrdType);
     procedure SetObject(AObject: TsoObject);
     procedure SetFlag(AFlag: TsrdFlag);
-    procedure Flush;
-    procedure EndStatement; virtual;
+    procedure Flush; virtual;
+    procedure EndStatement; virtual; abstract;
     property Flags: TsrdFlags read FFlags;
     property Flag: TsrdFlag read FFlag;
   end;
 
+  TsrdGrabberItemClass = class of TsrdGrabberItem;
+
+  { TsrdGrabberBlock }
+
   TsrdGrabberBlock = class (TsrdGrabberItem)
   public
+    procedure EndStatement; override;
   end;
+
+  { TsrdGrabberStatement }
 
   TsrdGrabberStatement = class (TsrdGrabberItem)
   public
+    procedure EndStatement; override;
   end;
 
   TsrdGrabberParams = class (TsrdGrabberItem)
@@ -202,7 +208,7 @@ type
     Parser: TsrdParser;
   public
     procedure Push(vItem: TsrdGrabberItem);
-    function Push: TsrdGrabberItem;
+    function Push(vItemClass: TsrdGrabberItemClass): TsrdGrabberItem;
     constructor Create(AParser: TsrdParser);
     property Current: TsrdGrabberItem read GetCurrent;
   end;
@@ -226,6 +232,8 @@ type
     property Stack: TsrdGrabber read FStack;
     property Data: TrunData read FData;
   end;
+
+{------  Scanners Objects ------}
 
   { TsrdStartScanner }
 
@@ -321,6 +329,24 @@ implementation
 uses
   StrUtils;
 
+{ TsrdGrabberBlock }
+
+procedure TsrdGrabberBlock.EndStatement;
+begin
+  Statement := nil;
+  FFlags := [];
+  FFlag := flagNone;
+end;
+
+{ TsrdGrabberStatement }
+
+procedure TsrdGrabberStatement.EndStatement;
+begin
+  Statement := nil;
+  FFlags := [];
+  FFlag := flagNone;
+end;
+
 { TsrdComment_Scanner }
 
 procedure TsrdComment_Scanner.Scan(const Text: string; var Column: Integer);
@@ -344,12 +370,6 @@ end;
 function TsrdComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanCompare('{*', Text, Column);
-end;
-
-{ TsrdExpression }
-
-procedure TsrdExpression.Convert;
-begin
 end;
 
 { TsrdFeeder }
@@ -412,11 +432,6 @@ begin
   if Expression <> nil then
     with Expression do
     begin
-      {if (flagObject in Flags) and (TokenOperator = nil) then
-        RaiseError('You cant add object without operator!');}
-
-      Convert;
-
       with Expression do
         case TokenType of
           tpString: ConvertString;
@@ -436,13 +451,6 @@ begin
       Statement.Add(TokenOperator, TokenObject);
     end;
   FreeAndNil(Expression);
-end;
-
-procedure TsrdGrabberItem.EndStatement;
-begin
-  Statement := nil;
-  FFlags := [];
-  FFlag := flagNone;
 end;
 
 constructor TsrdGrabberItem.Create(AParser: TsrdParser);
@@ -484,9 +492,9 @@ begin
   inherited Push(vItem);
 end;
 
-function TsrdGrabber.Push: TsrdGrabberItem;
+function TsrdGrabber.Push(vItemClass: TsrdGrabberItemClass): TsrdGrabberItem;
 begin
-  Result := TsrdGrabberItem.Create(Parser);
+  Result := vItemClass.Create(Parser);
   Push(Result);
 end;
 
@@ -514,7 +522,7 @@ begin
   FData := AData;
   FStack := TsrdGrabber.Create(Self);
   if ABlock <> nil then
-    with Stack.Push do
+    with Stack.Push(TsrdGrabberBlock) do
     begin
        Block := ABlock;
     end;
@@ -651,7 +659,7 @@ begin
      with TsoSection.Create do
       begin
         Stack.Current.SetObject(This);
-        Stack.Push;
+        Stack.Push(TsrdGrabberBlock);
         Stack.Current.Block := Items;
       end;
     ctlCloseBlock:
@@ -665,7 +673,7 @@ begin
       with TsoStatement.Create do
       begin
         Stack.Current.SetObject(This);
-        Stack.Push;
+        Stack.Push(TsrdGrabberStatement);
         Stack.Current.Statement := Statement;
       end;
     ctlCloseParams:
