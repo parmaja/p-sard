@@ -14,7 +14,7 @@ Examples
           y := 0;
           := y + 5; //this is a result return of the block
       }; //do not forget to add ; here
-    {* This a block comment, compiled, useful for documentation, or regenratethe code *};
+    {* This a block comment, compiled, useful for documentation, or regenrate the code *};
     := x; //Return result to the main object
 
     s:='Foo';
@@ -27,7 +27,9 @@ Examples
 
     i := 10.0;
     i := i + 5.5;
-    //variable i now have 15.0
+    //variable i now have 15.5
 
     {* First init of the variable define the type *}
+
+Still working on it.
 
