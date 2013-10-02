@@ -1,11 +1,17 @@
 SARD script language
-====
+====================
+
+It is a script language not programming language.
+
+The idea behind it, it is not use any of reserved word only sign, only objects there is no "void" or "function" or "procedure"
+
+When i finish it it will be clear than i can explain it.
 
 Examples
 ========
 
     /*
-      This example worked, and this comment will ignored, not compiled or parsed as we say
+      This examples are worked, and this comment will ignored, not compiled or parsed as we say.
     */
     x := 10 +5 - (5 * 5); //Single Line comment
 
@@ -33,3 +39,9 @@ Examples
 
 Still working on it.
 
+Compile
+=======
+
+FreePascal 2.6.4
+
+I need contributors to port it to Java or C, it is easy to port becuase i still not use any special features of FPC.
