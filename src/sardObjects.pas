@@ -1328,11 +1328,13 @@ begin
   if Name = '' then
     vStack.Current.Reference := vStack.Parent.Result
   else
+  begin
     v := vStack.Scope.Current.Variables.Register(Name);
     if v <> nil then
     begin
       vStack.Current.Reference := v.Value;
     end;
+  end;
 end;
 
 { TopDivide }

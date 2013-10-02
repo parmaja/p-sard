@@ -615,19 +615,19 @@ begin
         Stack.Push;
         Stack.Current.Block := Items;
       end;
-    ctlOpenParams:
-      with TsoDescend.Create do
-      begin
-        Stack.Current.SetObject(This);
-        Stack.Push;
-        Stack.Current.Block := Items;
-      end;
     ctlCloseBlock:
       begin
         Flush;
         Stack.Pop;
         if Stack.Count = 0 then
           RaiseError('Maybe you closed not opened Curly');
+      end;
+    ctlOpenParams:
+      with TsoDescend.Create do
+      begin
+        Stack.Current.SetObject(This);
+        Stack.Push;
+        Stack.Current.Block := Items;
       end;
     ctlCloseParams:
       begin
