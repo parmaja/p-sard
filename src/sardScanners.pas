@@ -121,7 +121,7 @@ type
 
   { TsrdScanners }
 
-  TsrdScanners = class(TsardScanners)
+  TsrdLexer = class(TsardLexer)
   private
   protected
     procedure Created; override;
@@ -316,7 +316,7 @@ begin
   begin
     if (ScanCompare('*}', Text, Column)) then
     begin
-      Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpComment);
+      Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpComment);
       Inc(Column, 2);//2 chars
       break;
     end;
@@ -340,13 +340,13 @@ end;
 procedure TsrdFeeder.DoStart;
 begin
   inherited;
-  Scanners.Parser.TriggerControl(ctlStart);
+  Lexer.Parser.TriggerControl(ctlStart);
 end;
 
 procedure TsrdFeeder.DoStop;
 begin
   inherited;
-  Scanners.Parser.TriggerControl(ctlStop);
+  Lexer.Parser.TriggerControl(ctlStop);
 end;
 
 { TsrdParserStackItem }
@@ -691,7 +691,7 @@ begin
   else
     RaiseError('Unkown control started with ' + Text[Column]);
 
-  Scanners.Parser.TriggerControl(aControl.Code);
+  Lexer.Parser.TriggerControl(aControl.Code);
 end;
 
 function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -701,7 +701,7 @@ end;
 
 { TsrdFeeder }
 
-procedure TsrdScanners.Created;
+procedure TsrdLexer.Created;
 begin
   RegisterScanner(TsrdStart_Scanner);
   RegisterScanner(TsrdWhitespace_Scanner);
@@ -726,7 +726,7 @@ begin
   l := Length(Text);
   while (Column <= l) and (sardEngine.IsNumber(Text[Column], False)) do
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpNumber);
+  Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpNumber);
 end;
 
 function TsrdNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -746,7 +746,7 @@ begin
   else
     RaiseError('Unkown operator started with ' + Text[Column]);
 
-  Scanners.Parser.TriggerOperator(aOperator);
+  Lexer.Parser.TriggerOperator(aOperator);
 end;
 
 function TopOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -763,7 +763,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and (sardEngine.IsIdentifier(Text[Column], False)) do
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpObject);
+  Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpObject);
 end;
 
 function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -781,7 +781,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
+  Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
   Inc(Column);
 end;
 
@@ -800,7 +800,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
-  Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
+  Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
   Inc(Column);
 end;
 
@@ -837,7 +837,7 @@ begin
   Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
-  //Scanners.Parser.TriggerToken(MidStr(Text, c, Column - c)); ignore comment
+  //Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c)); ignore comment
 end;
 
 function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;

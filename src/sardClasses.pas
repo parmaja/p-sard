@@ -85,7 +85,7 @@ type
 
   TsardScannerID = type Integer;
 
-  TsardScanners = class;
+  TsardLexer = class;
   TsardFeeder = class;
   TsardParser = class;
 
@@ -95,7 +95,7 @@ type
 
   TsardScanner = class(TsardObject)
   private
-    FScanners: TsardScanners;
+    FLexer: TsardLexer;
   protected
     procedure Scan(const Text: string; var Column: Integer); virtual; abstract;
     function Accept(const Text: string; var Column: Integer): Boolean; virtual;
@@ -105,14 +105,14 @@ type
     Index: TsardScannerID;
     Collected: string; //buffer
     Scanner: TsardScannerID;
-    constructor Create(vScanners: TsardScanners); virtual;
+    constructor Create(vLexer: TsardLexer); virtual;
     destructor Destroy; override;
-    property Scanners: TsardScanners read FScanners;
+    property Lexer: TsardLexer read FLexer;
   end;
 
-  { TsardScanners }
+  { TsardLexer }
 
-  TsardScanners = class(TsardObjectList)
+  TsardLexer = class(TsardObjectList)
   private
     FLine: Integer;
     FParser: TsardParser;
@@ -140,13 +140,13 @@ type
     FActive: Boolean;
     FVersion: string;
     FCharset: string;
-    FScanners: TsardScanners;//TODO use stacker
-    procedure SetScanners(AValue: TsardScanners);
+    FLexer: TsardLexer;//TODO use stacker
+    procedure SetLexer(AValue: TsardLexer);
   protected
     procedure DoStart; virtual;
     procedure DoStop; virtual;
   public
-    constructor Create(vScanners: TsardScanners);
+    constructor Create(vLexer: TsardLexer);
     destructor Destroy; override;
     procedure ScanLine(const Text: string; const Line: Integer);
     procedure Scan(const Lines: TStrings);
@@ -159,7 +159,7 @@ type
     property Active: Boolean read FActive write FActive;
     property Version: string read FVersion write FVersion;
     property Charset: string read FCharset write FCharset;
-    property Scanners: TsardScanners read FScanners write SetScanners;
+    property Lexer: TsardLexer read FLexer write SetLexer;
 
   end;
 
@@ -428,18 +428,18 @@ end;
 
 function TsardScanner.DetectScanner(const Text: string; var Column: Integer): Integer;
 begin
-  Result := Scanners.DetectScanner(Text, Column);
+  Result := Lexer.DetectScanner(Text, Column);
 end;
 
 procedure TsardScanner.SelectScanner(AScannerClass: TsardScannerClass);
 begin
-  Scanners.SelectScanner(AScannerClass);
+  Lexer.SelectScanner(AScannerClass);
 end;
 
-constructor TsardScanner.Create(vScanners: TsardScanners);
+constructor TsardScanner.Create(vLexer: TsardLexer);
 begin
   inherited Create;
-  FScanners := vScanners;
+  FLexer := vLexer;
 end;
 
 destructor TsardScanner.Destroy;
@@ -447,27 +447,27 @@ begin
   inherited Destroy;
 end;
 
-{ TsardScanners }
+{ TsardLexer }
 
-function TsardScanners.GetItem(Index: Integer): TsardScanner;
+function TsardLexer.GetItem(Index: Integer): TsardScanner;
 begin
   Result := inherited Items[Index] as TsardScanner;
 end;
 
-procedure TsardScanners.SetParser(AValue: TsardParser);
+procedure TsardLexer.SetParser(AValue: TsardParser);
 begin
   if FParser = AValue then
     Exit;
   FParser := AValue;
 end;
 
-constructor TsardScanners.Create(vParser: TsardParser);
+constructor TsardLexer.Create(vParser: TsardParser);
 begin
   inherited Create;
   FParser := vParser;
 end;
 
-function TsardScanners.DetectScanner(const Text: string; var Column: Integer): Integer;
+function TsardLexer.DetectScanner(const Text: string; var Column: Integer): Integer;
 var
   i: Integer;
 begin
@@ -485,7 +485,7 @@ begin
   SwitchScanner(Result);
 end;
 
-function TsardScanners.Find(const ScannerClass: TsardScannerClass): TsardScanner;
+function TsardLexer.Find(const ScannerClass: TsardScannerClass): TsardScanner;
 var
   i: Integer;
 begin
@@ -500,7 +500,7 @@ begin
   end;
 end;
 
-function TsardScanners.RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
+function TsardLexer.RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
 var
   aScanner: TsardScanner;
 begin
@@ -513,7 +513,7 @@ procedure TsardFeeder.Stop;
 begin
   if not FActive then
     RaiseError('File already closed');
-  Scanners.Parser.Stop;
+  Lexer.Parser.Stop;
   DoStop;
   FActive := False;
 end;
@@ -525,15 +525,15 @@ begin
     RaiseError('File already opened');
   FActive := True;
   DoStart;
-  Scanners.Parser.Start;
+  Lexer.Parser.Start;
 end;
 
-procedure TsardFeeder.SetScanners(AValue: TsardScanners);
+procedure TsardFeeder.SetLexer(AValue: TsardLexer);
 begin
-  if FScanners =AValue then Exit;
+  if FLexer =AValue then Exit;
   if Active then
     RaiseError('You can not set scanner when started!');
-  FScanners :=AValue;
+  FLexer :=AValue;
 end;
 
 procedure TsardFeeder.DoStart;
@@ -544,7 +544,7 @@ procedure TsardFeeder.DoStop;
 begin
 end;
 
-procedure TsardScanners.SwitchScanner(NextScanner: TsardScannerID);
+procedure TsardLexer.SwitchScanner(NextScanner: TsardScannerID);
 begin
   if FScannerID <> NextScanner then
   begin
@@ -552,7 +552,7 @@ begin
   end;
 end;
 
-procedure TsardScanners.SelectScanner(ScannerClass: TsardScannerClass);
+procedure TsardLexer.SelectScanner(ScannerClass: TsardScannerClass);
 var
   aScanner: TsardScanner;
 begin
@@ -562,7 +562,7 @@ begin
   SwitchScanner(aScanner.Index);
 end;
 
-constructor TsardFeeder.Create(vScanners: TsardScanners);
+constructor TsardFeeder.Create(vLexer: TsardLexer);
 begin
   inherited Create;
   FVersion := '1.0';
@@ -572,7 +572,7 @@ begin
   FCharset := 'iso-8859-1';
   {$endif}
 
-  FScanners := vScanners;
+  FLexer := vLexer;
 end;
 
 destructor TsardFeeder.Destroy;
@@ -584,10 +584,10 @@ procedure TsardFeeder.ScanLine(const Text: string; const Line: Integer);
 begin
   if not Active then
     RaiseError('Feeder not started');
-  Scanners.ScanLine(Text, Line);
+  Lexer.ScanLine(Text, Line);
 end;
 
-procedure TsardScanners.ScanLine(const Text: string; const ALine: Integer);
+procedure TsardLexer.ScanLine(const Text: string; const ALine: Integer);
 var
   Column, OldColumn: Integer;
   OldScanner: TsardScannerID;
