@@ -71,7 +71,7 @@ type
     ctlStop, //Start parsing
     ctlDeclare, //Declare a class of object
     ctlAssign, //Assign to object/variable
-    ctlEnd, //End Statment
+    ctlEnd, //End Statement
     ctlOpenBlock, // {
     ctlCloseBlock, // }
     ctlOpenParams, // (

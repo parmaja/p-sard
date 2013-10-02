@@ -212,7 +212,7 @@ type
 
   { TsoStatementObject }
 
-  TsoStatementObject = class(TsoObject)
+  TsoParentedObject = class(TsoObject)
   private
     FParent: TsoObject;
     procedure SetParent(AValue: TsoObject);
@@ -222,7 +222,7 @@ type
 
   { TsoBlock }
 
-  TsoBlock = class abstract(TsoStatementObject, IsrdBlock)
+  TsoBlock = class abstract(TsoParentedObject, IsrdBlock)
   protected
     FItems: TsrdBlock;
     procedure Created; override;
@@ -235,9 +235,19 @@ type
     property Items: TsrdBlock read FItems;
   end;
 
+  TsoStatement = class(TsoParentedObject)
+  private
+    FStatement: TsrdStatement;
+  public
+    constructor Create; override;
+    destructor Destroy; override;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
+    property Statement: TsrdStatement read FStatement;
+  end;
+
   { TsoNamedObject }
 
-  TsoNamedObject = class(TsoStatementObject)
+  TsoNamedObject = class(TsoParentedObject)
   private
     FID: Integer;
     FName: string;
@@ -486,13 +496,6 @@ type
     property Items[Index: Integer]: TopOperator read GetItem; default;
   end;
 
-  { TopAssign }
-
-  TopAssign = class(TopOperator)//Naaaaaaaaaah
-  public
-    constructor Create; override;
-  end;
-
   { TopPlus }
 
   TopPlus = class(TopOperator)
@@ -623,6 +626,7 @@ type
     destructor Destroy; override;
     function HasValue: Boolean;
     procedure Assign(AResult: TrunResult); virtual;
+    function Extract: TsoObject;
     property AnObject: TsoObject read FAnObject write SetAnObject;
   end;
 
@@ -723,6 +727,26 @@ begin
   if FsardEngine = nil then
     FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
+end;
+
+{ TsoStatement }
+
+constructor TsoStatement.Create;
+begin
+  inherited Create;
+  //FStatement := TsrdStatement.Create(Parent);
+end;
+
+destructor TsoStatement.Destroy;
+begin
+  FreeAndNil(FStatement);
+  inherited Destroy;
+end;
+
+function TsoStatement.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+begin
+  Result := inherited Execute(vStack, AOperator);
+  //FStatement.Execute(vStack);
 end;
 
 { TsoComment }
@@ -868,9 +892,9 @@ begin
   FParent := AParent;
 end;
 
-{ TsoStatementObject }
+{ TsoParentedObject }
 
-procedure TsoStatementObject.SetParent(AValue: TsoObject);
+procedure TsoParentedObject.SetParent(AValue: TsoObject);
 begin
   if FParent <> nil then
     RaiseError('Already have a parent');
@@ -923,18 +947,11 @@ end;
 procedure TsoDescend.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
 begin
   inherited;
-  vStack.Push; //<--here we can push a variable result or create temp result to drop it
 end;
 
 procedure TsoDescend.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-var
-  T: TrunStackItem;
 begin
   inherited;
-  T := vStack.Pull;
-  if T.Result.AnObject <> nil then
-    T.Result.AnObject.Execute(vStack, AOperator);
-  FreeAndNil(T);
 end;
 
 { TsoNamedObject }
@@ -977,7 +994,7 @@ begin
   begin
     if FAnObject <> nil then
       FreeAndNil(FAnObject);
-    FAnObject :=AValue;
+    FAnObject := AValue;
   end;
 end;
 
@@ -994,7 +1011,16 @@ end;
 
 procedure TrunResult.Assign(AResult: TrunResult);
 begin
-  AnObject := AResult.AnObject.Clone;
+  if AResult.AnObject = nil then
+    AnObject := nil
+  else
+    AnObject := AResult.AnObject.Clone;
+end;
+
+function TrunResult.Extract: TsoObject;
+begin
+  Result := FAnObject;
+  FAnObject := nil;
 end;
 
 { TrunScopeItem }
@@ -1194,17 +1220,6 @@ begin
   inherited Destroy;
 end;
 
-{ TopAssign }
-
-constructor TopAssign.Create;
-begin
-  inherited Create;
-  Name := ':=';
-  Title := 'Assign';
-  Level := 10;
-  Description := 'Clone to another object';
-end;
-
 { TsrdBlockStack }
 
 function TsrdBlockStack.GetCurrent: TsrdBlock;
@@ -1311,17 +1326,13 @@ begin
   { if not name it assign to parent result }
   Result := True;
   if Name = '' then
-  begin
-    vStack.Current.Reference := vStack.Parent.Result;
-  end
+    vStack.Current.Reference := vStack.Parent.Result
   else
-  begin
     v := vStack.Scope.Current.Variables.Register(Name);
     if v <> nil then
     begin
       vStack.Current.Reference := v.Value;
     end;
-  end;
 end;
 
 { TopDivide }
@@ -1514,8 +1525,6 @@ begin
     Add(TopLesser);
 
     Add(TopPower);
-
-    Add(TopAssign);
   end;
 end;
 
@@ -1830,7 +1839,9 @@ begin
   Result := Count > 0;
   for i := 0 to Count -1 do
   begin
+    Items[i].BeforeExecute(vStack);
     Result := Items[i].Execute(vStack) and Result;
+    Items[i].AfterExecute(vStack);
   end;
 end;
 
@@ -1849,13 +1860,13 @@ end;
 
 procedure TsrdStatement.BeforeExecute(vStack: TrunStack);
 begin
-  vStack.Push;
+  vStack.Push;//Todo Move to execute in block
 end;
 
 procedure TsrdStatement.AfterExecute(vStack: TrunStack);
 begin
   if vStack.Current.Reference <> nil then
-    vStack.Current.Reference.Assign(vStack.Current.Result);
+    vStack.Current.Reference.AnObject := vStack.Current.Result.Extract;
   vStack.Pop;
 end;
 
@@ -1869,8 +1880,8 @@ begin
   Result := TsrdStatementItem.Create;
   Result.AnOperator := AOperator;
   Result.AnObject := AObject;
-  if AObject is TsoStatementObject then
-    (AObject as TsoStatementObject).Parent := Parent;
+  if AObject is TsoParentedObject then
+    (AObject as TsoParentedObject).Parent := Parent;
   Add(Result);
 end;
 
@@ -1878,13 +1889,9 @@ function TsrdStatement.Execute(vStack: TrunStack): Boolean;
 var
   i: Integer;
 begin
-  BeforeExecute(vStack);
   Result := Count > 0;
   for i := 0 to Count -1 do
-  begin
     Result := Items[i].Execute(vStack) and Result;
-  end;
-  AfterExecute(vStack);
 end;
 
 { TsoRun }

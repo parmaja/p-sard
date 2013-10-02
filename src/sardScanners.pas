@@ -108,7 +108,7 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdFlag = (flagBlock, flagInstance, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagObject, flagOperator, flagComment);
+  TsrdFlag = (flagNone, flagBlock, flagInstance, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagObject, flagOperator, flagComment);
   TsrdFlags = set of TsrdFlag;
 
   { TsrdFeeder }
@@ -134,7 +134,7 @@ type
 
   { TsrdParserBuffer }
 
-  TsrdParserBuffer = class(TsardObject)
+  TsrdExpression = class(TsardObject)
   public
     Token: string;
     TokenType: TsrdType;
@@ -153,8 +153,9 @@ type
     FFlag: TsrdFlag;
   protected
     Parser: TsrdParser;
-    Buffer: TsrdParserBuffer;
+    Expression: TsrdExpression;
     Block: TsrdBlock;
+    Statement: TsrdStatement;
     procedure CheckBuffer;
   public
     procedure ConvertNumber;
@@ -328,9 +329,9 @@ begin
   Result := ScanCompare('{*', Text, Column);
 end;
 
-{ TsrdParserBuffer }
+{ TsrdExpression }
 
-procedure TsrdParserBuffer.Convert;
+procedure TsrdExpression.Convert;
 begin
 end;
 
@@ -353,33 +354,33 @@ end;
 procedure TsrdParserStackItem.SetToken(AIdentifier: string; ATokenType: TsrdType);
 begin
   CheckBuffer;
-  if Buffer.Token <> '' then
+  if Expression.Token <> '' then
     RaiseError('Identifier is already set');
-  Buffer.Token := AIdentifier;
-  Buffer.TokenType := ATokenType;
+  Expression.Token := AIdentifier;
+  Expression.TokenType := ATokenType;
   SetFlag(flagIdentifier);
 end;
 
 procedure TsrdParserStackItem.SetOperator(AOperator: TopOperator);
 begin
   CheckBuffer;
-  if Buffer.TokenOperator <> nil then
+  if Expression.TokenOperator <> nil then
     RaiseError('Operator is already set');
-  Buffer.TokenOperator := AOperator;
+  Expression.TokenOperator := AOperator;
 end;
 
 procedure TsrdParserStackItem.SetStyle(AStyle: TsrdObjectStyle);
 begin
   CheckBuffer;
-  Buffer.TokenStyle := AStyle;
+  Expression.TokenStyle := AStyle;
 end;
 
 procedure TsrdParserStackItem.SetObject(AObject: TsoObject);
 begin
   CheckBuffer;
-  if Buffer.TokenObject <> nil then
+  if Expression.TokenObject <> nil then
     RaiseError('Object is already set');
-  Buffer.TokenObject := AObject;
+  Expression.TokenObject := AObject;
 end;
 
 procedure TsrdParserStackItem.SetFlag(AFlag: TsrdFlag);
@@ -391,15 +392,15 @@ end;
 
 procedure TsrdParserStackItem.Flush;
 begin
-  if Buffer <> nil then
-    with Buffer do
+  if Expression <> nil then
+    with Expression do
     begin
       {if (flagObject in Flags) and (TokenOperator = nil) then
         RaiseError('You cant add object without operator!');}
 
       Convert;
 
-      with Buffer do
+      with Expression do
         case TokenType of
           tpString: ConvertString;
           tpNumber: ConvertNumber;
@@ -411,13 +412,14 @@ begin
         RaiseError('Object is nil!');
       Block.Statement.Add(TokenOperator, TokenObject);
     end;
-  FreeAndNil(Buffer);
+  FreeAndNil(Expression);
 end;
 
 procedure TsrdParserStackItem.NewStatement;
 begin
   Block.Add;
   FFlags := [];
+  FFlag := flagNone;
 end;
 
 constructor TsrdParserStackItem.Create(AParser: TsrdParser);
@@ -487,13 +489,13 @@ end;
 
 procedure TsrdParserStackItem.CheckBuffer;
 begin
-  if Buffer = nil then
-    Buffer := TsrdParserBuffer.Create;
+  if Expression = nil then
+    Expression := TsrdExpression.Create;
 end;
 
 procedure TsrdParserStackItem.ConvertString;
 begin
-  with Buffer do
+  with Expression do
   begin
     if Token ='' then
       RaiseError('Nothing to convert to string object');
@@ -509,7 +511,7 @@ end;
 
 procedure TsrdParserStackItem.ConvertComment;
 begin
-  with Buffer do
+  with Expression do
   begin
     with TsoComment.Create do
     begin
@@ -523,7 +525,7 @@ end;
 
 procedure TsrdParserStackItem.ConvertNumber;
 begin
-  with Buffer do
+  with Expression do
   begin
     if Token ='' then
       RaiseError('Nothing to convert to number object');
@@ -551,7 +553,7 @@ end;
 
 procedure TsrdParserStackItem.ConvertObject;
 begin
-  with Buffer do
+  with Expression do
   begin
     if TokenObject <> nil then
     begin

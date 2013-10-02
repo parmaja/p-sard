@@ -539,6 +539,21 @@ object Form1: TForm1
     OnClick = Button2Click
     TabOrder = 2
   end
+  object ResultEdit: TEdit
+    Left = 272
+    Height = 21
+    Top = 255
+    Width = 394
+    TabOrder = 3
+  end
+  object Label1: TLabel
+    Left = 232
+    Height = 13
+    Top = 259
+    Width = 30
+    Caption = 'Result'
+    ParentColor = False
+  end
   object SynCssSyn1: TSynCssSyn
     DefaultFilter = 'Cascading Stylesheets (*.css)|*.css'
     Enabled = False

@@ -17,6 +17,8 @@ type
   TForm1 = class(TForm)
     Button1: TButton;
     Button2: TButton;
+    Label1: TLabel;
+    ResultEdit: TEdit;
     InputEdit: TSynEdit;
     SynCssSyn1: TSynCssSyn;
     procedure Button1Click(Sender: TObject);
@@ -62,9 +64,13 @@ begin
 end;
 
 procedure TForm1.Run;
+var
+  s:string;
 begin
+  ResultEdit.Text := '';
   InputEdit.Lines.SaveToFile(Application.Location + 'recent.sard');
-  Execute(InputEdit.Lines);
+  Execute(InputEdit.Lines,s);
+  ResultEdit.Text := s;
 end;
 
 end.

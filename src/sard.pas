@@ -20,7 +20,7 @@ uses
   sardObjects, sardScanners;
 
 function Build(Lines: TStrings): Boolean;
-function Execute(Lines: TStrings): Boolean;
+function Execute(Lines: TStrings; out vResult: string): Boolean;
 
 implementation
 
@@ -56,7 +56,7 @@ begin
 end;
 
 
-function Execute(Lines: TStrings): Boolean;
+function Execute(Lines: TStrings; out vResult: string): Boolean;
 var
   Scanners: TsrdScanners;
   Feeder: TsrdFeeder;
@@ -84,7 +84,10 @@ begin
   //Stack.Current.Scope.Variables.SetValue('__ver__', TsoInteger.Create(100));
   Main.Execute(Stack, nil);
   if Stack.Current.Result.AnObject <> nil then
+  begin
+    vResult := Stack.Current.Result.AnObject.AsString;
     WriteLn('=== Result:  ' + Stack.Current.Result.AnObject.AsString + '  ===');
+  end;
   Stack.Pop;
 
   { End }
