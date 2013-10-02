@@ -1594,13 +1594,17 @@ begin
   Result := True;
   case AOperator.Name of
     '+': Value := Value + AObject.AsString;
-//    '-': Value := Value - AObject.AsString;
+    '-':
+      begin
+        if AObject is TsoNumber then
+          Value := LeftStr(Value, Length(Value) - AObject.AsInteger)
+        else
+          Result := False;
+      end;
     '*':
       begin
         if AObject is TsoNumber then
-        begin
-          Value := StringRepeat(Value, AObject.AsInteger);
-        end
+          Value := StringRepeat(Value, AObject.AsInteger)
         else
           Result := False;
       end;
