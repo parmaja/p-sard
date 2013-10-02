@@ -1595,7 +1595,15 @@ begin
   case AOperator.Name of
     '+': Value := Value + AObject.AsString;
 //    '-': Value := Value - AObject.AsString;
-//    '*': Value := Value * AObject.AsString;
+    '*':
+      begin
+        if AObject is TsoNumber then
+        begin
+          Value := StringRepeat(Value, AObject.AsInteger);
+        end
+        else
+          Result := False;
+      end;
 //    '/': Value := Value / AObject.AsString;
     else
       Result := False;

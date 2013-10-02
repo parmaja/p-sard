@@ -234,6 +234,7 @@ type
 procedure RaiseError(AError: string);
 function ScanCompare(S: string; const Text: string; const Index: Integer): Boolean;
 function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
+function StringRepeat(S: string; C: Integer): string;
 
 implementation
 
@@ -261,6 +262,16 @@ begin
     Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive
   if Result then
     Index := Index + Length(S);
+end;
+
+function StringRepeat(S: string; C: Integer): string;
+begin
+  Result := '';
+  while C > 0 do
+  begin
+    Result := Result + S;
+    C := C-1;
+  end;
 end;
 
 { TsardParser }
