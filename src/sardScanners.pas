@@ -415,6 +415,8 @@ end;
 procedure TsrdGrabberItem.SetObject(AObject: TsoObject);
 begin
   CheckBuffer;
+  if Expression.Token <> '' then
+    RaiseError('Identifier is already set');
   if Expression.TokenObject <> nil then
     RaiseError('Object is already set');
   Expression.TokenObject := AObject;
@@ -634,10 +636,11 @@ begin
       with TsoInstance.Create do
       begin
         Name := Token;
+        //FindMe
         ID := Parser.Data.RegisterID(Name);
         TokenObject := This;
       end;
-      SetFlag(flagObject);
+      SetFlag(flagInstance);
     end;
   end;
 end;
@@ -670,12 +673,15 @@ begin
           RaiseError('Maybe you closed not opened Curly');
       end;
     ctlOpenParams:
+     begin
+      //here we add block to TsoInstance if there is indienifier opened witout operator
       with TsoStatement.Create do
       begin
         Stack.Current.SetObject(This);
         Stack.Push(TsrdGrabberStatement);
         Stack.Current.Statement := Statement;
       end;
+     end;
     ctlCloseParams:
       begin
         Flush;
@@ -964,7 +970,6 @@ begin
   Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
-  //Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c)); ignore comment
 end;
 
 function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;

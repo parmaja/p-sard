@@ -544,6 +544,7 @@ object Form1: TForm1
     Height = 21
     Top = 255
     Width = 394
+    Anchors = [akLeft, akRight, akBottom]
     TabOrder = 3
   end
   object Label1: TLabel

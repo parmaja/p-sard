@@ -741,7 +741,6 @@ end;
 
 function TsoComment.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
-  Result := inherited Execute(vStack, AOperator);//Nothing to do compiled comments not executed
 end;
 
 procedure TsoComment.Created;

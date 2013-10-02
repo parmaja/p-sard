@@ -419,12 +419,12 @@ end;
 
 function FormatColLine(Column, Line: Integer): string;
 begin
-   Result := #13'Line Number ' + IntToStr(Line) + ', Column ' + IntToStr(Column)
+   Result := 'Line Number ' + IntToStr(Line) + ', Column ' + IntToStr(Column);
 end;
 
 constructor EsardParserException.Create(const Msg: string; const Column, Line: Integer);
 begin
-  inherited Create(Msg +  #13 +FormatColLine(Column, Line));
+  inherited Create(Msg + #13 +FormatColLine(Column, Line));
   FLine := Line;
   FColumn := Column;
 end;
@@ -633,7 +633,7 @@ begin
   Start;
   for i := 0 to Lines.Count -1 do
   begin
-    ScanLine(Lines[i] + #13, i);
+    ScanLine(Lines[i] + #13, i + 1);
   end;
   Stop;
 end;
