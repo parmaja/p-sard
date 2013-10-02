@@ -96,17 +96,7 @@ const
   sColorOpenChars = ['#'];
   sColorChars = sColorOpenChars + ['0'..'9', 'a'..'f'];
 
-  sBracketOpoenChars = ['(', '[', '{'];
-  sBracketCloseChars = [')', ']', '}'];
-  sBracketChars = sBracketOpoenChars + sBracketCloseChars;
-
-  aControlsOpenChars = [':', ',', ';', '~'] + sBracketChars;
-  sControlsChars = aControlsOpenChars + ['='];
-
-  sOperatorOpenChars = ['+', '-', '*', '/', '<', '>', '^', '&', '|', '!', '=', '$', '@']; //<--Stupid idea, need to make it as array
-
   sIdentifierSeparator = '.';
-
 type
   TsrdFlag = (flagNone, flagBlock, flagInstance, flagDeclare, flagAssign, flagIdentifier, flagNumber, flagString, flagObject, flagOperator, flagComment);
   TsrdFlags = set of TsrdFlag;

@@ -165,10 +165,6 @@ type
     function GetAsInteger: int;
     function GetAsBoolean: Boolean;
 
-    {procedure SetAsString(AValue: String);
-    procedure SetAsFloat(AValue: Float);
-    procedure SetAsInteger(AValue: int);
-    procedure SetAsBoolean(AValue: Boolean);}
     function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; virtual;
     procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
     procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
@@ -233,6 +229,16 @@ type
     constructor Create; override;
     destructor Destroy; override;
     property Items: TsrdBlock read FItems;
+  end;
+
+  { TsoSection }
+  (* Used by { } *)
+
+  TsoSection = class(TsoBlock) //Result of was droped until using := assign in the first of statment
+  protected
+    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
+    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
+  public
   end;
 
   { TsoStatement }
@@ -313,37 +319,7 @@ type
   public
   end;
 
-
-  { TsoBend }
-  {* Just continued the parent block *}
-
-  TsoBend = class(TsoBlock)
-  protected
-    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
-    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
-  public
-  end;
-
-  { TsoDescend }
-  {* Used by ( ) *}
-
-  TsoDescend = class(TsoBlock)
-  protected
-    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
-    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
-  public
-  end;
-
-  (* Used by { } *)
-
-  { TsoSection }
-
-  TsoSection = class(TsoBlock) //Result of was droped until using := assign in the first of statment
-  protected
-    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
-    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
-  public
-  end;
+  { TsoMain }
 
   TsoMain = class(TsoSection)
   public
@@ -702,7 +678,7 @@ type
 
   { TsrdEngine }
 
-  TsrdEngine = class(TsardCustomEngine)
+  TsrdEngine = class(TsardPrimeEngine)
   private
   protected
     procedure Created; override;
@@ -921,18 +897,6 @@ begin
   Result := FCount;
 end;
 
-{ TsoBend }
-
-procedure TsoBend.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-  inherited;
-end;
-
-procedure TsoBend.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-  inherited;
-end;
-
 { TsoSection }
 
 procedure TsoSection.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
@@ -952,18 +916,6 @@ begin
     T.Result.AnObject.Execute(vStack, AOperator);
   FreeAndNil(T);
   vStack.Scope.Pop;
-end;
-
-{ TsoDescend }
-
-procedure TsoDescend.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-  inherited;
-end;
-
-procedure TsoDescend.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-  inherited;
 end;
 
 { TsoNamedObject }

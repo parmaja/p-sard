@@ -18,6 +18,9 @@ unit sardClasses;
 
   Result := Integer + Float <-- it convert to float or not, hmmm not sure
 }
+{
+  I use prime prefix to classes mean: Custom or Abstract that classes inherited from it
+}
 
 interface
 
@@ -222,9 +225,9 @@ type
     property Count: Integer read FCount;
   end;
 
-  { TsardCustomEngine }
+  { TsardPrimeEngine }
 
-  TsardCustomEngine = class(TsardObject)
+  TsardPrimeEngine = class(TsardObject)
   private
   protected
     procedure Created; override;
@@ -309,9 +312,9 @@ begin
   Created;
 end;
 
-{ TsardCustomEngine }
+{ TsardPrimeEngine }
 
-procedure TsardCustomEngine.Created;
+procedure TsardPrimeEngine.Created;
 begin
   inherited Created;
 end;
