@@ -288,7 +288,7 @@ type
 
   { it is a variable value like x in this "10 + x + 5" }
 
-  TsoInstance = class(TsoNamedObject)
+  TsoInstance = class(TsoNamedBlock)
   private
   protected
     function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;

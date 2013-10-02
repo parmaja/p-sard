@@ -675,12 +675,30 @@ begin
     ctlOpenParams:
      begin
       //here we add block to TsoInstance if there is indienifier opened witout operator
-      with TsoStatement.Create do
-      begin
-        Stack.Current.SetObject(This);
-        Stack.Push(TsrdGrabberStatement);
-        Stack.Current.Statement := Statement;
-      end;
+        if Stack.Current.Expression.Token <> '' then
+        begin
+          with Stack.Current.Expression do
+          begin
+            with TsoInstance.Create do
+            begin
+              Name := Token;
+              ID := Data.RegisterID(Name);
+              Token := '';
+
+              Stack.Current.SetFlag(flagInstance);
+              Stack.Current.SetObject(This);
+              Stack.Push(TsrdGrabberBlock);
+              Stack.Current.Block := Items;
+            end;
+          end
+        end
+        else
+        with TsoStatement.Create do
+        begin
+          Stack.Current.SetObject(This);
+          Stack.Push(TsrdGrabberStatement);
+          Stack.Current.Statement := Statement;
+        end;
      end;
     ctlCloseParams:
       begin
