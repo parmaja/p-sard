@@ -145,9 +145,9 @@ type
     procedure Convert;
   end;
 
-  { TsrdParserStackItem }
+  { TsrdGrabberItem }
 
-  TsrdParserStackItem = class(TsardObject)
+  TsrdGrabberItem = class(TsardStack)
   private
     FFlags: TsrdFlags;
     FFlag: TsrdFlag;
@@ -155,7 +155,6 @@ type
     Parser: TsrdParser;
     Expression: TsrdExpression;
     Block: TsrdBlock;
-    Statement: TsrdStatement;
     procedure CheckBuffer;
   public
     procedure ConvertNumber;
@@ -176,25 +175,25 @@ type
     property Flag: TsrdFlag read FFlag;
   end;
 
-  { TsrdParserStack }
+  { TsrdGrabber }
 
-  TsrdParserStack = class(TsardStack)
+  TsrdGrabber = class(TsardStack)
   private
-    function GetCurrent: TsrdParserStackItem;
+    function GetCurrent: TsrdGrabberItem;
   protected
     Parser: TsrdParser;
   public
-    procedure Push(vItem: TsrdParserStackItem);
-    function Push: TsrdParserStackItem;
+    procedure Push(vItem: TsrdGrabberItem);
+    function Push: TsrdGrabberItem;
     constructor Create(AParser: TsrdParser);
-    property Current: TsrdParserStackItem read GetCurrent;
+    property Current: TsrdGrabberItem read GetCurrent;
   end;
 
   { TsrdFeederParser }
 
   TsrdParser = class(TsardParser)
   protected
-    FStack: TsrdParserStack;
+    FStack: TsrdGrabber;
     FData: TrunData;
   public
     procedure Start; override;
@@ -206,7 +205,7 @@ type
     procedure TriggerControl(AControl: TsardControl); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
     procedure Flush;
-    property Stack: TsrdParserStack read FStack;
+    property Stack: TsrdGrabber read FStack;
     property Data: TrunData read FData;
   end;
 
@@ -349,9 +348,9 @@ begin
   Lexer.Parser.TriggerControl(ctlStop);
 end;
 
-{ TsrdParserStackItem }
+{ TsrdGrabberItem }
 
-procedure TsrdParserStackItem.SetToken(AIdentifier: string; ATokenType: TsrdType);
+procedure TsrdGrabberItem.SetToken(AIdentifier: string; ATokenType: TsrdType);
 begin
   CheckBuffer;
   if Expression.Token <> '' then
@@ -361,7 +360,7 @@ begin
   SetFlag(flagIdentifier);
 end;
 
-procedure TsrdParserStackItem.SetOperator(AOperator: TopOperator);
+procedure TsrdGrabberItem.SetOperator(AOperator: TopOperator);
 begin
   CheckBuffer;
   if Expression.TokenOperator <> nil then
@@ -369,13 +368,13 @@ begin
   Expression.TokenOperator := AOperator;
 end;
 
-procedure TsrdParserStackItem.SetStyle(AStyle: TsrdObjectStyle);
+procedure TsrdGrabberItem.SetStyle(AStyle: TsrdObjectStyle);
 begin
   CheckBuffer;
   Expression.TokenStyle := AStyle;
 end;
 
-procedure TsrdParserStackItem.SetObject(AObject: TsoObject);
+procedure TsrdGrabberItem.SetObject(AObject: TsoObject);
 begin
   CheckBuffer;
   if Expression.TokenObject <> nil then
@@ -383,14 +382,14 @@ begin
   Expression.TokenObject := AObject;
 end;
 
-procedure TsrdParserStackItem.SetFlag(AFlag: TsrdFlag);
+procedure TsrdGrabberItem.SetFlag(AFlag: TsrdFlag);
 begin
   CheckBuffer;
   FFlags := FFlags + [AFlag];
   FFlag := AFlag;
 end;
 
-procedure TsrdParserStackItem.Flush;
+procedure TsrdGrabberItem.Flush;
 begin
   if Expression <> nil then
     with Expression do
@@ -415,43 +414,43 @@ begin
   FreeAndNil(Expression);
 end;
 
-procedure TsrdParserStackItem.NewStatement;
+procedure TsrdGrabberItem.NewStatement;
 begin
   Block.Add;
   FFlags := [];
   FFlag := flagNone;
 end;
 
-constructor TsrdParserStackItem.Create(AParser: TsrdParser);
+constructor TsrdGrabberItem.Create(AParser: TsrdParser);
 begin
   inherited Create;
   Parser := AParser;
 end;
 
-destructor TsrdParserStackItem.Destroy;
+destructor TsrdGrabberItem.Destroy;
 begin
   inherited;
 end;
 
-{ TsrdParserStack }
+{ TsrdGrabber }
 
-function TsrdParserStack.GetCurrent: TsrdParserStackItem;
+function TsrdGrabber.GetCurrent: TsrdGrabberItem;
 begin
-  Result := (inherited GetCurrent) as TsrdParserStackItem;
+  Result := (inherited GetCurrent) as TsrdGrabberItem;
 end;
 
-procedure TsrdParserStack.Push(vItem: TsrdParserStackItem);
+procedure TsrdGrabber.Push(vItem: TsrdGrabberItem);
 begin
   inherited Push(vItem);
 end;
 
-function TsrdParserStack.Push: TsrdParserStackItem;
+function TsrdGrabber.Push: TsrdGrabberItem;
 begin
-  Result := TsrdParserStackItem.Create(Parser);
+  Result := TsrdGrabberItem.Create(Parser);
   Push(Result);
 end;
 
-constructor TsrdParserStack.Create(AParser: TsrdParser);
+constructor TsrdGrabber.Create(AParser: TsrdParser);
 begin
   inherited Create;
   Parser := AParser;
@@ -473,7 +472,7 @@ constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
 begin
   inherited Create;
   FData := AData;
-  FStack := TsrdParserStack.Create(Self);
+  FStack := TsrdGrabber.Create(Self);
   if ABlock <> nil then
     with Stack.Push do
     begin
@@ -487,13 +486,13 @@ begin
   inherited Destroy;
 end;
 
-procedure TsrdParserStackItem.CheckBuffer;
+procedure TsrdGrabberItem.CheckBuffer;
 begin
   if Expression = nil then
     Expression := TsrdExpression.Create;
 end;
 
-procedure TsrdParserStackItem.ConvertString;
+procedure TsrdGrabberItem.ConvertString;
 begin
   with Expression do
   begin
@@ -509,7 +508,7 @@ begin
   SetFlag(flagString);
 end;
 
-procedure TsrdParserStackItem.ConvertComment;
+procedure TsrdGrabberItem.ConvertComment;
 begin
   with Expression do
   begin
@@ -523,7 +522,7 @@ begin
   SetFlag(flagComment);
 end;
 
-procedure TsrdParserStackItem.ConvertNumber;
+procedure TsrdGrabberItem.ConvertNumber;
 begin
   with Expression do
   begin
@@ -551,7 +550,7 @@ begin
   SetFlag(flagNumber);
 end;
 
-procedure TsrdParserStackItem.ConvertObject;
+procedure TsrdGrabberItem.ConvertObject;
 begin
   with Expression do
   begin

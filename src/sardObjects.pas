@@ -214,10 +214,10 @@ type
 
   TsoParentedObject = class(TsoObject)
   private
-    FParent: TsoObject;
-    procedure SetParent(AValue: TsoObject);
+    FParent: TsoBlock;
+    procedure SetParent(AValue: TsoBlock);
   public
-    property Parent: TsoObject read FParent write SetParent;
+    property Parent: TsoBlock read FParent write SetParent;
   end;
 
   { TsoBlock }
@@ -734,7 +734,7 @@ end;
 constructor TsoStatement.Create;
 begin
   inherited Create;
-  //FStatement := TsrdStatement.Create(Parent);
+  FStatement := TsrdStatement.Create(Parent);
 end;
 
 destructor TsoStatement.Destroy;
@@ -745,8 +745,8 @@ end;
 
 function TsoStatement.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
-  Result := inherited Execute(vStack, AOperator);
-  //FStatement.Execute(vStack);
+  //Result := inherited Execute(vStack, AOperator);
+  Result := FStatement.Execute(vStack);
 end;
 
 { TsoComment }
@@ -894,7 +894,7 @@ end;
 
 { TsoParentedObject }
 
-procedure TsoParentedObject.SetParent(AValue: TsoObject);
+procedure TsoParentedObject.SetParent(AValue: TsoBlock);
 begin
   if FParent <> nil then
     RaiseError('Already have a parent');
