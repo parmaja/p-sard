@@ -401,23 +401,27 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-  { TsrdBoolean }
+  { TsrdString }
 
-  TsoBoolean = class(TsoNumber)
+  { TsoString }
+
+  TsoString = class(TsoConstObject)
   public
-    Value: Boolean;
+    Value: string;
     procedure Created; override;
+    procedure Assign(FromObject: TsoObject); override;
+    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
     function ToInteger(out outValue: int): Boolean; override;
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-  { TsrdString }
+  { TsrdBoolean }
 
-  TsoString = class(TsoConstObject)
+  TsoBoolean = class(TsoNumber)
   public
-    Value: string;
+    Value: Boolean;
     procedure Created; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
@@ -1572,6 +1576,30 @@ procedure TsoString.Created;
 begin
   inherited Created;
   FObjectType := otString;
+end;
+
+procedure TsoString.Assign(FromObject: TsoObject);
+begin
+  if FromObject <> nil then
+  begin
+    if FromObject is TsoString then
+      Value := (FromObject as TsoString).Value
+    else
+      Value := FromObject.AsString;
+  end;
+end;
+
+function TsoString.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
+begin
+  Result := True;
+  case AOperator.Name of
+    '+': Value := Value + AObject.AsString;
+//    '-': Value := Value - AObject.AsString;
+//    '*': Value := Value * AObject.AsString;
+//    '/': Value := Value / AObject.AsString;
+    else
+      Result := False;
+  end;
 end;
 
 function TsoString.ToString(out outValue: string): Boolean;
