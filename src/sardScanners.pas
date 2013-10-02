@@ -410,6 +410,7 @@ procedure TsrdGrabberItem.SetStyle(AStyle: TsrdObjectStyle);
 begin
   CheckBuffer;
   Expression.TokenStyle := AStyle;
+  //SetFlag(flagString`)
 end;
 
 procedure TsrdGrabberItem.SetObject(AObject: TsoObject);
@@ -673,8 +674,8 @@ begin
           RaiseError('Maybe you closed not opened Curly');
       end;
     ctlOpenParams:
-     begin
-      //here we add block to TsoInstance if there is indienifier opened witout operator
+      begin
+        //here we add block to TsoInstance if there is indienifier opened witout operator
         if Stack.Current.Expression.Token <> '' then
         begin
           with Stack.Current.Expression do
@@ -699,7 +700,7 @@ begin
           Stack.Push(TsrdGrabberStatement);
           Stack.Current.Statement := Statement;
         end;
-     end;
+      end;
     ctlCloseParams:
       begin
         Flush;
