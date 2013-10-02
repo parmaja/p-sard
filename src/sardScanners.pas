@@ -121,11 +121,25 @@ type
 
   { TsrdScanners }
 
+  { TsrdLexer }
+
   TsrdLexer = class(TsardLexer)
   private
+    FControls: TctlControls;
+    FOperators: TopOperators;
   protected
     procedure Created; override;
   public
+    constructor Create(vParser: TsardParser);
+    destructor Destroy; override;
+    function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+    function IsControl(vChar: AnsiChar): Boolean; override;
+    function IsOperator(vChar: AnsiChar): Boolean; override;
+    function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+    function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
+
+    property Operators: TopOperators read FOperators;
+    property Controls: TctlControls read FControls;
   end;
 
   TsrdParser = class;
@@ -147,7 +161,7 @@ type
 
   { TsrdGrabberItem }
 
-  TsrdGrabberItem = class(TsardObject)
+  TsrdGrabberItem = class abstract(TsardObject)
   private
     FFlags: TsrdFlags;
     FFlag: TsrdFlag;
@@ -172,9 +186,21 @@ type
     procedure SetObject(AObject: TsoObject);
     procedure SetFlag(AFlag: TsrdFlag);
     procedure Flush;
-    procedure NewStatement;
+    procedure EndStatement; virtual;
     property Flags: TsrdFlags read FFlags;
     property Flag: TsrdFlag read FFlag;
+  end;
+
+  TsrdGrabberBlock = class (TsrdGrabberItem)
+  public
+  end;
+
+  TsrdGrabberStatement = class (TsrdGrabberItem)
+  public
+  end;
+
+  TsrdGrabberParams = class (TsrdGrabberItem)
+  public
   end;
 
   { TsrdGrabber }
@@ -422,7 +448,7 @@ begin
   FreeAndNil(Expression);
 end;
 
-procedure TsrdGrabberItem.NewStatement;
+procedure TsrdGrabberItem.EndStatement;
 begin
   Statement := nil;
   FFlags := [];
@@ -669,7 +695,12 @@ begin
     ctlEnd:
       begin
         Flush;
-        Stack.Current.NewStatement;
+        Stack.Current.EndStatement;
+      end;
+    ctlNext:
+      begin
+        Flush;
+        Stack.Current.EndStatement;
       end;
     ctlAssign:
       begin
@@ -708,7 +739,7 @@ procedure TsrdControl_Scanner.Scan(const Text: string; var Column: Integer);
 var
   aControl: TctlControl;
 begin
-  aControl := sardEngine.Controls.Scan(Text, Column);
+  aControl := (Lexer as TsrdLexer).Controls.Scan(Text, Column);
   if aControl <> nil then
     Column := Column + Length(aControl.Name)
   else
@@ -719,13 +750,46 @@ end;
 
 function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := sardEngine.IsControl(Text[Column]);
+  Result := Lexer.IsControl(Text[Column]);
 end;
 
 { TsrdFeeder }
 
 procedure TsrdLexer.Created;
 begin
+  with Controls do
+  begin
+    Add('(', ctlOpenParams);
+    Add('[', ctlOpenArray);
+    Add('{', ctlOpenBlock);
+    Add(')', ctlCloseParams);
+    Add(']', ctlCloseArray);
+    Add('}', ctlCloseBlock);
+    Add(';', ctlEnd);
+    Add(',', ctlEnd);
+    Add(':', ctlDeclare);
+    Add(':=', ctlAssign);
+  end;
+
+  with Operators do
+  begin
+    Add(TopPlus);
+    Add(TopMinus);
+    Add(TopMultiply);
+    Add(TopDivide);
+
+    Add(TopEqual);
+    Add(TopNotEqual);
+    Add(TopAnd);
+    Add(TopOr);
+    Add(TopNot);
+
+    Add(TopGreater);
+    Add(TopLesser);
+
+    Add(TopPower);
+  end;
+
   RegisterScanner(TsrdStart_Scanner);
   RegisterScanner(TsrdWhitespace_Scanner);
   RegisterScanner(TsrdBlockComment_Scanner);
@@ -739,6 +803,48 @@ begin
   RegisterScanner(TsrdIdentifier_Scanner);//Last one
 end;
 
+constructor TsrdLexer.Create(vParser: TsardParser);
+begin
+  inherited Create(vParser);
+  FOperators := TopOperators.Create;
+  FControls := TctlControls.Create;
+end;
+
+destructor TsrdLexer.Destroy;
+begin
+  FreeAndNil(FControls);
+  FreeAndNil(FOperators);
+  inherited Destroy;
+end;
+
+function TsrdLexer.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  Result := vChar in sWhitespace;
+end;
+
+function TsrdLexer.IsControl(vChar: AnsiChar): Boolean;
+begin
+  Result := Controls.IsOpenBy(vChar);
+end;
+
+function TsrdLexer.IsOperator(vChar: AnsiChar): Boolean;
+begin
+  Result := Operators.IsOpenBy(vChar);
+end;
+
+function TsrdLexer.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  if vOpen then
+    Result := vChar in sNumberOpenChars
+  else
+    Result := vChar in sNumberChars;
+end;
+
+function TsrdLexer.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
+begin
+  Result := inherited IsIdentifier(vChar, vOpen);
+end;
+
 { TsrdNumberScanner }
 
 procedure TsrdNumber_Scanner.Scan(const Text: string; var Column: Integer);
@@ -747,14 +853,14 @@ var
 begin
   c := Column;
   l := Length(Text);
-  while (Column <= l) and (sardEngine.IsNumber(Text[Column], False)) do
+  while (Column <= l) and (Lexer.IsNumber(Text[Column], False)) do
     Inc(Column);
   Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpNumber);
 end;
 
 function TsrdNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := sardEngine.IsNumber(Text[Column], True);//need to improve to accept unicode chars
+  Result := Lexer.IsNumber(Text[Column], True);//need to improve to accept unicode chars
 end;
 
 { TopOperatorScanner }
@@ -763,7 +869,7 @@ procedure TopOperator_Scanner.Scan(const Text: string; var Column: Integer);
 var
   aOperator: TopOperator;
 begin
-  aOperator := sardEngine.Operators.Scan(Text, Column);
+  aOperator := (Lexer as TsrdLexer).Operators.Scan(Text, Column);
   if aOperator <> nil then
     Column := Column + Length(aOperator.Name)
   else
@@ -774,7 +880,7 @@ end;
 
 function TopOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := sardEngine.IsOperator(Text[Column]);
+  Result := Lexer.IsOperator(Text[Column]);
 end;
 
 { TsrdIdentifierScanner }
@@ -784,14 +890,14 @@ var
   c: Integer;
 begin
   c := Column;
-  while (Column <= Length(Text)) and (sardEngine.IsIdentifier(Text[Column], False)) do
+  while (Column <= Length(Text)) and (Lexer.IsIdentifier(Text[Column], False)) do
     Inc(Column);
   Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpObject);
 end;
 
 function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := sardEngine.IsIdentifier(Text[Column], True);
+  Result := Lexer.IsIdentifier(Text[Column], True);
 end;
 
 { TsrdDQStringScanner }

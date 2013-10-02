@@ -700,31 +700,15 @@ type
 
   TsrdEngine = class(TsardCustomEngine)
   private
-    FControls: TctlControls;
-    FOperators: TopOperators;
   protected
-    procedure Check; override;
     procedure Created; override;
-    function CreateOperators: TopOperators;
-    function CreateControls: TctlControls;
   public
     constructor Create;
-    function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
-    function IsControl(vChar: AnsiChar): Boolean; override;
-    function IsOperator(vChar: AnsiChar): Boolean; override;
-    function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
-    function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
-
-    property Operators: TopOperators read FOperators;
-    property Controls: TctlControls read FControls;
   end;
 
 function sardEngine: TsrdEngine;
 
 implementation
-
-uses
-  sardScanners;
 
 var
   FsardEngine: TsrdEngine = nil;
@@ -1493,92 +1477,14 @@ end;
 
 { TsrdEngine }
 
-procedure TsrdEngine.Check;
-begin
-  inherited Check;
-  //TODO: ?, We will check if first char of Operator not in first char of Control
-end;
-
 procedure TsrdEngine.Created;
 begin
   inherited;
-  with Controls do
-  begin
-    Add('(', ctlOpenParams);
-    Add('[', ctlOpenArray);
-    Add('{', ctlOpenBlock);
-    Add(')', ctlCloseParams);
-    Add(']', ctlCloseArray);
-    Add('}', ctlCloseBlock);
-    Add(';', ctlEnd);
-    Add(',', ctlEnd);
-    Add(':', ctlDeclare);
-    Add(':=', ctlAssign);
-  end;
-
-  with Operators do
-  begin
-    Add(TopPlus);
-    Add(TopMinus);
-    Add(TopMultiply);
-    Add(TopDivide);
-
-    Add(TopEqual);
-    Add(TopNotEqual);
-    Add(TopAnd);
-    Add(TopOr);
-    Add(TopNot);
-
-    Add(TopGreater);
-    Add(TopLesser);
-
-    Add(TopPower);
-  end;
-end;
-
-function TsrdEngine.CreateOperators: TopOperators;
-begin
-  Result := TopOperators.Create;
-end;
-
-function TsrdEngine.CreateControls: TctlControls;
-begin
-  Result := TctlControls.Create;
 end;
 
 constructor TsrdEngine.Create;
 begin
   inherited Create;
-  FOperators := CreateOperators;
-  FControls := CreateControls;
-end;
-
-function TsrdEngine.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
-begin
-  Result := vChar in sWhitespace;
-end;
-
-function TsrdEngine.IsControl(vChar: AnsiChar): Boolean;
-begin
-  Result := Controls.IsOpenBy(vChar);
-end;
-
-function TsrdEngine.IsOperator(vChar: AnsiChar): Boolean;
-begin
-  Result := Operators.IsOpenBy(vChar);
-end;
-
-function TsrdEngine.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
-begin
-  if vOpen then
-    Result := vChar in sNumberOpenChars
-  else
-    Result := vChar in sNumberChars;
-end;
-
-function TsrdEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
-begin
-  Result := inherited IsIdentifier(vChar, vOpen);
 end;
 
 { TsrdStatementItem }
@@ -1670,17 +1576,20 @@ end;
 
 function TsoString.ToString(out outValue: string): Boolean;
 begin
-  Result :=inherited ToString(outValue);
+  outValue := Value;
+  Result := True;
 end;
 
 function TsoString.ToFloat(out outValue: Float): Boolean;
 begin
-  Result :=inherited ToFloat(outValue);
+  outValue := StrToFloat(Value);
+  Result := True;
 end;
 
 function TsoString.ToInteger(out outValue: int): Boolean;
 begin
-  Result :=inherited ToInteger(outValue);
+  outValue := StrToInt64(Value);
+  Result := True;
 end;
 
 function TsoString.ToBoolean(out outValue: Boolean): Boolean;

@@ -71,7 +71,8 @@ type
     ctlStop, //Start parsing
     ctlDeclare, //Declare a class of object
     ctlAssign, //Assign to object/variable
-    ctlEnd, //End Statement
+    ctlNext, //End Params, Comma
+    ctlEnd, //End Statement Semicolon
     ctlOpenBlock, // {
     ctlCloseBlock, // }
     ctlOpenParams, // (
@@ -121,6 +122,16 @@ type
     procedure SetParser(AValue: TsardParser);
   public
     constructor Create(vParser: TsardParser);
+    {
+      Open mean first char in it, like Numbers must start with number 0..9 but can contain a..z
+        or Identifier start a..z or _ but can contain numbers
+    }
+    function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
+    function IsControl(vChar: AnsiChar): Boolean; virtual; abstract;
+    function IsOperator(vChar: AnsiChar): Boolean; virtual; abstract;
+    function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
+    function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual;
+
     function DetectScanner(const Text: string; var Column: Integer): Integer;
     procedure SwitchScanner(NextScanner: TsardScannerID);
     procedure SelectScanner(ScannerClass: TsardScannerClass);
@@ -216,18 +227,8 @@ type
   TsardCustomEngine = class(TsardObject)
   private
   protected
-    procedure Check; virtual;
     procedure Created; override;
   public
-    {
-      Open mean first char in it, like Numbers must start with number 0..9 but can contain a..z
-        or Identifier start a..z or _ but can contain numbers
-    }
-    function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
-    function IsControl(vChar: AnsiChar): Boolean; virtual; abstract;
-    function IsOperator(vChar: AnsiChar): Boolean; virtual; abstract;
-    function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
-    function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual;
   end;
 
 procedure RaiseError(AError: string);
@@ -299,17 +300,12 @@ end;
 
 { TsardCustomEngine }
 
-procedure TsardCustomEngine.Check;
-begin
-end;
-
 procedure TsardCustomEngine.Created;
 begin
   inherited Created;
-  Check;
 end;
 
-function TsardCustomEngine.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsardLexer.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := not IsWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar);
   if vOpen then
