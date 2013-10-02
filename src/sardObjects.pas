@@ -102,8 +102,6 @@ type
     function GetItem(Index: Integer): TsrdStatementItem;
     procedure SetDebug(AValue: TsrdDebug);
   protected
-    procedure BeforeExecute(vStack: TrunStack); virtual;
-    procedure AfterExecute(vStack: TrunStack); virtual;
   public
     function Add(AObject: TsrdStatementItem): Integer;
     function Add(AOperator:TopOperator; AObject: TsoObject): TsrdStatementItem;
@@ -171,11 +169,14 @@ type
     procedure SetAsFloat(AValue: Float);
     procedure SetAsInteger(AValue: int);
     procedure SetAsBoolean(AValue: Boolean);}
+    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; virtual;
+    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
+    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual; abstract;
   public
     constructor Create; virtual;
     function This: TsoObject; //return the same object, stupid but save some code :P
-    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; virtual;
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; virtual;
+    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone(WithValue: Boolean = True): TsoObject; virtual;
     property ObjectType: TsrdObjectType read FObjectType;
@@ -206,16 +207,17 @@ type
 
   TsoConstObject = class abstract(TsoObject)
   protected
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override; final;
   public
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override; final;
   end;
 
-  { TsoStatementObject }
+  { TsoParentedObject }
 
   TsoParentedObject = class(TsoObject)
   private
     FParent: TsoBlock;
     procedure SetParent(AValue: TsoBlock);
+  protected
   public
     property Parent: TsoBlock read FParent write SetParent;
   end;
@@ -226,22 +228,25 @@ type
   protected
     FItems: TsrdBlock;
     procedure Created; override;
-    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
-    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     property Items: TsrdBlock read FItems;
   end;
+
+  { TsoStatement }
 
   TsoStatement = class(TsoParentedObject)
   private
     FStatement: TsrdStatement;
+  protected
+    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
+    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     property Statement: TsrdStatement read FStatement;
   end;
 
@@ -279,10 +284,11 @@ type
 
   TsoInstance = class(TsoNamedObject)
   private
+  protected
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   public
     procedure Created; override;
     procedure FindMe;
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   end;
 
   { TsoAssign }
@@ -293,8 +299,8 @@ type
   private
   protected
     procedure Created; override;
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   public
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   end;
 
   { TsoDeclare }
@@ -303,8 +309,8 @@ type
   private
   protected
     procedure Created; override;
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   public
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   end;
 
 
@@ -422,9 +428,10 @@ type
   { TsoComment }
 
   TsoComment = class(TsoObject)
+  protected
+    function DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
   public
     Value: string;
-    function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean; override;
     procedure Created; override;
   end;
 
@@ -743,15 +750,32 @@ begin
   inherited Destroy;
 end;
 
-function TsoStatement.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+procedure TsoStatement.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+  vStack.Push;
+end;
+
+procedure TsoStatement.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
+var
+  T: TrunStackItem;
+begin
+  inherited;
+  T := vStack.Pull;
+  if T.Result.AnObject <> nil then
+    T.Result.AnObject.Execute(vStack, AOperator);
+  FreeAndNil(T);
+end;
+
+function TsoStatement.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
   //Result := inherited Execute(vStack, AOperator);
+
   Result := FStatement.Execute(vStack);
 end;
 
 { TsoComment }
 
-function TsoComment.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+function TsoComment.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
   Result := inherited Execute(vStack, AOperator);//Nothing to do compiled comments not executed
 end;
@@ -1039,9 +1063,8 @@ end;
 
 { TsoConstObject }
 
-function TsoConstObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+function TsoConstObject.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
-  inherited;
   if (vStack.Current.Result.AnObject = nil) and (AOperator = nil) then
   begin
     vStack.Current.Result.AnObject := Clone;
@@ -1127,25 +1150,9 @@ begin
   FObjectType := otBlock;
 end;
 
-procedure TsoBlock.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
+function TsoBlock.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
-end;
-
-procedure TsoBlock.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-end;
-
-function TsoBlock.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
-begin
-  inherited;
-  Result := False;
-  BeforeExecute(vStack, AOperator);
   Result := Items.Execute(vStack);
-  AfterExecute(vStack, AOperator);
-
-  WriteLn('Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level));
-  if AOperator <> nil then
-    Write('{'+ AOperator.ClassName+'}');
 end;
 
 constructor TsoBlock.Create;
@@ -1318,11 +1325,10 @@ begin
   FObjectType := otVariable;
 end;
 
-function TsoAssign.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+function TsoAssign.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 var
   v: TrunVariable;
 begin
-  inherited;
   { if not name it assign to parent result }
   Result := True;
   if Name = '' then
@@ -1592,7 +1598,7 @@ begin
   FObjectType := otClass;
 end;
 
-function TsoDeclare.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+function TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
   Result :=inherited Execute(vStack, AOperator);
 end;
@@ -1610,7 +1616,7 @@ begin
 
 end;
 
-function TsoInstance.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
+function TsoInstance.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 var
   v: TrunVariable;
 begin
@@ -1808,7 +1814,7 @@ end;
 
 function TsrdBlock.GetStatement: TsrdStatement;
 begin
-  Check;//TODO: not sure
+  //Check;//TODO: not sure
   Result := Last as TsrdStatement;
 end;
 
@@ -1841,9 +1847,14 @@ begin
   Result := Count > 0;
   for i := 0 to Count -1 do
   begin
-    Items[i].BeforeExecute(vStack);
+    vStack.Push;
+
     Result := Items[i].Execute(vStack) and Result;
-    Items[i].AfterExecute(vStack);
+
+    if vStack.Current.Reference <> nil then
+      vStack.Current.Reference.AnObject := vStack.Current.Result.Extract;  //it is responsible of assgin to parent result or to variable
+
+    vStack.Pop;
   end;
 end;
 
@@ -1858,18 +1869,6 @@ procedure TsrdStatement.SetDebug(AValue: TsrdDebug);
 begin
   if FDebug =AValue then Exit;
   FDebug :=AValue;
-end;
-
-procedure TsrdStatement.BeforeExecute(vStack: TrunStack);
-begin
-  vStack.Push;//Todo Move to execute in block
-end;
-
-procedure TsrdStatement.AfterExecute(vStack: TrunStack);
-begin
-  if vStack.Current.Reference <> nil then
-    vStack.Current.Reference.AnObject := vStack.Current.Result.Extract;
-  vStack.Pop;
 end;
 
 function TsrdStatement.Add(AObject: TsrdStatementItem): Integer;
@@ -1933,10 +1932,24 @@ begin
   Result := False;
 end;
 
+procedure TsoObject.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+end;
+
+procedure TsoObject.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+
+end;
+
 function TsoObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 var
   s: string;
 begin
+  Result := False;
+  BeforeExecute(vStack, AOperator);
+  Result := DoExecute(vStack, AOperator);
+  AfterExecute(vStack, AOperator);
+
   Result := True;//Nothing to do
   s := StringOfChar('-', vStack.CurrentItem.Level)+'->';
   s := s + 'Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level);

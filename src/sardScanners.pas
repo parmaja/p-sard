@@ -147,7 +147,7 @@ type
 
   { TsrdGrabberItem }
 
-  TsrdGrabberItem = class(TsardStack)
+  TsrdGrabberItem = class(TsardObject)
   private
     FFlags: TsrdFlags;
     FFlag: TsrdFlag;
@@ -155,8 +155,12 @@ type
     Parser: TsrdParser;
     Expression: TsrdExpression;
     Block: TsrdBlock;
+    Statement: TsrdStatement;
     procedure CheckBuffer;
   public
+    constructor Create(AParser: TsrdParser);
+    destructor Destroy; override;
+
     procedure ConvertNumber;
     procedure ConvertString;
     procedure ConvertComment;
@@ -169,8 +173,6 @@ type
     procedure SetFlag(AFlag: TsrdFlag);
     procedure Flush;
     procedure NewStatement;
-    constructor Create(AParser: TsrdParser);
-    destructor Destroy; override;
     property Flags: TsrdFlags read FFlags;
     property Flag: TsrdFlag read FFlag;
   end;
@@ -409,14 +411,20 @@ begin
         end;
       if TokenObject = nil then
         RaiseError('Object is nil!');
-      Block.Statement.Add(TokenOperator, TokenObject);
+      if Statement = nil then
+      begin
+        if Block = nil then
+          RaiseError('Maybe you need to set a block, or it single statment block');
+        Statement := Block.Add;
+      end;
+      Statement.Add(TokenOperator, TokenObject);
     end;
   FreeAndNil(Expression);
 end;
 
 procedure TsrdGrabberItem.NewStatement;
 begin
-  Block.Add;
+  Statement := nil;
   FFlags := [];
   FFlag := flagNone;
 end;
@@ -431,6 +439,22 @@ destructor TsrdGrabberItem.Destroy;
 begin
   inherited;
 end;
+
+{procedure TsrdGrabberItem.Push(AStatement: TsrdStatement);
+begin
+  inherited Push(AStatement);
+end;
+
+function TsrdGrabberItem.Pull: TsrdStatement;
+begin
+  Result := (inherited Pull) as TsrdStatement;
+end;
+
+function TsrdGrabberItem.GetCurrent: TsrdStatement;
+begin
+  Result := (inherited GetCurrent) as TsrdStatement;
+end;
+}
 
 { TsrdGrabber }
 
@@ -622,11 +646,11 @@ begin
           RaiseError('Maybe you closed not opened Curly');
       end;
     ctlOpenParams:
-      with TsoDescend.Create do
+      with TsoStatement.Create do
       begin
         Stack.Current.SetObject(This);
         Stack.Push;
-        Stack.Current.Block := Items;
+        Stack.Current.Statement := Statement;
       end;
     ctlCloseParams:
       begin
