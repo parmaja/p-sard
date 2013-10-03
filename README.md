@@ -7,8 +7,8 @@ The idea behind it, it is not use any of reserved word only sign, only objects t
 
 When i finish it it will be clear than i can explain it.
 
-Examples
-========
+###Examples###
+
 
     /*
       This examples are worked, and this comment will ignored, not compiled or parsed as we say.
@@ -39,8 +39,7 @@ Examples
 
 Still working on it.
 
-Compile
-=======
+###Compile###
 
 FreePascal 2.6.4
 
