@@ -741,6 +741,7 @@ end;
 
 function TsoComment.DoExecute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 begin
+  Result := True;
 end;
 
 procedure TsoComment.Created;
