@@ -37,6 +37,20 @@ When i finish it it will be clear than i can explain it.
 
     {* First init of the variable define the type *}
 
+    //Next f is a function or let us say it is an object we can run it.
+    
+    f:{
+        x := 10;
+        z: {
+          x:=5;
+          := x + 5;
+        };
+        := x + z;
+    
+      };
+    
+    :=f + 10;      
+    
 Still working on it.
 
 ###Compile###
