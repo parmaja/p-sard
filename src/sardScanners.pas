@@ -99,7 +99,7 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdFlag = (flagNone, flagInstance, flagDeclare, flagAssign, flagIdentifier, flagConst, flagOperator, flagComment, flagBlock);
+  TsrdFlag = (flagNone, flagInstance, flagDeclare, flagAssign, flagIdentifier, flagConst, flagParam, flagOperator, flagComment, flagBlock);
   TsrdFlags = set of TsrdFlag;
 
   { TsrdFeeder }
@@ -149,7 +149,6 @@ type
     Parser: TsrdParser;
     Block: TsrdBlock;//TODO move it to TsrdInterpretBlock
     Statement: TsrdStatement;
-    procedure CheckBuffer;
   public
     constructor Create(AParser: TsrdParser);
     destructor Destroy; override;
@@ -165,6 +164,7 @@ type
     procedure SetAssign;
     procedure SetObject(AObject: TsoObject);
     procedure SetFlag(AFlag: TsrdFlag);
+    procedure CheckStatement;
     procedure Flush; virtual;
     procedure EndStatement; virtual; abstract;
     property Flags: TsrdFlags read FFlags;
@@ -172,8 +172,6 @@ type
   end;
 
   TsrdInterpretClass = class of TsrdInterpret;
-
-  { TsrdInterpretBlock }
 
   TsrdInterpretBlock = class (TsrdInterpret)
   public
@@ -382,7 +380,6 @@ end;
 
 procedure TsrdInterpret.SetIdentifier(AIdentifier: string);
 begin
-  CheckBuffer;
   if Identifier <> '' then
     RaiseError('Identifier is already set');
   Identifier := AIdentifier;
@@ -391,7 +388,6 @@ end;
 
 procedure TsrdInterpret.SetNumber(AIdentifier: string);
 begin
-  CheckBuffer;
   if Identifier <> '' then
     RaiseError('Identifier is already set');
   if pos('.', AIdentifier) > 0 then
@@ -415,7 +411,6 @@ end;
 
 procedure TsrdInterpret.SetString(AIdentifier: string);
 begin
-  CheckBuffer;
   if Identifier <> '' then
     RaiseError('Identifier is already set');
   with TsoString.Create do
@@ -440,11 +435,13 @@ end;
 
 procedure TsrdInterpret.SetDeclare;
 begin
+  CheckStatement;
   with TsoDeclare.Create do
   begin
     Name := Identifier;
     ID := Parser.Data.RegisterID(Name);
     TokenObject := This;
+    Statement := Self.Statement;
   end;
   Identifier := '';
   SetFlag(flagDeclare);
@@ -481,7 +478,7 @@ end;
 
 procedure TsrdInterpret.SetOperator(AOperator: TopOperator);
 begin
-  CheckBuffer;
+  Flush;
   if TokenOperator <> nil then
     RaiseError('Operator is already set');
   TokenOperator := AOperator;
@@ -489,7 +486,6 @@ end;
 
 procedure TsrdInterpret.SetObject(AObject: TsoObject);
 begin
-  CheckBuffer;
   if Identifier <> '' then
     RaiseError('Identifier is already set');
   if TokenObject <> nil then
@@ -499,9 +495,18 @@ end;
 
 procedure TsrdInterpret.SetFlag(AFlag: TsrdFlag);
 begin
-  CheckBuffer;
   FFlags := FFlags + [AFlag];
   FFlag := AFlag;
+end;
+
+procedure TsrdInterpret.CheckStatement;
+begin
+  if Statement = nil then
+  begin
+    if Block = nil then
+      RaiseError('Maybe you need to set a block, or it single statment block');
+    Statement := Block.Add;
+  end;
 end;
 
 procedure TsrdInterpret.Flush;
@@ -517,12 +522,7 @@ begin
       RaiseError('Identifier is already set, can not flush');
     if TokenObject = nil then
       RaiseError('Object is nil!');
-    if Statement = nil then
-    begin
-      if Block = nil then
-        RaiseError('Maybe you need to set a block, or it single statment block');
-      Statement := Block.Add;
-    end;
+    CheckStatement;
     Statement.Add(TokenOperator, TokenObject);
     TokenObject := nil;
     TokenOperator := nil;
@@ -539,22 +539,6 @@ destructor TsrdInterpret.Destroy;
 begin
   inherited;
 end;
-
-{procedure TsrdInterpret.Push(AStatement: TsrdStatement);
-begin
-  inherited Push(AStatement);
-end;
-
-function TsrdInterpret.Pull: TsrdStatement;
-begin
-  Result := (inherited Pull) as TsrdStatement;
-end;
-
-function TsrdInterpret.GetCurrent: TsrdStatement;
-begin
-  Result := (inherited GetCurrent) as TsrdStatement;
-end;
-}
 
 { TsrdInterpreter }
 
@@ -610,57 +594,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TsrdInterpret.CheckBuffer;
-begin
-{  if Expression = nil then
-    Expression := TsrdExpression.Create;}
-end;
-
-(*
-procedure TsrdInterpret.ConvertObject;
-begin
-  with Expression do
-  begin
-    if TokenObject <> nil then
-    begin
-    end
-    else if TokenStyle = tsDeclare then
-    begin
-//        SetDeclare(Token)
-      {with TsoDeclare.Create do
-      begin
-        Name := Token;
-        ID := Parser.Data.RegisterID(Name);
-        TokenObject := This;
-      end;
-      SetFlag(flagDeclare);}
-    end
-    else if TokenStyle = tsAssign then
-    begin
-      with TsoAssign.Create do
-      begin
-        Name := Token;
-        ID := Parser.Data.RegisterID(Name);
-        TokenObject := This;
-      end;
-      SetFlag(flagAssign);
-    end
-    else
-    begin
-      if Token = '' then
-        RaiseError('Identifier is empty');
-      with TsoInstance.Create do
-      begin
-        Name := Token;
-        //FindMe
-        ID := Parser.Data.RegisterID(Name);
-        TokenObject := This;
-      end;
-      SetFlag(flagInstance);
-    end;
-  end;
-end;
-*)
 procedure TsrdParser.Flush;
 begin
   Stack.Current.Flush;
@@ -697,6 +630,11 @@ begin
     ctlOpenParams:
       begin
         //here we add block to TsoInstance if there is indienifier opened witout operator
+        if Stack.Current.Flags = [flagDeclare, flagIdentifier] then
+        begin
+          Stack.Push(TsrdInterpretParams);
+        end
+        else
         if Stack.Current.Flags = [flagIdentifier] then
         begin
           Stack.Current.SetInstance;
@@ -718,6 +656,26 @@ begin
         if Stack.Count = 0 then
           RaiseError('Maybe you closed not opened Bracket');
       end;
+    ctlAssign:
+      begin
+        if (Stack.Current.Flags = []) or (Stack.Current.Flags = [flagIdentifier]) then
+        begin
+          Stack.Current.SetAssign;
+          Flush;
+        end
+        else
+          RaiseError('You can not use assignment here!');
+      end;
+    ctlDeclare:
+      begin
+        if (Stack.Current.Flags = [flagIdentifier]) then
+        begin
+          Stack.Current.SetDeclare;
+          Flush;
+        end
+        else
+          RaiseError('You can not use assignment here!');
+      end;
     ctlStart:
       begin
       end;
@@ -735,26 +693,6 @@ begin
         Flush;
         Stack.Current.EndStatement;
       end;
-    ctlAssign:
-      begin
-        if (Stack.Current.Flags = []) or (Stack.Current.Flags = [flagIdentifier]) then
-        begin
-          Stack.Current.SetAssign;
-          Flush;
-        end
-        else
-          RaiseError('You can not use assignment here!');
-      end;
-    ctlDeclare:
-      begin
-        if (Stack.Current.Flags = [flagIdentifier]) then //Only Identifier is opened
-        begin
-          Stack.Current.SetDeclare;
-          Flush;
-        end
-        else
-          RaiseError('You can not use assignment here!');
-      end
     else
       RaiseError('Not implemented yet, sorry :(');
   end;
@@ -762,7 +700,6 @@ end;
 
 procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
-  Flush;
   Stack.Current.SetOperator(AOperator as TopOperator);
 end;
 

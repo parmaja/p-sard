@@ -157,27 +157,23 @@ type
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
   end;
 
-  TclsClass = class(TsardObject)
-  public
-    Name: string;
-    AnObject: TsoObject;
-  end;
+  TsoLinkStatement = class;
 
   { TclsClasses }
 
   TclsClasses = class(TsardObjectList)
   private
-    function GetItem(Index: Integer): TclsClass;
+    function GetItem(Index: Integer): TsoLinkStatement;
   public
-    property Items[Index: Integer]: TclsClass read GetItem; default;
+    function Find(vName: string): TsoLinkStatement;
+    function Add(vName: string; vStatement: TsrdStatement): TsoLinkStatement;
+    property Items[Index: Integer]: TsoLinkStatement read GetItem; default;
   end;
-
 
   { TsoObject }
 
   TsoObject = class abstract(TsardObject, IsrdObject)
   private
-    FClasses: TclsClasses;
     FParent: TsoObject;
   protected
     FObjectType: TsrdObjectType;
@@ -202,8 +198,8 @@ type
 
 
     property Parent: TsoObject read FParent write SetParent;
+    function AddClass(vName: string; vStatement: TsrdStatement): TsoLinkStatement; virtual;
     function FindClass(vName: string): TsoObject; virtual;
-    property Classes: TclsClasses read FClasses; //It is cache of object listed inside statments, it is for fast find the object
 
     property ObjectType: TsrdObjectType read FObjectType;
 
@@ -254,25 +250,53 @@ type
   (* Used by { } *)
 
   TsoSection = class(TsoBlock) //Result of was droped until using := assign in the first of statment
+  private
+    FClasses: TclsClasses;
   protected
     procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
     procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
   public
+    constructor Create; override;
+    destructor Destroy; override;
+    function AddClass(vName: string; vStatement: TsrdStatement): TsoLinkStatement; override;
+    function FindClass(vName: string): TsoObject; override;
+    property Classes: TclsClasses read FClasses; //It is cache of object listed inside statments, it is for fast find the object
   end;
 
   { TsoStatement }
 
-  TsoStatement = class(TsoObject)
+  { TsoLinkStatement }
+
+  TsoCustomStatement = class(TsoObject)
   private
-    FStatement: TsrdStatement;
   protected
+    FStatement: TsrdStatement;
     procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
     procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
+    property Statement: TsrdStatement read FStatement;
+  end;
+
+  { TsoStatement }
+
+  TsoStatement = class(TsoCustomStatement)
+  private
+  protected
+  public
     constructor Create; override;
     destructor Destroy; override;
-    property Statement: TsrdStatement read FStatement;
+  end;
+
+  { TsoStatement }
+
+  TsoLinkStatement = class(TsoCustomStatement)
+  private
+    FName: string;
+  protected
+  public
+    procedure SetStatement(vStatement: TsrdStatement);
+    property Name: string read FName write FName;
   end;
 
   { TsoNamedObject }
@@ -313,7 +337,16 @@ type
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
     procedure Created; override;
-    procedure FindMe;
+  end;
+
+
+  { TsoParam }
+
+  TsoParam = class(TsoNamedObject)
+  private
+  protected
+    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
+  public
   end;
 
   { TsoAssign }
@@ -345,9 +378,11 @@ type
 
   { TsoDeclare }
 
-  TsoDeclare = class(TsoNamedBlock)
+  TsoDeclare = class(TsoNamedObject)
   private
     FParams: TprmParams;
+    FStatement: TsrdStatement;
+    procedure SetStatement(AValue: TsrdStatement);
   protected
     procedure Created; override;
     procedure DoSetParent(AValue: TsoObject); override;
@@ -356,6 +391,7 @@ type
     constructor Create; override;
     destructor Destroy; override;
     property Params: TprmParams read FParams;
+    property Statement: TsrdStatement read FStatement write SetStatement;
   end;
 
 {-------- Const Objects --------}
@@ -770,11 +806,70 @@ begin
   Result := FsardEngine;
 end;
 
+{ TsoCustomStatement }
+
+procedure TsoCustomStatement.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
+begin
+  vStack.Push;
+end;
+
+procedure TsoCustomStatement.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
+var
+  T: TrunStackItem;
+begin
+  inherited;
+  T := vStack.Pull;
+  if T.Result.AnObject <> nil then
+    T.Result.AnObject.Execute(vStack, AOperator);
+  FreeAndNil(T);
+end;
+
+procedure TsoCustomStatement.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
+begin
+  Done := FStatement.Execute(vStack);
+end;
+
+procedure TsoLinkStatement.SetStatement(vStatement: TsrdStatement);
+begin
+  if FStatement = nil then
+    RaiseError('Statement is already set!');
+  FStatement := vStatement;
+end;
+
+{ TsoParam }
+
+procedure TsoParam.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
+begin
+end;
+
 { TclsClasses }
 
-function TclsClasses.GetItem(Index: Integer): TclsClass;
+function TclsClasses.GetItem(Index: Integer): TsoLinkStatement;
 begin
-  Result := inherited GetItem(Index) as TclsClass;
+  Result := inherited GetItem(Index) as TsoLinkStatement;
+end;
+
+function TclsClasses.Find(vName: string): TsoLinkStatement;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if SameText(vName, Items[i].Name) then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+function TclsClasses.Add(vName: string; vStatement: TsrdStatement): TsoLinkStatement;
+begin
+  Result := TsoLinkStatement.Create;
+  Result.Name := vName;
+  Result.Parent := vStatement.Parent;
+  inherited Add(Result);
 end;
 
 { TprmParams }
@@ -817,28 +912,6 @@ destructor TsoStatement.Destroy;
 begin
   FreeAndNil(FStatement);
   inherited Destroy;
-end;
-
-procedure TsoStatement.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-  vStack.Push;
-end;
-
-procedure TsoStatement.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-var
-  T: TrunStackItem;
-begin
-  inherited;
-  T := vStack.Pull;
-  if T.Result.AnObject <> nil then
-    T.Result.AnObject.Execute(vStack, AOperator);
-  FreeAndNil(T);
-end;
-
-procedure TsoStatement.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-  //Result := inherited Execute(vStack, AOperator);
-  Done := FStatement.Execute(vStack);
 end;
 
 { TsoComment }
@@ -1019,6 +1092,30 @@ begin
     T.Result.AnObject.Execute(vStack, AOperator);
   FreeAndNil(T);
   vStack.Scope.Pop;
+end;
+
+constructor TsoSection.Create;
+begin
+  inherited;
+  FClasses := TclsClasses.Create;
+end;
+
+destructor TsoSection.Destroy;
+begin
+  FreeAndNil(FClasses);
+  inherited Destroy;
+end;
+
+function TsoSection.AddClass(vName: string; vStatement: TsrdStatement): TsoLinkStatement;
+begin
+  Result := Classes.Add(vName, vStatement);
+end;
+
+function TsoSection.FindClass(vName: string): TsoObject;
+begin
+  Result := Classes.Find(vName);
+  if Result = nil then
+    Result := inherited FindClass(vName);
 end;
 
 { TsoNamedObject }
@@ -1557,6 +1654,12 @@ end;
 
 { TsrdClass }
 
+procedure TsoDeclare.SetStatement(AValue: TsrdStatement);
+begin
+  if FStatement =AValue then Exit;
+  FStatement :=AValue;
+end;
+
 procedure TsoDeclare.Created;
 begin
   inherited Created;
@@ -1565,23 +1668,24 @@ end;
 
 procedure TsoDeclare.DoSetParent(AValue: TsoObject);
 begin
-//Add it to parent.classes
+  AddClass(Name, Statement);
 end;
 
 procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  inherited;
 end;
 
 constructor TsoDeclare.Create;
 begin
   inherited;
+  FStatement := TsrdStatement.Create(Self);
   FParams := TprmParams.Create;
 end;
 
 destructor TsoDeclare.Destroy;
 begin
   FreeAndNil(FParams);
+  FreeAndNil(FStatement);
   inherited Destroy;
 end;
 
@@ -1593,25 +1697,17 @@ begin
   FObjectType := otObject;
 end;
 
-procedure TsoInstance.FindMe;
-begin
-
-end;
-
 procedure TsoInstance.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 var
   v: TrunVariable;
-  o: TsoObject;
   p: TsoObject;
 begin
-  o := Self;
-  p := nil;
-{  while (o.Parent <> nil) and (p = nil) do
+  p := FindClass(Name);
+  if p <> nil then
   begin
-    p := o.FindClass(Name);
-  end;}
-
-  if p = nil then
+    Done := p.Execute(vStack, AOperator);
+  end
+  else
   begin
     v := vStack.Scope.Current.Variables.Register(Name);//TODO find it not register it
     if v <> nil then
@@ -1623,8 +1719,6 @@ begin
     else
       Done := False;
   end
-  else
-    Done := False;
 end;
 
 { TsrdBoolean }
@@ -2017,9 +2111,20 @@ begin
     Result.Assign(Self);
 end;
 
+function TsoObject.AddClass(vName: string; vStatement: TsrdStatement): TsoLinkStatement;
+begin
+  if Parent = nil then
+    Result := nil
+  else
+    Result := Parent.AddClass(vName, vStatement);
+end;
+
 function TsoObject.FindClass(vName: string): TsoObject;
 begin
-  Result := nil;
+  if Parent <> nil then
+    Result := Parent.FindClass(vName)
+  else
+    Result := nil;
 end;
 
 function TsoObject.GetAsString: String;
