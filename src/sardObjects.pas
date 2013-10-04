@@ -831,7 +831,7 @@ end;
 
 procedure TsoLinkStatement.SetStatement(vStatement: TsrdStatement);
 begin
-  if FStatement = nil then
+  if FStatement <> nil then
     RaiseError('Statement is already set!');
   FStatement := vStatement;
 end;
@@ -868,6 +868,7 @@ function TclsClasses.Add(vName: string; vStatement: TsrdStatement): TsoLinkState
 begin
   Result := TsoLinkStatement.Create;
   Result.Name := vName;
+  Result.SetStatement(vStatement);
   Result.Parent := vStatement.Parent;
   inherited Add(Result);
 end;
