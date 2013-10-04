@@ -434,17 +434,22 @@ begin
 end;
 
 procedure TsrdInterpret.SetDeclare;
+var
+  aDeclare: TsoDeclare;
 begin
-  CheckStatement;
-  with TsoDeclare.Create do
+  if Statement <> nil then
+    RaiseError('Declare must be the first in a statement');
+  aDeclare := TsoDeclare.Create;
+  with aDeclare do
   begin
     Name := Identifier;
     ID := Parser.Data.RegisterID(Name);
     TokenObject := This;
-    Statement := Self.Statement;
   end;
   Identifier := '';
   SetFlag(flagDeclare);
+  Flush;
+  Statement := aDeclare.Statement;
 end;
 
 procedure TsrdInterpret.SetAssign;
@@ -671,7 +676,6 @@ begin
         if (Stack.Current.Flags = [flagIdentifier]) then
         begin
           Stack.Current.SetDeclare;
-          Flush;
         end
         else
           RaiseError('You can not use assignment here!');

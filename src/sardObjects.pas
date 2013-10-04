@@ -1674,6 +1674,7 @@ end;
 
 procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
+  //vStack.Current.Reference := vStack.Parent.Result
 end;
 
 constructor TsoDeclare.Create;
