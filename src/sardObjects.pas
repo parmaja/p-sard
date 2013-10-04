@@ -91,10 +91,10 @@ type
 
   TsrdObjectList = class(TsardObjectList)
   private
-    FParent: TsoBlock;
+    FParent: TsoObject;
   public
-    constructor Create(AParent: TsoBlock);
-    property Parent: TsoBlock read FParent;
+    constructor Create(AParent: TsoObject);
+    property Parent: TsoObject read FParent;
   end;
 
   { TsrdStatement }
@@ -157,11 +157,28 @@ type
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
   end;
 
+  TclsClass = class(TsardObject)
+  public
+    Name: string;
+    AnObject: TsoObject;
+  end;
+
+  { TclsClasses }
+
+  TclsClasses = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TclsClass;
+  public
+    property Items[Index: Integer]: TclsClass read GetItem; default;
+  end;
+
+
   { TsoObject }
 
   TsoObject = class abstract(TsardObject, IsrdObject)
   private
-    FParent: TsoBlock;
+    FClasses: TclsClasses;
+    FParent: TsoObject;
   protected
     FObjectType: TsrdObjectType;
 
@@ -174,7 +191,8 @@ type
     procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
     procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); virtual; abstract;
-    procedure SetParent(AValue: TsoBlock);
+    procedure DoSetParent(AValue: TsoObject); virtual;
+    procedure SetParent(AValue: TsoObject);
   public
     constructor Create; virtual;
     function This: TsoObject; //return the same object, stupid but save some code :P
@@ -182,8 +200,10 @@ type
     procedure Assign(FromObject: TsoObject); virtual;
     function Clone(WithValue: Boolean = True): TsoObject; virtual;
 
-    function FindChild(vName: string): TsoObject; virtual;
-    property Parent: TsoBlock read FParent write SetParent;
+
+    property Parent: TsoObject read FParent write SetParent;
+    function FindClass(vName: string): TsoObject; virtual;
+    property Classes: TclsClasses read FClasses; //It is cache of object listed inside statments, it is for fast find the object
 
     property ObjectType: TsrdObjectType read FObjectType;
 
@@ -308,14 +328,34 @@ type
   public
   end;
 
+  TprmParam = class(TsardObject)
+  public
+    Name: string;
+    ParamType: string; //TODO must be object
+  end;
+
+  { TprmParams }
+
+  TprmParams = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TprmParam;
+  public
+    property Items[Index: Integer]: TprmParam read GetItem; default;
+  end;
+
   { TsoDeclare }
 
   TsoDeclare = class(TsoNamedBlock)
   private
+    FParams: TprmParams;
   protected
     procedure Created; override;
+    procedure DoSetParent(AValue: TsoObject); override;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
+    constructor Create; override;
+    destructor Destroy; override;
+    property Params: TprmParams read FParams;
   end;
 
 {-------- Const Objects --------}
@@ -730,6 +770,20 @@ begin
   Result := FsardEngine;
 end;
 
+{ TclsClasses }
+
+function TclsClasses.GetItem(Index: Integer): TclsClass;
+begin
+  Result := inherited GetItem(Index) as TclsClass;
+end;
+
+{ TprmParams }
+
+function TprmParams.GetItem(Index: Integer): TprmParam;
+begin
+  Result := inherited Items[Index] as TprmParam;
+end;
+
 { TsoTime_Const }
 
 procedure TsoTime_Const.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
@@ -924,17 +978,18 @@ end;
 
 { TsrdObjectList }
 
-constructor TsrdObjectList.Create(AParent: TsoBlock);
+constructor TsrdObjectList.Create(AParent: TsoObject);
 begin
   inherited Create;
   FParent := AParent;
 end;
 
-procedure TsoObject.SetParent(AValue: TsoBlock);
+procedure TsoObject.SetParent(AValue: TsoObject);
 begin
   if FParent <> nil then
     RaiseError('Already have a parent');
   FParent :=AValue;
+  DoSetParent(FParent);
 end;
 
 { TrunData }
@@ -1508,9 +1563,26 @@ begin
   FObjectType := otClass;
 end;
 
+procedure TsoDeclare.DoSetParent(AValue: TsoObject);
+begin
+//Add it to parent.classes
+end;
+
 procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
   inherited;
+end;
+
+constructor TsoDeclare.Create;
+begin
+  inherited;
+  FParams := TprmParams.Create;
+end;
+
+destructor TsoDeclare.Destroy;
+begin
+  FreeAndNil(FParams);
+  inherited Destroy;
 end;
 
 { TsrdInstance }
@@ -1536,7 +1608,7 @@ begin
   p := nil;
   while (o.Parent <> nil) and (p = nil) do
   begin
-    p := o.FindChild(Name);
+    p := o.FindClass(Name);
   end;
 
   if p = nil then
@@ -1913,6 +1985,10 @@ begin
 
 end;
 
+procedure TsoObject.DoSetParent(AValue: TsoObject);
+begin
+end;
+
 function TsoObject.Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
 var
   s: string;
@@ -1922,7 +1998,6 @@ begin
   DoExecute(vStack, AOperator, Result);
   AfterExecute(vStack, AOperator);
 
-  Result := True;//Nothing to do
   s := StringOfChar('-', vStack.CurrentItem.Level)+'->';
   s := s + 'Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level);
   if AOperator <> nil then
@@ -1942,7 +2017,7 @@ begin
     Result.Assign(Self);
 end;
 
-function TsoObject.FindChild(vName: string): TsoObject;
+function TsoObject.FindClass(vName: string): TsoObject;
 begin
   Result := nil;
 end;
