@@ -1606,10 +1606,10 @@ var
 begin
   o := Self;
   p := nil;
-  while (o.Parent <> nil) and (p = nil) do
+{  while (o.Parent <> nil) and (p = nil) do
   begin
     p := o.FindClass(Name);
-  end;
+  end;}
 
   if p = nil then
   begin

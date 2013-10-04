@@ -177,7 +177,7 @@ type
 
   end;
 
-  TsrdType = (tpNone, tpObject, tpNumber, tpColor, tpString, tpComment);
+  TsrdType = (tpNone, tpIdentifier, tpNumber, tpColor, tpString, tpComment);
 
   { TsardParser }
 
