@@ -27,6 +27,7 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   private
   public
+    procedure Save;
     procedure Run;
   end;
 
@@ -46,21 +47,29 @@ end;
 
 procedure TForm1.Button2Click(Sender: TObject);
 begin
-  InputEdit.Lines.SaveToFile(Application.Location + 'recent.sard');
+  Save;
   Build(InputEdit.Lines);
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  InputEdit.Lines.Text := '10 + ( 2 * (6 * 6))';
   if FileExistsUTF8(Application.Location + 'recent.sard') then
-    InputEdit.Lines.LoadFromFile(Application.Location + 'recent.sard');
+    InputEdit.Lines.LoadFromFile(Application.Location + 'recent.sard')
+  else
+    InputEdit.Lines.Text := '10 + ( 2 * (6 * 6))';
 end;
 
 procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key = VK_F9 then
-    Run;
+    Run
+  else if Key = VK_F9 then
+    Save;
+end;
+
+procedure TForm1.Save;
+begin
+  InputEdit.Lines.SaveToFile(Application.Location + 'recent.sard');
 end;
 
 procedure TForm1.Run;
@@ -68,7 +77,7 @@ var
   s:string;
 begin
   ResultEdit.Text := '';
-  InputEdit.Lines.SaveToFile(Application.Location + 'recent.sard');
+  Save;
   Execute(InputEdit.Lines,s);
   ResultEdit.Text := s;
 end;

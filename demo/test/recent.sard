@@ -1,12 +1,7 @@
-f:(p1) {
-    x := 10;
-    z: {
-      x:=5;
-      := x + 5;
-    };
-    := x + z;
+f1:int(p1:int,p2:str): 10 + x;
+f2:int(p1:int,p2:str){ 10 + x};
+f3:int(p1:int,p2:str):{ 10 + x};
+f4:int(p1:int,p2:str):( 10 + x);
 
-  };
-
-:=f + 10;
+:=f1;
 
