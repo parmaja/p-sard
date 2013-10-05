@@ -28,7 +28,7 @@ implementation
 
 function Build(Lines: TStrings): Boolean;
 var
-  Lexer: TsrdLexer;
+  Lexical: TsrdLexical;
   Feeder: TsrdFeeder;
   Parser: TsrdParser;
   Main: TsoMain;
@@ -40,14 +40,14 @@ begin
   Data:=TrunData.Create;
   { Compile }
   Parser := TsrdParser.Create(Data, Main.Items);
-  Lexer := TsrdLexer.Create(Parser);
-  Feeder := TsrdFeeder.Create(Lexer);
+  Lexical := TsrdLexical.Create(Parser);
+  Feeder := TsrdFeeder.Create(Lexical);
 
   Feeder.Scan(Lines);
 
   { End }
   FreeAndNil(Parser);
-  FreeAndNil(Lexer);
+  FreeAndNil(Lexical);
   FreeAndNil(Feeder);
   FreeAndNil(Main);
   FreeAndNil(Data);
@@ -58,7 +58,7 @@ end;
 
 function Execute(Lines: TStrings; out vResult: string): Boolean;
 var
-  Lexer: TsrdLexer;
+  Lexical: TsrdLexical;
   Feeder: TsrdFeeder;
   Parser: TsrdParser;
   Stack: TrunStack;
@@ -71,8 +71,8 @@ begin
   Data := TrunData.Create;
   { Compile }
   Parser := TsrdParser.Create(Data, Main.Items);
-  Lexer := TsrdLexer.Create(Parser);
-  Feeder := TsrdFeeder.Create(Lexer);
+  Lexical := TsrdLexical.Create(Parser);
+  Feeder := TsrdFeeder.Create(Lexical);
 
   Feeder.Scan(Lines);
   WriteLn('');
@@ -95,7 +95,7 @@ begin
   FreeAndNil(Main);
   FreeAndNil(Data);
   FreeAndNil(Parser);
-  FreeAndNil(Lexer);
+  FreeAndNil(Lexical);
   FreeAndNil(Feeder);
 
   Result := True;

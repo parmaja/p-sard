@@ -112,9 +112,9 @@ type
     procedure DoStop; override;
   end;
 
-  { TsrdLexer }
+  { TsrdLexical }
 
-  TsrdLexer = class(TsardLexer)
+  TsrdLexical = class(TsardLexical)
   private
     FControls: TctlControls;
     FOperators: TopOperators;
@@ -447,7 +447,7 @@ begin
   begin
     if (ScanCompare('*}', Text, Column)) then
     begin
-      Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpComment);
+      Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpComment);
       Inc(Column, 2);//2 chars
       break;
     end;
@@ -465,13 +465,13 @@ end;
 procedure TsrdFeeder.DoStart;
 begin
   inherited;
-  Lexer.Parser.TriggerControl(ctlStart);
+  Lexical.Parser.TriggerControl(ctlStart);
 end;
 
 procedure TsrdFeeder.DoStop;
 begin
   inherited;
-  Lexer.Parser.TriggerControl(ctlStop);
+  Lexical.Parser.TriggerControl(ctlStop);
 end;
 
 { TsrdInterpret }
@@ -829,23 +829,23 @@ procedure TsrdControl_Scanner.Scan(const Text: string; var Column: Integer);
 var
   aControl: TctlControl;
 begin
-  aControl := (Lexer as TsrdLexer).Controls.Scan(Text, Column);
+  aControl := (Lexical as TsrdLexical).Controls.Scan(Text, Column);
   if aControl <> nil then
     Column := Column + Length(aControl.Name)
   else
     RaiseError('Unkown control started with ' + Text[Column]);
 
-  Lexer.Parser.TriggerControl(aControl.Code);
+  Lexical.Parser.TriggerControl(aControl.Code);
 end;
 
 function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := Lexer.IsControl(Text[Column]);
+  Result := Lexical.IsControl(Text[Column]);
 end;
 
 { TsrdFeeder }
 
-procedure TsrdLexer.Created;
+procedure TsrdLexical.Created;
 begin
   with Controls do
   begin
@@ -893,36 +893,36 @@ begin
   RegisterScanner(TsrdIdentifier_Scanner);//Last one
 end;
 
-constructor TsrdLexer.Create(vParser: TsardParser);
+constructor TsrdLexical.Create(vParser: TsardParser);
 begin
   inherited Create(vParser);
   FOperators := TopOperators.Create;
   FControls := TctlControls.Create;
 end;
 
-destructor TsrdLexer.Destroy;
+destructor TsrdLexical.Destroy;
 begin
   FreeAndNil(FControls);
   FreeAndNil(FOperators);
   inherited Destroy;
 end;
 
-function TsrdLexer.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdLexical.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := vChar in sWhitespace;
 end;
 
-function TsrdLexer.IsControl(vChar: AnsiChar): Boolean;
+function TsrdLexical.IsControl(vChar: AnsiChar): Boolean;
 begin
   Result := Controls.IsOpenBy(vChar);
 end;
 
-function TsrdLexer.IsOperator(vChar: AnsiChar): Boolean;
+function TsrdLexical.IsOperator(vChar: AnsiChar): Boolean;
 begin
   Result := Operators.IsOpenBy(vChar);
 end;
 
-function TsrdLexer.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdLexical.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   if vOpen then
     Result := vChar in sNumberOpenChars
@@ -930,7 +930,7 @@ begin
     Result := vChar in sNumberChars;
 end;
 
-function TsrdLexer.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsrdLexical.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := inherited IsIdentifier(vChar, vOpen);
 end;
@@ -943,14 +943,14 @@ var
 begin
   c := Column;
   l := Length(Text);
-  while (Column <= l) and (Lexer.IsNumber(Text[Column], False)) do
+  while (Column <= l) and (Lexical.IsNumber(Text[Column], False)) do
     Inc(Column);
-  Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpNumber);
+  Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpNumber);
 end;
 
 function TsrdNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := Lexer.IsNumber(Text[Column], True);//need to improve to accept unicode chars
+  Result := Lexical.IsNumber(Text[Column], True);//need to improve to accept unicode chars
 end;
 
 { TopOperatorScanner }
@@ -959,18 +959,18 @@ procedure TopOperator_Scanner.Scan(const Text: string; var Column: Integer);
 var
   aOperator: TopOperator;
 begin
-  aOperator := (Lexer as TsrdLexer).Operators.Scan(Text, Column);
+  aOperator := (Lexical as TsrdLexical).Operators.Scan(Text, Column);
   if aOperator <> nil then
     Column := Column + Length(aOperator.Name)
   else
     RaiseError('Unkown operator started with ' + Text[Column]);
 
-  Lexer.Parser.TriggerOperator(aOperator);
+  Lexical.Parser.TriggerOperator(aOperator);
 end;
 
 function TopOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := Lexer.IsOperator(Text[Column]);
+  Result := Lexical.IsOperator(Text[Column]);
 end;
 
 { TsrdIdentifierScanner }
@@ -980,14 +980,14 @@ var
   c: Integer;
 begin
   c := Column;
-  while (Column <= Length(Text)) and (Lexer.IsIdentifier(Text[Column], False)) do
+  while (Column <= Length(Text)) and (Lexical.IsIdentifier(Text[Column], False)) do
     Inc(Column);
-  Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpIdentifier);
+  Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpIdentifier);
 end;
 
 function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := Lexer.IsIdentifier(Text[Column], True);
+  Result := Lexical.IsIdentifier(Text[Column], True);
 end;
 
 { TsrdDQStringScanner }
@@ -1000,7 +1000,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
-  Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
+  Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
   Inc(Column);
 end;
 
@@ -1019,7 +1019,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
-  Lexer.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
+  Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
   Inc(Column);
 end;
 

@@ -89,7 +89,7 @@ type
 
   TsardScannerID = type Integer;
 
-  TsardLexer = class;
+  TsardLexical = class;
   TsardFeeder = class;
   TsardParser = class;
   TsardStack = class;
@@ -100,7 +100,7 @@ type
 
   TsardScanner = class(TsardObject)
   private
-    FLexer: TsardLexer;
+    FLexical: TsardLexical;
   protected
     procedure Scan(const Text: string; var Column: Integer); virtual; abstract;
     function Accept(const Text: string; var Column: Integer): Boolean; virtual;
@@ -110,14 +110,14 @@ type
     Index: TsardScannerID;
     Collected: string; //buffer
     Scanner: TsardScannerID;
-    constructor Create(vLexer: TsardLexer); virtual;
+    constructor Create(vLexical: TsardLexical); virtual;
     destructor Destroy; override;
-    property Lexer: TsardLexer read FLexer;
+    property Lexical: TsardLexical read FLexical;
   end;
 
-  { TsardLexer }
+  { TsardLexical }
 
-  TsardLexer = class(TsardObjectList)
+  TsardLexical = class(TsardObjectList)
   private
     FLine: Integer;
     FParser: TsardParser;
@@ -155,13 +155,13 @@ type
     FActive: Boolean;
     FVersion: string;
     FCharset: string;
-    FLexer: TsardLexer;//TODO use stacker
-    procedure SetLexer(AValue: TsardLexer);
+    FLexical: TsardLexical;//TODO use stacker
+    procedure SetLexical(AValue: TsardLexical);
   protected
     procedure DoStart; virtual;
     procedure DoStop; virtual;
   public
-    constructor Create(vLexer: TsardLexer);
+    constructor Create(vLexical: TsardLexical);
     destructor Destroy; override;
     procedure ScanLine(const Text: string; const Line: Integer);
     procedure Scan(const Lines: TStrings);
@@ -174,7 +174,7 @@ type
     property Active: Boolean read FActive write FActive;
     property Version: string read FVersion write FVersion;
     property Charset: string read FCharset write FCharset;
-    property Lexer: TsardLexer read FLexer write SetLexer;
+    property Lexical: TsardLexical read FLexical write SetLexical;
 
   end;
 
@@ -318,7 +318,7 @@ begin
   inherited Created;
 end;
 
-function TsardLexer.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TsardLexical.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := not IsWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar);
   if vOpen then
@@ -437,18 +437,18 @@ end;
 
 function TsardScanner.DetectScanner(const Text: string; var Column: Integer): Integer;
 begin
-  Result := Lexer.DetectScanner(Text, Column);
+  Result := Lexical.DetectScanner(Text, Column);
 end;
 
 procedure TsardScanner.SelectScanner(AScannerClass: TsardScannerClass);
 begin
-  Lexer.SelectScanner(AScannerClass);
+  Lexical.SelectScanner(AScannerClass);
 end;
 
-constructor TsardScanner.Create(vLexer: TsardLexer);
+constructor TsardScanner.Create(vLexical: TsardLexical);
 begin
   inherited Create;
-  FLexer := vLexer;
+  FLexical := vLexical;
 end;
 
 destructor TsardScanner.Destroy;
@@ -456,27 +456,27 @@ begin
   inherited Destroy;
 end;
 
-{ TsardLexer }
+{ TsardLexical }
 
-function TsardLexer.GetItem(Index: Integer): TsardScanner;
+function TsardLexical.GetItem(Index: Integer): TsardScanner;
 begin
   Result := inherited Items[Index] as TsardScanner;
 end;
 
-procedure TsardLexer.SetParser(AValue: TsardParser);
+procedure TsardLexical.SetParser(AValue: TsardParser);
 begin
   if FParser = AValue then
     Exit;
   FParser := AValue;
 end;
 
-constructor TsardLexer.Create(vParser: TsardParser);
+constructor TsardLexical.Create(vParser: TsardParser);
 begin
   inherited Create;
   FParser := vParser;
 end;
 
-function TsardLexer.DetectScanner(const Text: string; var Column: Integer): Integer;
+function TsardLexical.DetectScanner(const Text: string; var Column: Integer): Integer;
 var
   i: Integer;
 begin
@@ -494,7 +494,7 @@ begin
   SwitchScanner(Result);
 end;
 
-function TsardLexer.Find(const ScannerClass: TsardScannerClass): TsardScanner;
+function TsardLexical.Find(const ScannerClass: TsardScannerClass): TsardScanner;
 var
   i: Integer;
 begin
@@ -509,7 +509,7 @@ begin
   end;
 end;
 
-function TsardLexer.RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
+function TsardLexical.RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
 var
   aScanner: TsardScanner;
 begin
@@ -522,7 +522,7 @@ procedure TsardFeeder.Stop;
 begin
   if not FActive then
     RaiseError('File already closed');
-  Lexer.Parser.Stop;
+  Lexical.Parser.Stop;
   DoStop;
   FActive := False;
 end;
@@ -534,15 +534,15 @@ begin
     RaiseError('File already opened');
   FActive := True;
   DoStart;
-  Lexer.Parser.Start;
+  Lexical.Parser.Start;
 end;
 
-procedure TsardFeeder.SetLexer(AValue: TsardLexer);
+procedure TsardFeeder.SetLexical(AValue: TsardLexical);
 begin
-  if FLexer =AValue then Exit;
+  if FLexical =AValue then Exit;
   if Active then
     RaiseError('You can not set scanner when started!');
-  FLexer :=AValue;
+  FLexical :=AValue;
 end;
 
 procedure TsardFeeder.DoStart;
@@ -553,7 +553,7 @@ procedure TsardFeeder.DoStop;
 begin
 end;
 
-procedure TsardLexer.SwitchScanner(NextScanner: TsardScannerID);
+procedure TsardLexical.SwitchScanner(NextScanner: TsardScannerID);
 begin
   if FScannerID <> NextScanner then
   begin
@@ -561,7 +561,7 @@ begin
   end;
 end;
 
-procedure TsardLexer.SelectScanner(ScannerClass: TsardScannerClass);
+procedure TsardLexical.SelectScanner(ScannerClass: TsardScannerClass);
 var
   aScanner: TsardScanner;
 begin
@@ -571,7 +571,7 @@ begin
   SwitchScanner(aScanner.Index);
 end;
 
-constructor TsardFeeder.Create(vLexer: TsardLexer);
+constructor TsardFeeder.Create(vLexical: TsardLexical);
 begin
   inherited Create;
   FVersion := '1.0';
@@ -581,7 +581,7 @@ begin
   FCharset := 'iso-8859-1';
   {$endif}
 
-  FLexer := vLexer;
+  FLexical := vLexical;
 end;
 
 destructor TsardFeeder.Destroy;
@@ -593,10 +593,10 @@ procedure TsardFeeder.ScanLine(const Text: string; const Line: Integer);
 begin
   if not Active then
     RaiseError('Feeder not started');
-  Lexer.ScanLine(Text, Line);
+  Lexical.ScanLine(Text, Line);
 end;
 
-procedure TsardLexer.ScanLine(const Text: string; const ALine: Integer);
+procedure TsardLexical.ScanLine(const Text: string; const ALine: Integer);
 var
   Column, OldColumn: Integer;
   OldScanner: TsardScannerID;
