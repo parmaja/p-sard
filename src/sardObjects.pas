@@ -435,6 +435,7 @@ type
   TsoFloat = class(TsoNumber)
   public
     Value: Float;
+    constructor Create(AValue: Float); overload;
     procedure Created; override;
     procedure Assign(FromObject: TsoObject); override;
     function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; override;
@@ -451,8 +452,8 @@ type
   TsoString = class(TsoConstObject)
   public
     Value: string;
-    procedure Created; override;
     constructor Create(AValue: string); overload;
+    procedure Created; override;
     procedure Assign(FromObject: TsoObject); override;
     function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; override;
     function ToString(out outValue: string): Boolean; override;
@@ -463,9 +464,12 @@ type
 
   { TsrdBoolean }
 
+  { TsoBoolean }
+
   TsoBoolean = class(TsoNumber)
   public
     Value: Boolean;
+    constructor Create(AValue: Boolean); overload;
     procedure Created; override;
     function ToString(out outValue: string): Boolean; override;
     function ToFloat(out outValue: Float): Boolean; override;
@@ -480,6 +484,7 @@ type
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
     Value: string;
+    constructor Create(AValue: string); overload;
     procedure Created; override;
   end;
 
@@ -920,6 +925,12 @@ end;
 procedure TsoComment.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
   Done := True;
+end;
+
+constructor TsoComment.Create(AValue: string);
+begin
+  Create;
+  Value := AValue;
 end;
 
 procedure TsoComment.Created;
@@ -1725,6 +1736,12 @@ end;
 
 { TsrdBoolean }
 
+constructor TsoBoolean.Create(AValue: Boolean);
+begin
+  Create;
+  Value := AValue;
+end;
+
 procedure TsoBoolean.Created;
 begin
   inherited Created;
@@ -1828,6 +1845,12 @@ begin
 end;
 
 { TsrdFloat }
+
+constructor TsoFloat.Create(AValue: Float);
+begin
+  inherited Create;
+  Value := AValue;
+end;
 
 procedure TsoFloat.Created;
 begin
