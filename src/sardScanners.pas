@@ -189,27 +189,15 @@ type
   public
   end;
 
-  { TsrdInterpreter }
-
-  TsrdInterpreter = class(TsardStack)
-  private
-    function GetCurrent: TsrdInterpret;
-  protected
-    Parser: TsrdParser;
-  public
-    procedure Push(vItem: TsrdInterpret);
-    function Push(vItemClass: TsrdInterpretClass): TsrdInterpret;
-    constructor Create(AParser: TsrdParser);
-    property Current: TsrdInterpret read GetCurrent;
-  end;
-
-  { TsrdFeederParser }
-
   TsrdParser = class(TsardParser)
   protected
-    FStack: TsrdInterpreter;
     FData: TrunData;
+    function GetCurrent: TsrdInterpret;
   public
+    property Current: TsrdInterpret read GetCurrent;
+    procedure Push(vItem: TsrdInterpret);
+    function Push(vItemClass: TsrdInterpretClass): TsrdInterpret;
+
     procedure Start; override;
     procedure Stop; override;
     constructor Create(AData: TrunData; ABlock: TsrdBlock);
@@ -219,7 +207,6 @@ type
     procedure TriggerOperator(AOperator: TsardObject); override;
     procedure TriggerControl(AControl: TsardControl); override;
     procedure Flush;
-    property Stack: TsrdInterpreter read FStack;
     property Data: TrunData read FData;
   end;
 
@@ -545,28 +532,20 @@ begin
   inherited;
 end;
 
-{ TsrdInterpreter }
-
-function TsrdInterpreter.GetCurrent: TsrdInterpret;
+function TsrdParser.GetCurrent: TsrdInterpret;
 begin
   Result := (inherited GetCurrent) as TsrdInterpret;
 end;
 
-procedure TsrdInterpreter.Push(vItem: TsrdInterpret);
+procedure TsrdParser.Push(vItem: TsrdInterpret);
 begin
   inherited Push(vItem);
 end;
 
-function TsrdInterpreter.Push(vItemClass: TsrdInterpretClass): TsrdInterpret;
+function TsrdParser.Push(vItemClass: TsrdInterpretClass): TsrdInterpret;
 begin
-  Result := vItemClass.Create(Parser);
+  Result := vItemClass.Create(Self);
   Push(Result);
-end;
-
-constructor TsrdInterpreter.Create(AParser: TsrdParser);
-begin
-  inherited Create;
-  Parser := AParser;
 end;
 
 { TsrdParser }
@@ -585,9 +564,8 @@ constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
 begin
   inherited Create;
   FData := AData;
-  FStack := TsrdInterpreter.Create(Self);
   if ABlock <> nil then
-    with Stack.Push(TsrdInterpretBlock) do
+    with Push(TsrdInterpretBlock) do
     begin
        Block := ABlock;
     end;
@@ -595,23 +573,22 @@ end;
 
 destructor TsrdParser.Destroy;
 begin
-  FreeAndNil(FStack);
-  inherited Destroy;
+  inherited;
 end;
 
 procedure TsrdParser.Flush;
 begin
-  Stack.Current.Flush;
+  Current.Flush;
 end;
 
 procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
 begin
   case AType of
-    tpNumber: Stack.Current.SetNumber(AToken);
-    tpString: Stack.Current.SetString(AToken);
-    tpComment: Stack.Current.SetComment(AToken);
+    tpNumber: Current.SetNumber(AToken);
+    tpString: Current.SetString(AToken);
+    tpComment: Current.SetComment(AToken);
     else
-       Stack.Current.SetIdentifier(AToken);
+       Current.SetIdentifier(AToken);
   end
 end;
 
@@ -621,51 +598,51 @@ begin
     ctlOpenBlock:
      with TsoSection.Create do
       begin
-        Stack.Current.SetObject(This);
-        Stack.Push(TsrdInterpretBlock);
-        Stack.Current.Block := Items;
+        Current.SetObject(This);
+        Push(TsrdInterpretBlock);
+        Current.Block := Items;
       end;
     ctlCloseBlock:
       begin
         Flush;
-        Stack.Pop;
-        if Stack.Count = 0 then
+        Pop;
+        if Count = 0 then
           RaiseError('Maybe you closed not opened Curly');
       end;
     ctlOpenParams:
       begin
         //here we add block to TsoInstance if there is indienifier opened witout operator
-        if Stack.Current.Flags = [flagDeclare, flagIdentifier] then
+        if Current.Flags = [flagDeclare, flagIdentifier] then
         begin
-          Stack.Push(TsrdInterpretParams);
+          Push(TsrdInterpretParams);
         end
         else
-        if Stack.Current.Flags = [flagIdentifier] then
+        if Current.Flags = [flagIdentifier] then
         begin
-          Stack.Current.SetInstance;
-          Stack.Push(TsrdInterpretBlock);
-          Stack.Current.Block := (Stack.Current.TokenObject as TsoBlock).Items;
+          Current.SetInstance;
+          Push(TsrdInterpretBlock);
+          Current.Block := (Current.TokenObject as TsoBlock).Items;
         end
         else
         with TsoStatement.Create do
         begin
-          Stack.Current.SetObject(This);
-          Stack.Push(TsrdInterpretStatement);
-          Stack.Current.Statement := Statement;
+          Current.SetObject(This);
+          Push(TsrdInterpretStatement);
+          Current.Statement := Statement;
         end;
       end;
     ctlCloseParams:
       begin
         Flush;
-        Stack.Pop;
-        if Stack.Count = 0 then
+        Pop;
+        if Count = 0 then
           RaiseError('Maybe you closed not opened Bracket');
       end;
     ctlAssign:
       begin
-        if (Stack.Current.Flags = []) or (Stack.Current.Flags = [flagIdentifier]) then
+        if (Current.Flags = []) or (Current.Flags = [flagIdentifier]) then
         begin
-          Stack.Current.SetAssign;
+          Current.SetAssign;
           Flush;
         end
         else
@@ -673,9 +650,9 @@ begin
       end;
     ctlDeclare:
       begin
-        if (Stack.Current.Flags = [flagIdentifier]) then
+        if (Current.Flags = [flagIdentifier]) then
         begin
-          Stack.Current.SetDeclare;
+          Current.SetDeclare;
         end
         else
           RaiseError('You can not use assignment here!');
@@ -690,12 +667,12 @@ begin
     ctlEnd:
       begin
         Flush;
-        Stack.Current.EndStatement;
+        Current.EndStatement;
       end;
     ctlNext:
       begin
         Flush;
-        Stack.Current.EndStatement;
+        Current.EndStatement;
       end;
     else
       RaiseError('Not implemented yet, sorry :(');
@@ -704,7 +681,7 @@ end;
 
 procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
-  Stack.Current.SetOperator(AOperator as TopOperator);
+  Current.SetOperator(AOperator as TopOperator);
 end;
 
 { TsrdControlScanner }

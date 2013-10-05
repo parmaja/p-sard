@@ -92,6 +92,7 @@ type
   TsardLexer = class;
   TsardFeeder = class;
   TsardParser = class;
+  TsardStack = class;
 
   TsardScannerClass = class of TsardScanner;
 
@@ -177,22 +178,6 @@ type
 
   end;
 
-  TsrdType = (tpNone, tpIdentifier, tpNumber, tpColor, tpString, tpComment);
-
-  { TsardParser }
-
-  TsardParser = class(TsardObject)
-  protected
-    procedure Start; virtual;
-    procedure Stop; virtual;
-  public
-    procedure TriggerToken(AToken: String; AType: TsrdType); virtual; abstract;
-    procedure TriggerOperator(AOperator: TsardObject); virtual; abstract;
-    procedure TriggerControl(AControl: TsardControl); virtual; abstract;
-  end;
-
-  TsardStack = class;
-
   TsardStackItem = class(TsardObject)
   protected
     AnObject: TObject;
@@ -223,6 +208,20 @@ type
     property Parent: TObject read GetParent;
     property CurrentItem: TsardStackItem read FCurrentItem;
     property Count: Integer read FCount;
+  end;
+
+  TsrdType = (tpNone, tpIdentifier, tpNumber, tpColor, tpString, tpComment);
+
+  { TsardParser }
+
+  TsardParser = class(TsardStack)
+  protected
+    procedure Start; virtual;
+    procedure Stop; virtual;
+  public
+    procedure TriggerToken(AToken: String; AType: TsrdType); virtual; abstract;
+    procedure TriggerOperator(AOperator: TsardObject); virtual; abstract;
+    procedure TriggerControl(AControl: TsardControl); virtual; abstract;
   end;
 
   { TsardPrimeEngine }
