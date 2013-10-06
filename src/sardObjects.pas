@@ -157,17 +157,17 @@ type
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
   end;
 
-  TsoLinkStatement = class;
+  TsoClass = class;
 
   { TclsClasses }
 
   TclsClasses = class(TsardObjectList)
   private
-    function GetItem(Index: Integer): TsoLinkStatement;
+    function GetItem(Index: Integer): TsoClass;
   public
-    function Find(vName: string): TsoLinkStatement;
-    function Add(vName: string; vStatement: TsrdStatement): TsoLinkStatement;
-    property Items[Index: Integer]: TsoLinkStatement read GetItem; default;
+    function Find(vName: string): TsoClass;
+    function Add(vName: string; vStatement: TsrdStatement): TsoClass;
+    property Items[Index: Integer]: TsoClass read GetItem; default;
   end;
 
   { TsoObject }
@@ -198,7 +198,7 @@ type
 
 
     property Parent: TsoObject read FParent write SetParent;
-    function AddClass(vName: string; vStatement: TsrdStatement): TsoLinkStatement; virtual;
+    function AddClass(vName: string; vStatement: TsrdStatement): TsoClass; virtual;
     function FindClass(vName: string): TsoObject; virtual;
 
     property ObjectType: TsrdObjectType read FObjectType;
@@ -258,14 +258,14 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
-    function AddClass(vName: string; vStatement: TsrdStatement): TsoLinkStatement; override;
+    function AddClass(vName: string; vStatement: TsrdStatement): TsoClass; override;
     function FindClass(vName: string): TsoObject; override;
     property Classes: TclsClasses read FClasses; //It is cache of object listed inside statments, it is for fast find the object
   end;
 
   { TsoStatement }
 
-  { TsoLinkStatement }
+  { TsoClass }
 
   TsoCustomStatement = class(TsoObject)
   private
@@ -290,7 +290,7 @@ type
 
   { TsoStatement }
 
-  TsoLinkStatement = class(TsoCustomStatement)
+  TsoClass = class(TsoCustomStatement)
   private
     FName: string;
   protected
@@ -834,7 +834,7 @@ begin
   Done := FStatement.Execute(vStack);
 end;
 
-procedure TsoLinkStatement.SetStatement(vStatement: TsrdStatement);
+procedure TsoClass.SetStatement(vStatement: TsrdStatement);
 begin
   if FStatement <> nil then
     RaiseError('Statement is already set!');
@@ -849,12 +849,12 @@ end;
 
 { TclsClasses }
 
-function TclsClasses.GetItem(Index: Integer): TsoLinkStatement;
+function TclsClasses.GetItem(Index: Integer): TsoClass;
 begin
-  Result := inherited GetItem(Index) as TsoLinkStatement;
+  Result := inherited GetItem(Index) as TsoClass;
 end;
 
-function TclsClasses.Find(vName: string): TsoLinkStatement;
+function TclsClasses.Find(vName: string): TsoClass;
 var
   i: Integer;
 begin
@@ -869,9 +869,9 @@ begin
   end;
 end;
 
-function TclsClasses.Add(vName: string; vStatement: TsrdStatement): TsoLinkStatement;
+function TclsClasses.Add(vName: string; vStatement: TsrdStatement): TsoClass;
 begin
-  Result := TsoLinkStatement.Create;
+  Result := TsoClass.Create;
   Result.Name := vName;
   Result.SetStatement(vStatement);
   Result.Parent := vStatement.Parent;
@@ -1118,7 +1118,7 @@ begin
   inherited Destroy;
 end;
 
-function TsoSection.AddClass(vName: string; vStatement: TsrdStatement): TsoLinkStatement;
+function TsoSection.AddClass(vName: string; vStatement: TsrdStatement): TsoClass;
 begin
   Result := Classes.Add(vName, vStatement);
 end;
@@ -2136,7 +2136,7 @@ begin
     Result.Assign(Self);
 end;
 
-function TsoObject.AddClass(vName: string; vStatement: TsrdStatement): TsoLinkStatement;
+function TsoObject.AddClass(vName: string; vStatement: TsrdStatement): TsoClass;
 begin
   if Parent = nil then
     Result := nil

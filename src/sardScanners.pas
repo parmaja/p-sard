@@ -395,7 +395,70 @@ end;
 
 procedure TsrdInterpretBlock.TriggerControl(AControl: TsardControl);
 begin
-  inherited;
+  case AControl of
+    ctlOpenBlock:
+      begin
+        with TsoSection.Create do
+         begin
+           SetObject(This);
+           Push(TsrdInterpretBlock.Create(Parser, Items));
+         end;
+      end;
+    ctlCloseBlock:
+      begin
+        Flush;
+        if Parser.Count = 1 then
+          RaiseError('Maybe you closed not opened Curly');
+        Pop;
+      end;
+    ctlOpenParams:
+      begin
+        //here we add block to TsoInstance if there is indienifier opened witout operator
+        if Flags = [flagDeclare, flagIdentifier] then
+        begin
+          Push(TsrdInterpretParams.Create(Parser));
+        end
+        else
+        if Flags = [flagIdentifier] then
+        begin
+          Push(TsrdInterpretBlock.Create(Parser, SetInstance.Items));
+        end
+        else
+        with TsoStatement.Create do
+        begin
+          SetObject(This);
+          Push(TsrdInterpretStatement.Create(Parser, Statement));
+        end;
+      end;
+    ctlCloseParams:
+      begin
+        Flush;
+        if Parser.Count = 1 then
+          RaiseError('Maybe you closed not opened Bracket');
+        Pop;
+      end;
+    ctlAssign:
+      begin
+        if (Flags = []) or (Flags = [flagIdentifier]) then
+        begin
+          SetAssign;
+          Flush;
+        end
+        else
+          RaiseError('You can not use assignment here!');
+      end;
+    ctlDeclare:
+      begin
+        if (Flags = [flagIdentifier]) then
+        begin
+          SetDeclare;
+        end
+        else
+          RaiseError('You can not use assignment here!');
+      end;
+    else
+      inherited;
+  end;
 end;
 
 procedure TsrdInterpretBlock.EndStatement;
@@ -441,7 +504,6 @@ procedure TsrdComment_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
 begin
-  Inc(Column, 2);//2 chars
   c := Column;
   while (Column <= Length(Text)) do
   begin
@@ -458,6 +520,8 @@ end;
 function TsrdComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanCompare('{*', Text, Column);
+  if Result then
+    Inc(Column, 2);//2 chars
 end;
 
 { TsrdFeeder }
@@ -996,7 +1060,6 @@ procedure TsrdDQString_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
 begin
-  Inc(Column);//First char
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
     Inc(Column);
@@ -1007,6 +1070,8 @@ end;
 function TsrdDQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanCompare('"', Text, Column);
+  if Result then
+    Inc(Column);//First char
 end;
 
 { TsrdSQStringScanner }
@@ -1015,7 +1080,6 @@ procedure TsrdSQString_Scanner.Scan(const Text: string; var Column: Integer);
 var
   c: Integer;
 begin
-  Inc(Column);
   c := Column;
   while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
     Inc(Column);
@@ -1026,13 +1090,14 @@ end;
 function TsrdSQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanCompare('''', Text, Column);
+  if Result then
+    Inc(Column);
 end;
 
 { TsrdBlockCommentScanner }
 
 procedure TsrdBlockComment_Scanner.Scan(const Text: string; var Column: Integer);
 begin
-  Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) do
   begin
     if (ScanCompare('*/', Text, Column)) then
@@ -1047,13 +1112,14 @@ end;
 function TsrdBlockComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanCompare('/*', Text, Column);
+  if Result then
+    Inc(Column, 2);//2 chars
 end;
 
 { TsrdLineComment_Scanner }
 
 procedure TsrdLineComment_Scanner.Scan(const Text: string; var Column: Integer);
 begin
-  Inc(Column, 2);//2 chars
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
 end;
@@ -1061,6 +1127,8 @@ end;
 function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanCompare('//', Text, Column);
+  if Result then
+    Inc(Column, 2);//2 chars
 end;
 
 { TsrdWhitespace_Scanner }

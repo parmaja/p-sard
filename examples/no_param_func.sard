@@ -1,0 +1,12 @@
+{* This  example about declare function *};
+f:{
+    x := 10;
+    z: {
+      x:=5;
+      := x + 5;
+    };
+    := x + z;
+
+  };
+
+:=f + 10;
