@@ -52,15 +52,17 @@ When i finish it it will be clear than i can explain it.
     :=f + 10;
 
 TODO:
-    x:=#0 // Boolean values, true and false words are just global variables.
-    x:=#1
-    x:=#fc0f1c //Color const and operator mix the colors not just add it
-    x:=0xffec  //hex int number like but the style of print it as hex we need to override ToString
+
+    x:=#0; // Boolean values, true and false words are just global variables.
+    x:=#1;
+    x:=#fc0f1c; //Color const and operator mix the colors not just add it
+    x:=0xffec;  //hex int number like but the style of print it as hex we need to override ToString
     x:="foo"\13"bar"; //escape char outside the string
 
     //declare a variable type //not sure if i can do that
 
     x:int;
+    x:int=10;
 
     //declare function/object with params
 
