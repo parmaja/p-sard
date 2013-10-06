@@ -62,6 +62,7 @@ TODO:
     //declare a variable type //not sure if i can do that
 
     x:int;
+
     x:int=10;
 
     //declare function/object with params
@@ -84,6 +85,11 @@ TODO:
 
     //Run child object
     f.b;
+
+    //there is no 'if' so we need this, still have no idea how i can do it by scanner
+    (x=10)?{ true bock }:{ false block }
+    maybe statment not blocks
+    condition statment ? true statment : false statment;  // and you can put a block inside ur statment to be like example above.
 
 Still working on it.
 
