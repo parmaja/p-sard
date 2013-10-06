@@ -258,8 +258,8 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
-    function AddClass(vName: string; vStatement: TsrdStatement): TsoClass; override;
     function FindClass(vName: string): TsoObject; override;
+    function AddClass(vName: string; vStatement: TsrdStatement): TsoClass; override; //matbe move it with classes to section
     property Classes: TclsClasses read FClasses; //It is cache of object listed inside statments, it is for fast find the object
   end;
 
@@ -295,6 +295,7 @@ type
     FName: string;
   protected
   public
+    //TODO  ResultClass, DefineParams
     procedure SetStatement(vStatement: TsrdStatement);
     property Name: string read FName write FName;
   end;
@@ -406,10 +407,8 @@ type
 
   { TsrdNumber }
 
-  TsoNumber = class(TsoConstObject) //abstract
+  TsoNumber = class abstract(TsoConstObject)
   public
-    //Assign
-    //Do operator
   end;
 
   { TsoInteger }
@@ -428,8 +427,6 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-  { TsrdFloat }
-
   { TsoFloat }
 
   TsoFloat = class(TsoNumber)
@@ -445,8 +442,6 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
 
-  { TsrdString }
-
   { TsoString }
 
   TsoString = class(TsoConstObject)
@@ -461,8 +456,6 @@ type
     function ToInteger(out outValue: int): Boolean; override;
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
-
-  { TsrdBoolean }
 
   { TsoBoolean }
 
@@ -758,8 +751,6 @@ type
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
   end;
-
-  { TsoVersion_Proc }
 
   { TsoVersion_Const }
 
@@ -1685,7 +1676,6 @@ end;
 
 procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  //vStack.Current.Reference := vStack.Parent.Result
 end;
 
 constructor TsoDeclare.Create;
@@ -2051,8 +2041,6 @@ begin
   for i := 0 to Count -1 do
     Result := Items[i].Execute(vStack) and Result;
 end;
-
-{ TsoRun }
 
 constructor TsoMain.Create;
 begin
