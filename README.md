@@ -38,7 +38,7 @@ When i finish it it will be clear than i can explain it.
     {* First init of the variable define the type *}
 
     //Next f is a function or let us say it is an object we can run it.
-    
+
     f:{
         x := 10;
         z: {
@@ -46,11 +46,43 @@ When i finish it it will be clear than i can explain it.
           := x + 5;
         };
         := x + z;
-    
+
       };
-    
-    :=f + 10;      
-    
+
+    :=f + 10;
+
+TODO:
+    x:=#0 // Boolean values, true and false words are just global variables.
+    x:=#1
+    x:=#fc0f1c //Color const and operator mix the colors not just add it
+    x:=0xffec  //hex int number like but the style of print it as hex we need to override ToString
+    x:="foo"\13"bar"; //escape char outside the string
+
+    //declare a variable type //not sure if i can do that
+
+    x:int;
+
+    //declare function/object with params
+
+    f:int(p1:int; p2:string) {
+      b:{
+      }
+    };
+
+    //include external file to compile it
+
+    `lib/foo.sard`; //need a good trick, but it must take a relative path to the current file
+
+    /*
+        Preprocessor, it will run in external addon/command.... and return string into it
+        similar to <?foo ?> in xml
+    */
+    {?foo
+    ?}
+
+    //Run child object
+    f.b;
+
 Still working on it.
 
 ###Compile###
