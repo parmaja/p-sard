@@ -2,8 +2,8 @@ unit sardObjects;
 {**
  *  This file is part of the "SARD"
  *
- * @license   Apache License Version 2.0
- *            included in this distribution,
+ * @license   The MIT License (MIT)
+ *            Included in this distribution
  * @author    Zaher Dirkey <zaher at parmaja dot com>
  *}
 

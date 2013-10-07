@@ -99,3 +99,7 @@ Still working on it.
 FreePascal 2.6.4
 
 I need contributors to port it to Java or C, it is easy to port becuase i still not use any special features of FPC.
+
+###License###
+
+The Laravel framework is open-sourced software licensed under the [MIT license](http://opensource.org/licenses/MIT)
