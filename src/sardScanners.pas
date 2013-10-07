@@ -13,7 +13,7 @@ unit sardScanners;
 {$H+}{$M+}
 
 (*
-  Like pascal
+  #Like pascal#
     It is case insensitive
     Declareing after the name
     Assigning ":=", compare "=", object child "."
@@ -31,12 +31,12 @@ unit sardScanners;
     foo.bar := 10;
 
   -----------------------------------------------------
-  Like C
+  #Like C#
     Block { }, no more begin end
     comments //single line and /* multiline */
     Not "!"  or "|"
   -----------------------------------------------------
-  Like nothing
+  #Like nothing#
     Returning value
 
    foo:{
@@ -45,31 +45,27 @@ unit sardScanners;
 
    or
 
-   foo:integer{
+   foo:integer(p1:integer){
      := 10;
    }
 
    Description: new comment but saved with the objects.
-   {* This object not usfule dont use it *}
-*)
+   {* This object not usfule dont use it *};
 
-(*
-  With:
-    object.{     <-not shure
-    }
+   With:
+     object.{     <-not sure
+   }
 
   Escape char is outside the string there is no escape inside it. sorry for that.
   "test " \" " and"
   it equal to "test " and"
+
 *)
 
 {TODO
   Outch
   how to scan, minus here?
   x := -10;
-
-  check not add object if there is no operator in curOperator
-  do not allow to add empty statment
 }
 
 {

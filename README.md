@@ -3,7 +3,7 @@ SARD script language
 
 It is a script language not programming language.
 
-The idea behind it, it is not use any of reserved word only sign, only objects there is no "void" or "function" or "procedure"
+The idea behind it, it is not use any of reserved word only signs, only objects there is no "void", "function" or "procedure"
 
 When i finish it it will be clear than i can explain it.
 
@@ -57,18 +57,19 @@ When i finish it it will be clear than i can explain it.
     x:=#0; // Boolean values, true and false words are just global variables.
     x:=#1;
     x:=#fc0f1c; //Color const and operator mix the colors not just add it
-    x:=0xffec;  //hex int number like but the style of print it as hex we need to override ToString
+    x:=0xffec;  //hex integer number like but the style of print it as hex we need to override ToString
     x:="foo"\13"bar"; //escape char outside the string
+    x:="I said:"\""As he said";
 
     //declare a variable type //not sure if i can do that
 
-    x:int;
+    x:integer;
 
-    x:int=10;
+    x:integer=10;
 
     //declare function/object with params
 
-    f:int(p1:int; p2:string) {
+    f:integer(p1:integer; p2:string) {
       b:{
       }
     };
@@ -91,6 +92,10 @@ When i finish it it will be clear than i can explain it.
     (x=10)?{ true bock }:{ false block }
     maybe statment not blocks
     condition statment ? true statment : false statment;  // and you can put a block inside ur statment to be like example above.
+
+    // -With-
+    object.{     <-not sure
+    };
 
 Still working on it.
 

@@ -13,27 +13,10 @@ unit sardObjects;
 {$H+}{$M+}
 {$INTERFACES CORBA}
 
-(*
-
-  o1: {
-    o2: {
-    }
-    fn1;
-    fn2;
-  }
-
- o1;
- fn1;
- fn2;
- o1.o2;
-
- o3 := 10+5;
-*)
-
-{
-TODO:
+{*TODO:
 create variable manually in the example to test return value in formual
 10+x
+
 soVariable find it is value in the stack and use it in formual
 
 soVariable create a runtime variable in the stack
@@ -41,16 +24,18 @@ x := 10;
 }
 
 {
-  Prefix guid
-  srd global classes inherited from sard
-  run Runtime classes
-  so Sard objects, that created when compile the source
-  op Operators objects
+  Prefix guid:
+    srd: global classes inherited from sard
+    run: Runtime classes
+    so: Sard objects, that created when compile the source
+    op: Operators objects
 }
+
 interface
 
 uses
-  Classes, SysUtils, sardClasses;
+  Classes, SysUtils,
+  sardClasses;
 
 const
   sSardVersion = '0.1';
@@ -469,6 +454,20 @@ type
     function ToInteger(out outValue: int): Boolean; override;
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;
+
+{
+  TODO:
+
+  TsoArray = class(TsoNumber)
+  public
+    Value: TsoObjects;
+    constructor Create(AValue: Boolean); overload;
+    procedure Created; override;
+    function ToString(out outValue: string): Boolean; override;
+    function ToFloat(out outValue: Float): Boolean; override;
+    function ToInteger(out outValue: int): Boolean; override;
+    function ToBoolean(out outValue: Boolean): Boolean; override;
+  end;}
 
   { TsoComment }
 
