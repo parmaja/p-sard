@@ -100,10 +100,11 @@ type
   private
     FLexical: TsardLexical;
   protected
-    procedure Scan(const Text: string; var Column: Integer); virtual; abstract;
+    //Return true if it done, next will auto detect it detect
+    function Scan(const Text: string; var Column: Integer): Boolean; virtual; abstract;
     function Accept(const Text: string; var Column: Integer): Boolean; virtual;
-    function DetectScanner(const Text: string; var Column: Integer): TsardScanner;
-    procedure SelectScanner(AScannerClass: TsardScannerClass);
+    //This function call when switched to it
+    procedure Switched; virtual;
   public
     Collected: string; //buffer
     Scanner: TsardScanner;
@@ -135,6 +136,7 @@ type
 
     function DetectScanner(const Text: string; var Column: Integer): TsardScanner;
     procedure SwitchScanner(NextScanner: TsardScanner);
+    //This find the class and switch to it
     procedure SelectScanner(ScannerClass: TsardScannerClass);
     function Find(const ScannerClass: TsardScannerClass): TsardScanner;
     procedure ScanLine(const Text: string; const ALine: Integer);
@@ -432,14 +434,9 @@ begin
   Result := False;
 end;
 
-function TsardScanner.DetectScanner(const Text: string; var Column: Integer): TsardScanner;
+procedure TsardScanner.Switched;
 begin
-  Result := Lexical.DetectScanner(Text, Column);
-end;
-
-procedure TsardScanner.SelectScanner(AScannerClass: TsardScannerClass);
-begin
-  Lexical.SelectScanner(AScannerClass);
+  //Maybe reset buffer or something
 end;
 
 constructor TsardScanner.Create(vLexical: TsardLexical);
@@ -552,6 +549,8 @@ begin
   if FScanner <> NextScanner then
   begin
     FScanner := NextScanner;
+    if FScanner <> nil then
+      FScanner.Switched;
   end;
 end;
 
@@ -595,6 +594,7 @@ var
   Column, OldColumn: Integer;
   OldScanner: TsardScanner;
   l: Integer;
+  Done: Boolean;
 begin
   FLine := ALine;
   Column := 1; //start of pascal string is 1
@@ -606,8 +606,7 @@ begin
     OldColumn := Column;
     OldScanner := FScanner;
     try
-      Scanner.Scan(Text, Column);
-      if Column <= Length(Text) then
+      if Scanner.Scan(Text, Column) then
         DetectScanner(Text, Column);
 
       if (OldColumn = Column) and (OldScanner = FScanner) then

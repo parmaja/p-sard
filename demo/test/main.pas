@@ -18,8 +18,8 @@ type
     Button1: TButton;
     Button2: TButton;
     Label1: TLabel;
-    ResultEdit: TEdit;
     InputEdit: TSynEdit;
+    ResultEdit: TMemo;
     SynCssSyn1: TSynCssSyn;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);

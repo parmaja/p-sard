@@ -2,7 +2,7 @@
   This examples are worked, and this comment will ignored, not compiled or parsed as we say.
 */
 
-x := 10 +5 - (5 * 5); //Single Line comment
+x := 10 + 5 - (5 * 5); //Single Line comment
 
 x := x + 10; //Using same variable, until now local variable implemented
 x := {    //Block it any where

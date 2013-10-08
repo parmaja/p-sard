@@ -260,7 +260,7 @@ type
 
   TsrdWhitespace_Scanner = class(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
@@ -268,7 +268,7 @@ type
 
   TsrdIdentifier_Scanner = class(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
@@ -276,7 +276,7 @@ type
 
   TsrdNumber_Scanner = class(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
@@ -284,7 +284,7 @@ type
 
   TsrdControl_Scanner = class(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
@@ -292,7 +292,7 @@ type
 
   TopOperator_Scanner = class(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
   end;
 
@@ -300,7 +300,7 @@ type
 
   TsrdLineComment_Scanner = class(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
@@ -308,7 +308,7 @@ type
 
   TsrdBlockComment_Scanner = class(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
@@ -317,30 +317,47 @@ type
 
   TsrdComment_Scanner = class(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    Buffer: string;
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
   { TsrdSQStringScanner }
 
-  TsrdSQString_Scanner = class(TsardScanner)
+  TsrdString_Scanner = class abstract(TsardScanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
+    QuoteChar: Char;
+    Buffer: string;//<- not sure it is good idea
+    function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
-  { TsrdDQStringScanner }
+  { TsrdSQString_Scanner }
 
-  TsrdDQString_Scanner = class(TsardScanner)
+  TsrdSQString_Scanner = class(TsrdString_Scanner)
   protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
-    function Accept(const Text: string; var Column: Integer): Boolean; override;
+    procedure Created; override;
+  end;
+
+  { TsrdDQString_Scanner }
+
+  TsrdDQString_Scanner = class(TsrdString_Scanner)
+  protected
+    procedure Created; override;
   end;
 
 implementation
 
 uses
   StrUtils;
+
+{ TsrdSQString_Scanner }
+
+procedure TsrdSQString_Scanner.Created;
+begin
+  inherited Created;
+  QuoteChar := '''';
+end;
 
 { TsrdInterpretInit }
 
@@ -522,21 +539,27 @@ end;
 
 { TsrdComment_Scanner }
 
-procedure TsrdComment_Scanner.Scan(const Text: string; var Column: Integer);
+function TsrdComment_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 var
   c: Integer;
 begin
   c := Column;
+  Result := False;
   while (Column <= Length(Text)) do
   begin
     if (ScanCompare('*}', Text, Column)) then
     begin
-      Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpComment);
+      Buffer := Buffer + MidStr(Text, c, Column - c);
+      Lexical.Parser.TriggerToken(Buffer, tpComment);
+      Result := True;
+      Buffer := '';
       Inc(Column, 2);//2 chars
       break;
     end;
     Inc(Column);
   end;
+  if not Result then
+    Buffer := Buffer + MidStr(Text, c, Column - c);
 end;
 
 function TsrdComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -597,6 +620,7 @@ end;
 
 function TsrdInterpret.SetComment(AIdentifier: string): TsoComment;
 begin
+  //We need to check if it the first expr in the statment
   if Identifier <> '' then
     RaiseError('Identifier is already set');
   Result := TsoComment.Create;
@@ -886,7 +910,7 @@ end;
 
 { TsrdControlScanner }
 
-procedure TsrdControl_Scanner.Scan(const Text: string; var Column: Integer);
+function TsrdControl_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 var
   aControl: TctlControl;
 begin
@@ -897,6 +921,7 @@ begin
     RaiseError('Unkown control started with ' + Text[Column]);
 
   Lexical.Parser.TriggerControl(aControl.Code);
+  Result := True;
 end;
 
 function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -997,7 +1022,7 @@ end;
 
 { TsrdNumberScanner }
 
-procedure TsrdNumber_Scanner.Scan(const Text: string; var Column: Integer);
+function TsrdNumber_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 var
   l, c: Integer;
 begin
@@ -1006,6 +1031,7 @@ begin
   while (Column <= l) and (Lexical.IsNumber(Text[Column], False)) do
     Inc(Column);
   Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpNumber);
+  Result := True;
 end;
 
 function TsrdNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -1015,7 +1041,7 @@ end;
 
 { TopOperatorScanner }
 
-procedure TopOperator_Scanner.Scan(const Text: string; var Column: Integer);
+function TopOperator_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 var
   aOperator: TopOperator;
 begin
@@ -1026,6 +1052,7 @@ begin
     RaiseError('Unkown operator started with ' + Text[Column]);
 
   Lexical.Parser.TriggerOperator(aOperator);
+  Result := True;
 end;
 
 function TopOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -1035,7 +1062,7 @@ end;
 
 { TsrdIdentifierScanner }
 
-procedure TsrdIdentifier_Scanner.Scan(const Text: string; var Column: Integer);
+function TsrdIdentifier_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 var
   c: Integer;
 begin
@@ -1043,6 +1070,7 @@ begin
   while (Column <= Length(Text)) and (Lexical.IsIdentifier(Text[Column], False)) do
     Inc(Column);
   Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpIdentifier);
+  Result := True;
 end;
 
 function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -1052,53 +1080,55 @@ end;
 
 { TsrdDQStringScanner }
 
-procedure TsrdDQString_Scanner.Scan(const Text: string; var Column: Integer);
-var
-  c: Integer;
+procedure TsrdDQString_Scanner.Created;
 begin
-  c := Column;
-  while (Column <= Length(Text)) and not (Text[Column] = '"') do //TODO Escape, not now
-    Inc(Column);
-  Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
-  Inc(Column);
-end;
-
-function TsrdDQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := ScanCompare('"', Text, Column);
-  if Result then
-    Inc(Column);//First char
+  inherited Created;
+  QuoteChar := '"';
 end;
 
 { TsrdSQStringScanner }
 
-procedure TsrdSQString_Scanner.Scan(const Text: string; var Column: Integer);
+function TsrdString_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 var
   c: Integer;
 begin
   c := Column;
-  while (Column <= Length(Text)) and not (Text[Column] = '''') do //TODO Escape, not now
+  Result := False;
+  while (Column <= Length(Text)) do
+  begin
+    if (Text[Column] = QuoteChar) then  //TODO Escape, not now
+    begin
+      Buffer := Buffer + MidStr(Text, c, Column - c);
+      Lexical.Parser.TriggerToken(Buffer, tpString);
+      Result := True;
+      Buffer := '';
+      Inc(Column);
+      break;
+    end;
     Inc(Column);
-  Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpString);
-  Inc(Column);
+  end;
+  if not Result then
+    Buffer := Buffer + MidStr(Text, c, Column - c);
 end;
 
-function TsrdSQString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := ScanCompare('''', Text, Column);
+  Result := ScanCompare(QuoteChar, Text, Column);
   if Result then
-    Inc(Column);
+    Inc(Column, Length(QuoteChar));
 end;
 
 { TsrdBlockCommentScanner }
 
-procedure TsrdBlockComment_Scanner.Scan(const Text: string; var Column: Integer);
+function TsrdBlockComment_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 begin
+  Result := False;
   while (Column <= Length(Text)) do
   begin
     if (ScanCompare('*/', Text, Column)) then
     begin
       Inc(Column, 2);//2 chars
+      Result := True;
       break;
     end;
     Inc(Column);
@@ -1114,10 +1144,11 @@ end;
 
 { TsrdLineComment_Scanner }
 
-procedure TsrdLineComment_Scanner.Scan(const Text: string; var Column: Integer);
+function TsrdLineComment_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 begin
   while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
     Inc(Column);
+  Result := True;
 end;
 
 function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
@@ -1129,10 +1160,11 @@ end;
 
 { TsrdWhitespace_Scanner }
 
-procedure TsrdWhitespace_Scanner.Scan(const Text: string; var Column: Integer);
+function TsrdWhitespace_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 begin
   while (Column <= Length(Text)) and (Text[Column] in sWhitespace) do
     Inc(Column);
+  Result := True;
 end;
 
 function TsrdWhitespace_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
