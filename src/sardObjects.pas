@@ -151,7 +151,8 @@ type
     function GetItem(Index: Integer): TsoClass;
   public
     function Find(vName: string): TsoClass;
-    function Add(vName: string; vStatement: TsrdStatement): TsoClass;
+    function Add(vName: string; vStatement: TsrdStatement): TsoClass; overload;
+    function Add(vClass: TsoClass): Integer; overload;
     property Items[Index: Integer]: TsoClass read GetItem; default;
   end;
 
@@ -244,7 +245,8 @@ type
     constructor Create; override;
     destructor Destroy; override;
     function FindClass(vName: string): TsoObject; override;
-    function AddClass(vName: string; vStatement: TsrdStatement): TsoClass; override; //matbe move it with classes to section
+    function AddClass(vName: string; vStatement: TsrdStatement): TsoClass; override;
+    //procedure AddClass(vClass: TsoClass); override;
     property Classes: TclsClasses read FClasses; //It is cache of object listed inside statments, it is for fast find the object
   end;
 
@@ -469,6 +471,9 @@ type
     function ToBoolean(out outValue: Boolean): Boolean; override;
   end;}
 
+  //TsoDateTime =
+  //TsoColor
+
   { TsoComment }
 
   TsoComment = class(TsoObject)
@@ -479,6 +484,15 @@ type
     constructor Create(AValue: string); overload;
     procedure Created; override;
   end;
+
+{  TsoPreprocessor = class(TsoObject)
+  protected
+    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
+  public
+    Value: string;
+    constructor Create(AValue: string); overload;
+    procedure Created; override;
+  end;}
 
 {-------- Controls  --------}
 
@@ -865,7 +879,12 @@ begin
   Result.Name := vName;
   Result.SetStatement(vStatement);
   Result.Parent := vStatement.Parent;
-  inherited Add(Result);
+  Add(Result);
+end;
+
+function TclsClasses.Add(vClass: TsoClass): Integer;
+begin
+  Result := inherited Add(vClass);
 end;
 
 { TprmParams }

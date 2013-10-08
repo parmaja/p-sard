@@ -80,8 +80,9 @@ begin
   { Run }
   Stack := TrunStack.Create;
   Stack.Push;
-  //Stack.Current.Scope.Variables.Register('__ver__'); //just for test
-  //Stack.Current.Scope.Variables.SetValue('__ver__', TsoInteger.Create(100));
+  //Stack.Scope.Push;
+  //Stack.Scope.Current.Variables.SetValue('__ver__', TsoInteger.Create(101));
+  //Main.AddClass('__ver__', nil);
   Main.Execute(Stack, nil);
   if Stack.Current.Result.AnObject <> nil then
   begin

@@ -103,10 +103,11 @@ type
   TsrdStatementType = (stmNormal, stmAssign, stmDeclare);
 
   TsrdParser = class;
+  TsrdInterpreter = class;
 
-  { TsrdInterpret }
+  { TsrdInterpreter }
 
-  TsrdInterpret = class abstract(TsardObject)
+  TsrdInterpreter = class(TsardObject)
   private
     FFlags: TsrdFlags;
     FFlag: TsrdFlag;
@@ -134,7 +135,7 @@ type
     procedure SetObject(AObject: TsoObject);
     procedure SetFlag(AFlag: TsrdFlag);
 
-    procedure Push(vItem: TsrdInterpret);
+    procedure Push(vItem: TsrdInterpreter);
     procedure Pop;
     procedure Flush; virtual;
     procedure PrepareStatement; virtual;
@@ -142,63 +143,81 @@ type
 
     procedure TriggerToken(AToken: String; AType: TsrdType); virtual;
     procedure TriggerOperator(AOperator: TopOperator); virtual;
-    procedure TriggerControl(AControl: TsardControl); virtual;
 
     property Flags: TsrdFlags read FFlags;
     property Flag: TsrdFlag read FFlag;
   end;
 
-  TsrdInterpretClass = class of TsrdInterpret;
+  TsrdParseClass = class of TsrdInterpreter;
 
-  { TsrdInterpretInit }
+  { TsrdParseInit }
 
-  TsrdInterpretInit = class (TsrdInterpret)
+  TsrdInterpreterInit = class (TsrdInterpreter)
   protected
     Block: TsrdBlock;
   public
     constructor Create(AParser: TsrdParser; ABlock: TsrdBlock);
     procedure PrepareStatement; override;
-    procedure TriggerControl(AControl: TsardControl); override;
   end;
 
-  { TsrdInterpretBlock }
+  { TsrdParseBlock }
 
-  TsrdInterpretBlock = class (TsrdInterpret)
+  TsrdInterpreterBlock = class (TsrdInterpreter)
   protected
     Block: TsrdBlock;
   public
-  constructor Create(AParser: TsrdParser; ABlock: TsrdBlock);
+    constructor Create(AParser: TsrdParser; ABlock: TsrdBlock);
     procedure PrepareStatement; override;
-    procedure TriggerControl(AControl: TsardControl); override;
   end;
 
-  { TsrdInterpretStatement }
+  { TsrdParseStatement }
 
-  TsrdInterpretStatement = class (TsrdInterpret)
+  TsrdInterpreterStatement = class (TsrdInterpreter)
   public
     constructor Create(AParser: TsrdParser; AStatement: TsrdStatement);
-    procedure TriggerToken(AToken: String; AType: TsrdType); override;
-    procedure TriggerOperator(AOperator: TopOperator); override;
-    procedure TriggerControl(AControl: TsardControl); override;
     procedure EndStatement; override;
   end;
 
-  { TsrdInterpretParams }
+  { TsrdControler }
 
-  TsrdInterpretParams = class (TsrdInterpret)
+  TsrdControler = class(TsardObject)
+  protected
+    Parser: TsrdParser;
   public
-    procedure TriggerToken(AToken: String; AType: TsrdType); override;
-    procedure TriggerOperator(AOperator: TopOperator); override;
-    procedure TriggerControl(AControl: TsardControl); override;
+    constructor Create(AParser: TsrdParser);
+    procedure Control(AControl: TsardControl); virtual; abstract;
   end;
 
-  { TsrdInterpretDeclare }
+  { TsrdControlers }
 
-  TsrdInterpretDeclare = class (TsrdInterpret)
+  TsrdControlers = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TsrdControler;
+  protected
   public
-    procedure TriggerToken(AToken: String; AType: TsrdType); override;
-    procedure TriggerOperator(AOperator: TopOperator); override;
-    procedure TriggerControl(AControl: TsardControl); override;
+    procedure Add(AControler: TsrdControler);
+    property Items[Index: Integer]: TsrdControler read GetItem; default;
+  end;
+
+  { TsrdControlerNormal }
+
+  TsrdControlerNormal = class(TsrdControler)
+  public
+    procedure Control(AControl: TsardControl); override;
+  end;
+
+  { TsrdControlerAssign }
+
+  TsrdControlerAssign = class(TsrdControlerNormal)
+  public
+    procedure Control(AControl: TsardControl); override;
+  end;
+
+  { TstdControlDeclare }
+
+  TsrdControlerDeclare = class(TsrdControlerNormal)
+  public
+    procedure Control(AControl: TsardControl); override;
   end;
 
   { TsrdParser }
@@ -206,17 +225,21 @@ type
   TsrdParser = class(TsardParser)
   protected
     FData: TrunData;
-    function GetCurrent: TsrdInterpret;
+    function GetCurrent: TsrdInterpreter;
+    procedure Created; override;
   public
+    Controler: TsrdControler;//=nil
+    Controlers: TsrdControlers;
     PopItem: Boolean;
-    property Current: TsrdInterpret read GetCurrent;
-    procedure Push(vItem: TsrdInterpret);
-    function Push(vItemClass: TsrdInterpretClass): TsrdInterpret;
+    constructor Create(AData: TrunData; ABlock: TsrdBlock);
+    destructor Destroy; override;
+
+    property Current: TsrdInterpreter read GetCurrent;
+    procedure Push(vItem: TsrdInterpreter);
+    function Push(vItemClass: TsrdParseClass): TsrdInterpreter;
 
     procedure Start; override;
     procedure Stop; override;
-    constructor Create(AData: TrunData; ABlock: TsrdBlock);
-    destructor Destroy; override;
 
     procedure TriggerToken(AToken: String; AType: TsrdType); override;
     procedure TriggerOperator(AOperator: TsardObject); override;
@@ -351,34 +374,28 @@ implementation
 uses
   StrUtils;
 
-{ TsrdSQString_Scanner }
+{ TstdControlDeclare }
 
-procedure TsrdSQString_Scanner.Created;
+procedure TsrdControlerDeclare.Control(AControl: TsardControl);
 begin
-  inherited Created;
-  QuoteChar := '''';
+  inherited Control(AControl);
 end;
 
-{ TsrdInterpretInit }
+{ TstdControlAssign }
 
-constructor TsrdInterpretInit.Create(AParser: TsrdParser; ABlock: TsrdBlock);
+procedure TsrdControlerAssign.Control(AControl: TsardControl);
 begin
-  inherited Create(AParser);
-  Block := ABlock;
+  inherited;
+{  with Parser.Current do
+    case AControl of
+    end;}
 end;
 
-procedure TsrdInterpretInit.PrepareStatement;
-begin
-  if Statement = nil then
-  begin
-    if Block = nil then
-      RaiseError('Maybe you need to set a block, or it single statment block');
-    Statement := Block.Add;
-  end;
-end;
+{ TsrdControlerNormal }
 
-procedure TsrdInterpretInit.TriggerControl(AControl: TsardControl);
+procedure TsrdControlerNormal.Control(AControl: TsardControl);
 begin
+  with Parser.Current do
   case AControl of
     ctlAssign:
       begin
@@ -399,72 +416,13 @@ begin
         else
           RaiseError('You can not use assignment here!');
       end;
-    else
-      inherited;
-  end;
-end;
 
-{ TsrdInterpretDeclare }
-
-procedure TsrdInterpretDeclare.TriggerToken(AToken: String; AType: TsrdType);
-begin
-  inherited;
-end;
-
-procedure TsrdInterpretDeclare.TriggerOperator(AOperator: TopOperator);
-begin
-  inherited;
-end;
-
-procedure TsrdInterpretDeclare.TriggerControl(AControl: TsardControl);
-begin
-  inherited;
-end;
-
-{ TsrdInterpretParams }
-
-procedure TsrdInterpretParams.TriggerToken(AToken: String; AType: TsrdType);
-begin
-  inherited;
-end;
-
-procedure TsrdInterpretParams.TriggerOperator(AOperator: TopOperator);
-begin
-  inherited;
-end;
-
-procedure TsrdInterpretParams.TriggerControl(AControl: TsardControl);
-begin
-  inherited;
-end;
-
-{ TsrdInterpretBlock }
-
-procedure TsrdInterpretBlock.PrepareStatement;
-begin
-  if Statement = nil then
-  begin
-    if Block = nil then
-      RaiseError('Maybe you need to set a block, or it single statment block');
-    Statement := Block.Add;
-  end;
-end;
-
-constructor TsrdInterpretBlock.Create(AParser: TsrdParser; ABlock: TsrdBlock);
-begin
-  inherited Create(AParser);
-  Block := ABlock;
-end;
-
-procedure TsrdInterpretBlock.TriggerControl(AControl: TsardControl);
-begin
-  case AControl of
     ctlOpenBlock:
       begin
         with TsoSection.Create do
          begin
            SetObject(This);
-           Push(TsrdInterpretInit.Create(Parser, Items));
+           Push(TsrdInterpreterInit.Create(Parser, Items));
          end;
       end;
     ctlCloseBlock:
@@ -474,25 +432,23 @@ begin
           RaiseError('Maybe you closed not opened Curly');
         Pop;
       end;
-
-
     ctlOpenParams:
       begin
         //here we add block to TsoInstance if there is indienifier opened witout operator
         if Flags = [flagDeclare, flagIdentifier] then
         begin
-          Push(TsrdInterpretParams.Create(Parser));
+          //Switch Controler
         end
         else
         if Flags = [flagIdentifier] then
         begin
-          Push(TsrdInterpretBlock.Create(Parser, SetInstance.Items));
+          Push(TsrdInterpreterBlock.Create(Parser, SetInstance.Items));
         end
         else
         with TsoStatement.Create do
         begin
           SetObject(This);
-          Push(TsrdInterpretStatement.Create(Parser, Statement));
+          Push(TsrdInterpreterStatement.Create(Parser, Statement));
         end;
       end;
     ctlCloseParams:
@@ -502,35 +458,101 @@ begin
           RaiseError('Maybe you closed not opened Bracket');
         Pop;
       end;
+    ctlStart:
+      begin
+      end;
+    ctlStop:
+      begin
+        Flush;
+      end;
+    ctlEnd:
+      begin
+        Flush;
+        EndStatement;
+      end;
+    ctlNext:
+      begin
+        Flush;
+        EndStatement;
+      end;
     else
-      inherited;
+      RaiseError('Not implemented yet, sorry :(');
   end;
 end;
 
-{ TsrdInterpretStatement }
+{ TsrdControlers }
 
-constructor TsrdInterpretStatement.Create(AParser: TsrdParser; AStatement: TsrdStatement);
+function TsrdControlers.GetItem(Index: Integer): TsrdControler;
+begin
+  Result := inherited Items[Index] as TsrdControler;
+end;
+
+procedure TsrdControlers.Add(AControler: TsrdControler);
+begin
+  inherited Add(AControler);
+end;
+
+{ TsrdControler }
+
+constructor TsrdControler.Create(AParser: TsrdParser);
+begin
+  inherited Create;
+  Parser := AParser;
+end;
+
+{ TsrdSQString_Scanner }
+
+procedure TsrdSQString_Scanner.Created;
+begin
+  inherited Created;
+  QuoteChar := '''';
+end;
+
+{ TsrdInterpreterInit }
+
+constructor TsrdInterpreterInit.Create(AParser: TsrdParser; ABlock: TsrdBlock);
+begin
+  inherited Create(AParser);
+  Block := ABlock;
+end;
+
+procedure TsrdInterpreterInit.PrepareStatement;
+begin
+  if Statement = nil then
+  begin
+    if Block = nil then
+      RaiseError('Maybe you need to set a block, or it single statment block');
+    Statement := Block.Add;
+  end;
+end;
+
+{ TsrdInterpreterBlock }
+
+procedure TsrdInterpreterBlock.PrepareStatement;
+begin
+  if Statement = nil then
+  begin
+    if Block = nil then
+      RaiseError('Maybe you need to set a block, or it single statment block');
+    Statement := Block.Add;
+  end;
+end;
+
+constructor TsrdInterpreterBlock.Create(AParser: TsrdParser; ABlock: TsrdBlock);
+begin
+  inherited Create(AParser);
+  Block := ABlock;
+end;
+
+{ TsrdInterpreterStatement }
+
+constructor TsrdInterpreterStatement.Create(AParser: TsrdParser; AStatement: TsrdStatement);
 begin
   inherited Create(AParser);
   Statement := AStatement;
 end;
 
-procedure TsrdInterpretStatement.TriggerToken(AToken: String; AType: TsrdType);
-begin
-  inherited;
-end;
-
-procedure TsrdInterpretStatement.TriggerOperator(AOperator: TopOperator);
-begin
-  inherited;
-end;
-
-procedure TsrdInterpretStatement.TriggerControl(AControl: TsardControl);
-begin
-  inherited;
-end;
-
-procedure TsrdInterpretStatement.EndStatement;
+procedure TsrdInterpreterStatement.EndStatement;
 begin
   Statement := nil;
   FFlags := [];
@@ -583,9 +605,9 @@ begin
   Lexical.Parser.TriggerControl(ctlStop);
 end;
 
-{ TsrdInterpret }
+{ TsrdInterpreter }
 
-procedure TsrdInterpret.SetIdentifier(AIdentifier: string);
+procedure TsrdInterpreter.SetIdentifier(AIdentifier: string);
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
@@ -593,7 +615,7 @@ begin
   SetFlag(flagIdentifier);
 end;
 
-function TsrdInterpret.SetNumber(AIdentifier: string): TsoNumber;
+function TsrdInterpreter.SetNumber(AIdentifier: string): TsoNumber;
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
@@ -605,7 +627,7 @@ begin
   SetFlag(flagConst);
 end;
 
-function TsrdInterpret.SetString(AIdentifier: string): TsoString;
+function TsrdInterpreter.SetString(AIdentifier: string): TsoString;
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
@@ -618,7 +640,7 @@ begin
   SetFlag(flagConst);
 end;
 
-function TsrdInterpret.SetComment(AIdentifier: string): TsoComment;
+function TsrdInterpreter.SetComment(AIdentifier: string): TsoComment;
 begin
   //We need to check if it the first expr in the statment
   if Identifier <> '' then
@@ -632,7 +654,7 @@ begin
   SetFlag(flagComment);
 end;
 
-function TsrdInterpret.SetDeclare: TsoDeclare;
+function TsrdInterpreter.SetDeclare: TsoDeclare;
 begin
   if Statement <> nil then
     RaiseError('Declare must be the first in a statement');
@@ -649,7 +671,7 @@ begin
   Statement := Result.Statement;
 end;
 
-function TsrdInterpret.SetAssign: TsoAssign;
+function TsrdInterpreter.SetAssign: TsoAssign;
 begin
   Result := TsoAssign.Create;
   with Result do
@@ -662,7 +684,7 @@ begin
   SetFlag(flagAssign);
 end;
 
-function TsrdInterpret.SetInstance(AIdentifier: string):TsoInstance;
+function TsrdInterpreter.SetInstance(AIdentifier: string):TsoInstance;
 begin
   Result := TsoInstance.Create;
   with Result do
@@ -674,13 +696,13 @@ begin
   SetFlag(flagInstance);
 end;
 
-function TsrdInterpret.SetInstance: TsoInstance;
+function TsrdInterpreter.SetInstance: TsoInstance;
 begin
   Result := SetInstance(Identifier);
   Identifier := '';
 end;
 
-procedure TsrdInterpret.SetOperator(AOperator: TopOperator);
+procedure TsrdInterpreter.SetOperator(AOperator: TopOperator);
 begin
   Flush;
   if TokenOperator <> nil then
@@ -688,7 +710,7 @@ begin
   TokenOperator := AOperator;
 end;
 
-procedure TsrdInterpret.SetObject(AObject: TsoObject);
+procedure TsrdInterpreter.SetObject(AObject: TsoObject);
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
@@ -697,27 +719,27 @@ begin
   TokenObject := AObject;
 end;
 
-procedure TsrdInterpret.SetFlag(AFlag: TsrdFlag);
+procedure TsrdInterpreter.SetFlag(AFlag: TsrdFlag);
 begin
   FFlags := FFlags + [AFlag];
   FFlag := AFlag;
 end;
 
-procedure TsrdInterpret.PrepareStatement;
+procedure TsrdInterpreter.PrepareStatement;
 begin
 end;
 
-procedure TsrdInterpret.Push(vItem: TsrdInterpret);
+procedure TsrdInterpreter.Push(vItem: TsrdInterpreter);
 begin
   Parser.Push(vItem);
 end;
 
-procedure TsrdInterpret.Pop;
+procedure TsrdInterpreter.Pop;
 begin
   Parser.PopItem := True;
 end;
 
-procedure TsrdInterpret.Flush;
+procedure TsrdInterpreter.Flush;
 begin
   if Identifier <> '' then
   begin
@@ -737,14 +759,14 @@ begin
   end;
 end;
 
-procedure TsrdInterpret.EndStatement;
+procedure TsrdInterpreter.EndStatement;
 begin
   Statement := nil;
   FFlags := [];
   FFlag := flagNone;
 end;
 
-procedure TsrdInterpret.TriggerToken(AToken: String; AType: TsrdType);
+procedure TsrdInterpreter.TriggerToken(AToken: String; AType: TsrdType);
 begin
   case AType of
     tpNumber: SetNumber(AToken);
@@ -755,99 +777,42 @@ begin
   end
 end;
 
-procedure TsrdInterpret.TriggerOperator(AOperator: TopOperator);
+procedure TsrdInterpreter.TriggerOperator(AOperator: TopOperator);
 begin
   SetOperator(AOperator);
 end;
 
-procedure TsrdInterpret.TriggerControl(AControl: TsardControl);
-begin
-  case AControl of
-    ctlOpenBlock:
-      begin
-        with TsoSection.Create do
-         begin
-           SetObject(This);
-           Push(TsrdInterpretInit.Create(Parser, Items));
-         end;
-      end;
-    ctlCloseBlock:
-      begin
-        Flush;
-        if Parser.Count = 1 then
-          RaiseError('Maybe you closed not opened Curly');
-        Pop;
-      end;
-    ctlOpenParams:
-      begin
-        //here we add block to TsoInstance if there is indienifier opened witout operator
-        if Flags = [flagDeclare, flagIdentifier] then
-        begin
-          Push(TsrdInterpretParams.Create(Parser));
-        end
-        else
-        if Flags = [flagIdentifier] then
-        begin
-          Push(TsrdInterpretBlock.Create(Parser, SetInstance.Items));
-        end
-        else
-        with TsoStatement.Create do
-        begin
-          SetObject(This);
-          Push(TsrdInterpretStatement.Create(Parser, Statement));
-        end;
-      end;
-    ctlCloseParams:
-      begin
-        Flush;
-        if Parser.Count = 1 then
-          RaiseError('Maybe you closed not opened Bracket');
-        Pop;
-      end;
-    ctlStart:
-      begin
-      end;
-    ctlStop:
-      begin
-        Flush;
-      end;
-    ctlEnd:
-      begin
-        Flush;
-        EndStatement;
-      end;
-    ctlNext:
-      begin
-        Flush;
-        EndStatement;
-      end;
-    else
-      RaiseError('Not implemented yet, sorry :(');
-  end;
-end;
-
-constructor TsrdInterpret.Create(AParser: TsrdParser);
+constructor TsrdInterpreter.Create(AParser: TsrdParser);
 begin
   inherited Create;
   Parser := AParser;
 end;
 
-destructor TsrdInterpret.Destroy;
+destructor TsrdInterpreter.Destroy;
 begin
   inherited;
 end;
 
-function TsrdParser.GetCurrent: TsrdInterpret;
+function TsrdParser.GetCurrent: TsrdInterpreter;
 begin
-  Result := (inherited GetCurrent) as TsrdInterpret;
+  Result := (inherited GetCurrent) as TsrdInterpreter;
 end;
 
-procedure TsrdParser.Push(vItem: TsrdInterpret);
+procedure TsrdParser.Created;
+begin
+  inherited Created;
+  Controlers.Add(TsrdControlerNormal.Create(Self));
+  Controlers.Add(TsrdControlerAssign.Create(Self));
+  Controlers.Add(TsrdControlerDeclare.Create(Self));
+  Controler := Controlers[0];
+end;
+
+procedure TsrdParser.Push(vItem: TsrdInterpreter);
 begin
   inherited Push(vItem);
 end;
 
-function TsrdParser.Push(vItemClass: TsrdInterpretClass): TsrdInterpret;
+function TsrdParser.Push(vItemClass: TsrdParseClass): TsrdInterpreter;
 begin
   Result := vItemClass.Create(Self);
   Push(Result);
@@ -868,13 +833,15 @@ end;
 constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
 begin
   inherited Create;
+  Controlers := TsrdControlers.Create;
   FData := AData;
   if ABlock <> nil then
-    Push(TsrdInterpretInit.Create(Self, ABlock));
+    Push(TsrdInterpreterInit.Create(Self, ABlock));
 end;
 
 destructor TsrdParser.Destroy;
 begin
+  FreeAndNil(Controlers);
   inherited;
 end;
 
@@ -890,7 +857,8 @@ end;
 
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
 begin
-  Current.TriggerControl(AControl);
+  Controler.Control(AControl);
+  //Current.TriggerControl(AControl);
   if PopItem then
   begin
     PopItem := False;
