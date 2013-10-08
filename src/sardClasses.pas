@@ -87,8 +87,6 @@ type
 
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
 
-  TsardScannerID = type Integer;
-
   TsardLexical = class;
   TsardFeeder = class;
   TsardParser = class;
@@ -104,12 +102,11 @@ type
   protected
     procedure Scan(const Text: string; var Column: Integer); virtual; abstract;
     function Accept(const Text: string; var Column: Integer): Boolean; virtual;
-    function DetectScanner(const Text: string; var Column: Integer): Integer;
+    function DetectScanner(const Text: string; var Column: Integer): TsardScanner;
     procedure SelectScanner(AScannerClass: TsardScannerClass);
   public
-    Index: TsardScannerID;
     Collected: string; //buffer
-    Scanner: TsardScannerID;
+    Scanner: TsardScanner;
     constructor Create(vLexical: TsardLexical); virtual;
     destructor Destroy; override;
     property Lexical: TsardLexical read FLexical;
@@ -121,7 +118,7 @@ type
   private
     FLine: Integer;
     FParser: TsardParser;
-    FScannerID: TsardScannerID;
+    FScanner: TsardScanner;
     function GetItem(Index: Integer): TsardScanner;
     procedure SetParser(AValue: TsardParser);
   public
@@ -136,14 +133,14 @@ type
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual;
 
-    function DetectScanner(const Text: string; var Column: Integer): Integer;
-    procedure SwitchScanner(NextScanner: TsardScannerID);
+    function DetectScanner(const Text: string; var Column: Integer): TsardScanner;
+    procedure SwitchScanner(NextScanner: TsardScanner);
     procedure SelectScanner(ScannerClass: TsardScannerClass);
     function Find(const ScannerClass: TsardScannerClass): TsardScanner;
     procedure ScanLine(const Text: string; const ALine: Integer);
-    function RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
+    function AddScanner(ScannerClass: TsardScannerClass): TsardScanner;
     property Items[Index: Integer]: TsardScanner read GetItem; default;
-    property ScannerID: TsardScannerID read FScannerID;
+    property Scanner: TsardScanner read FScanner;
     property Parser: TsardParser read FParser ;//write SetParser;
     property Line: Integer read FLine;
   end;
@@ -435,7 +432,7 @@ begin
   Result := False;
 end;
 
-function TsardScanner.DetectScanner(const Text: string; var Column: Integer): Integer;
+function TsardScanner.DetectScanner(const Text: string; var Column: Integer): TsardScanner;
 begin
   Result := Lexical.DetectScanner(Text, Column);
 end;
@@ -476,20 +473,20 @@ begin
   FParser := vParser;
 end;
 
-function TsardLexical.DetectScanner(const Text: string; var Column: Integer): Integer;
+function TsardLexical.DetectScanner(const Text: string; var Column: Integer): TsardScanner;
 var
   i: Integer;
 begin
-  Result := -1;
+  Result := nil;
   for i := 0 to Count - 1 do
   begin
-    if (Items[i].Index <> Result) and Items[i].Accept(Text, Column) then
+    if (Items[i] <> Result) and Items[i].Accept(Text, Column) then
     begin
-      Result := i;
+      Result := Items[i];
       break;
     end;
   end;
-  if Result < 0 then
+  if Result = nil then
     RaiseError('Scanner not found:' + Text[Column]);
   SwitchScanner(Result);
 end;
@@ -509,13 +506,10 @@ begin
   end;
 end;
 
-function TsardLexical.RegisterScanner(ScannerClass: TsardScannerClass): TsardScannerID;
-var
-  aScanner: TsardScanner;
+function TsardLexical.AddScanner(ScannerClass: TsardScannerClass): TsardScanner;
 begin
-  aScanner := ScannerClass.Create(Self);
-  Result := Add(aScanner);
-  aScanner.Index := Result;
+  Result := ScannerClass.Create(Self);
+  inherited Add(Result);
 end;
 
 procedure TsardFeeder.Stop;
@@ -553,11 +547,11 @@ procedure TsardFeeder.DoStop;
 begin
 end;
 
-procedure TsardLexical.SwitchScanner(NextScanner: TsardScannerID);
+procedure TsardLexical.SwitchScanner(NextScanner: TsardScanner);
 begin
-  if FScannerID <> NextScanner then
+  if FScanner <> NextScanner then
   begin
-    FScannerID := NextScanner;
+    FScanner := NextScanner;
   end;
 end;
 
@@ -568,7 +562,7 @@ begin
   aScanner := Find(ScannerClass);
   if aScanner = nil then
     RaiseError('Scanner not found');
-  SwitchScanner(aScanner.Index);
+  SwitchScanner(aScanner);
 end;
 
 constructor TsardFeeder.Create(vLexical: TsardLexical);
@@ -599,23 +593,25 @@ end;
 procedure TsardLexical.ScanLine(const Text: string; const ALine: Integer);
 var
   Column, OldColumn: Integer;
-  OldScanner: TsardScannerID;
+  OldScanner: TsardScanner;
   l: Integer;
 begin
   FLine := ALine;
   Column := 1; //start of pascal string is 1
   l := Length(Text);
+  if Scanner = nil then
+    DetectScanner(Text, Column);
   while (Column <= l) do
   begin
     OldColumn := Column;
-    OldScanner := FScannerID;
+    OldScanner := FScanner;
     try
-      Items[ScannerID].Scan(Text, Column);
+      Scanner.Scan(Text, Column);
       if Column <= Length(Text) then
         DetectScanner(Text, Column);
 
-      if (OldColumn = Column) and (OldScanner = FScannerID) then
-        RaiseError('Feeder in loop with: ' + Items[FScannerID].ClassName);
+      if (OldColumn = Column) and (OldScanner = FScanner) then
+        RaiseError('Feeder in loop with: ' + FScanner.ClassName);
     except
       on E: EsardException do
       begin

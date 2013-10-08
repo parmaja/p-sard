@@ -13,7 +13,7 @@ unit sardScanners;
 {$H+}{$M+}
 
 (*
-  #Like pascal#
+  #Like pascal
     It is case insensitive
     Declareing after the name
     Assigning ":=", compare "=", object child "."
@@ -31,12 +31,15 @@ unit sardScanners;
     foo.bar := 10;
 
   -----------------------------------------------------
-  #Like C#
+
+  #Like C
     Block { }, no more begin end
     comments //single line and /* multiline */
     Not "!"  or "|"
+
   -----------------------------------------------------
-  #Like nothing#
+
+  #Like nothing
     Returning value
 
    foo:{
@@ -62,8 +65,7 @@ unit sardScanners;
 
 *)
 
-{TODO
-  Outch
+{TODO:
   how to scan, minus here?
   x := -10;
 }
@@ -252,14 +254,6 @@ type
 
     property Operators: TopOperators read FOperators;
     property Controls: TctlControls read FControls;
-  end;
-
-  { TsrdStartScanner }
-
-  TsrdStart_Scanner = class(TsardScanner)
-  protected
-    procedure Scan(const Text: string; var Column: Integer);  override;
-    function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
   { TsrdWhitespaceScanner }
@@ -947,17 +941,16 @@ begin
     Add(TopPower);
   end;
 
-  RegisterScanner(TsrdStart_Scanner);
-  RegisterScanner(TsrdWhitespace_Scanner);
-  RegisterScanner(TsrdBlockComment_Scanner);
-  RegisterScanner(TsrdComment_Scanner);
-  RegisterScanner(TsrdLineComment_Scanner);
-  RegisterScanner(TsrdNumber_Scanner);
-  RegisterScanner(TsrdSQString_Scanner);
-  RegisterScanner(TsrdDQString_Scanner);
-  RegisterScanner(TsrdControl_Scanner);
-  RegisterScanner(TopOperator_Scanner); //Register it after comment because comment take /*
-  RegisterScanner(TsrdIdentifier_Scanner);//Last one
+  AddScanner(TsrdWhitespace_Scanner);
+  AddScanner(TsrdBlockComment_Scanner);
+  AddScanner(TsrdComment_Scanner);
+  AddScanner(TsrdLineComment_Scanner);
+  AddScanner(TsrdNumber_Scanner);
+  AddScanner(TsrdSQString_Scanner);
+  AddScanner(TsrdDQString_Scanner);
+  AddScanner(TsrdControl_Scanner);
+  AddScanner(TopOperator_Scanner); //Register it after comment because comment take /*
+  AddScanner(TsrdIdentifier_Scanner);//Last one
 end;
 
 constructor TsrdLexical.Create(vParser: TsardParser);
@@ -1145,17 +1138,6 @@ end;
 function TsrdWhitespace_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := Text[Column] in sWhitespace;
-end;
-
-{ TsrdStart_Scanner }
-
-procedure TsrdStart_Scanner.Scan(const Text: string; var Column: Integer);
-begin
-end;
-
-function TsrdStart_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := False;//Start not accept the scan, it is only when starting scan
 end;
 
 end.
