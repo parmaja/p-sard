@@ -65,24 +65,22 @@ type
   TsoBlock = class;
   TsrdDefines = class;
 
+  { TsrdDefine }
+
   TsrdDefine = class(TsardObject)
   public
     Name: string;
-    ResultType: string;
-  end;
-
-  TsrdDefineParams = class(specialize GsardNamedObjects<TsrdDefine>)
+    Result: string;
+    constructor Create(vName: string; vResult: string);
   end;
 
   { TsrdDefines }
 
   TsrdDefines = class(specialize GsardNamedObjects<TsrdDefine>)
   private
-    FParams: TsrdDefineParams;
   public
-    constructor Create;
-    destructor Destroy; override;
-    property Params: TsrdDefineParams read FParams;
+    procedure Add(vName: string; vResult: string);
+    function Last: TsrdDefine;
   end;
 
   { TsrdStatementItem }
@@ -391,6 +389,7 @@ type
     procedure DoSetParent(AValue: TsoObject); override;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
+    ResultType: string;
     constructor Create; override;
     destructor Destroy; override;
     property Defines: TsrdDefines read FDefines;
@@ -817,18 +816,25 @@ begin
   Result := FsardEngine;
 end;
 
-{ TsrdDefines }
+{ TsrdDefine }
 
-constructor TsrdDefines.Create;
+constructor TsrdDefine.Create(vName: string; vResult: string);
 begin
   inherited Create;
-  FParams := TsrdDefineParams.Create;
+  Name := vName;
+  Result := vResult;
 end;
 
-destructor TsrdDefines.Destroy;
+{ TsrdDefines }
+
+procedure TsrdDefines.Add(vName: string; vResult: string);
 begin
-  FreeAndNil(FParams);
-  inherited Destroy;
+  inherited Add(TsrdDefine.Create(vName, vResult));
+end;
+
+function TsrdDefines.Last: TsrdDefine;
+begin
+  Result := (inherited Last) as TsrdDefine;
 end;
 
 { TsoCustomStatement }

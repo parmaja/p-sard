@@ -134,7 +134,7 @@ type
     //Return true if Operator is not nil
     function CheckOperator(vRaise: Boolean = False): Boolean;
 
-    procedure Prepare;
+    function IsEmpty: Boolean;
     procedure SetOperator(AOperator: TopOperator);
     procedure SetIdentifier(AIdentifier: string);
     function SetNumber(AIdentifier: string): TsoNumber;
@@ -189,17 +189,16 @@ type
     //Push to the Parser
     procedure Push(vItem: TsrdInterpreter);
     //No pop, but when finish Parser will pop it
-    procedure Pop; virtual;
+    procedure Pop(vNextInterpreter: TsrdInterpreter = nil); virtual;
     procedure Reset; virtual;
-    procedure Post; virtual;
     procedure Prepare; virtual;
+    procedure Post; virtual;
     procedure Next; virtual;
     procedure AddIdentifier(AIdentifier: String; AType: TsrdType); virtual;
     procedure AddOperator(AOperator: TopOperator); virtual;
 
     //IsInitial check if the next object will be the first one, usefule for Assign and Declare
     function IsInitial: Boolean; virtual;
-
     procedure SwitchController(vControllerClass: TsrdControllerClass);
     procedure Control(AControl: TsardControl); virtual;
     property Flags: TsrdFlags read FFlags;
@@ -237,13 +236,16 @@ type
     TState = (stName, stType);
   protected
     State: TState;
-    Defines: TsrdDefines;
+    Param: Boolean;
+    Declare: TsoDeclare;
     procedure InternalPost; override;
     function GetControllerClass: TsrdControllerClass; override;
   public
-    constructor Create(AParser: TsrdParser; ADefines: TsrdDefines);
+    constructor Create(AParser: TsrdParser; ADeclare: TsoDeclare);
+    procedure Control(AControl: TsardControl); override;
     procedure Prepare; override;
     procedure Next; override;
+    procedure Reset; override;
   end;
 
   { TsrdControllerNormal }
@@ -282,12 +284,14 @@ type
     FData: TrunData;
     function GetCurrent: TsrdInterpreter;
     procedure Created; override;
+    procedure CheckPop;
     procedure DoSetToken(AToken: String; AType: TsrdType); override;
     procedure DoSetOperator(AOperator: TsardObject); override;
     procedure DoSetControl(AControl: TsardControl); override;
   public
     Controllers: TsrdControllers;
-    PopItem: Boolean;
+    PopInterpreter: Boolean;
+    NextInterpreter: TsrdInterpreter;
     constructor Create(AData: TrunData; ABlock: TsrdBlock);
     destructor Destroy; override;
 
@@ -431,7 +435,23 @@ uses
 
 procedure TsrdInterpreterDefine.InternalPost;
 begin
-  inherited InternalPost;
+  if Instruction.Identifier = '' then
+    RaiseError('Identifier not set');//TODO maybe check if he post const or another things
+  if Param then
+  begin
+    if State = stName then
+      Declare.Defines.Add(Instruction.Identifier, '')
+    else
+    begin
+      if Declare.Defines.Last.Result <> '' then
+        RaiseError('Result type already set');
+      Declare.Defines.Last.Result := Instruction.Identifier;
+    end;
+  end
+  else
+  begin
+    Declare.ResultType := Instruction.Identifier;
+  end;
 end;
 
 function TsrdInterpreterDefine.GetControllerClass: TsrdControllerClass;
@@ -439,10 +459,67 @@ begin
   Result := TsrdControllerDefines;
 end;
 
-constructor TsrdInterpreterDefine.Create(AParser: TsrdParser; ADefines: TsrdDefines);
+constructor TsrdInterpreterDefine.Create(AParser: TsrdParser; ADeclare: TsoDeclare);
 begin
   inherited Create(AParser);
-  Defines := ADefines;
+  Declare := ADeclare;
+end;
+
+procedure TsrdInterpreterDefine.Control(AControl: TsardControl);
+begin
+{
+  x:int  (p1:int; p2:string);
+   ^typd (------Params-----)^
+   Declare  ^Declare
+  We end with ; or : or )
+}
+  with Parser.Current do
+    case AControl of
+      ctlDeclare:
+        begin
+          if Param then
+          begin
+            Post;
+            State := stType;
+          end
+          else
+          begin
+            Post;
+            Pop(TsrdInterpreterStatement.Create(Parser, Declare.Statement)); //return to the statment
+          end;
+        end;
+      ctlEnd:
+      begin
+        if Param then
+        begin
+          Post;
+          State := stName;
+        end
+        else
+        begin
+          Post;
+          Pop; //Finish it, mean there is no body/statment for the decalre
+        end;
+      end;
+      ctlNext:
+        begin
+          Post;
+          State := stName;
+        end;
+      ctlOpenParams:
+        begin
+          Post;
+          Param := True;
+        end;
+      ctlCloseParams:
+        begin
+          Post;
+          //Pop; //Finish it
+          Pop(TsrdInterpreterStatement.Create(Parser, Declare.Statement)); //return to the statment
+        end;
+      else
+        inherited;
+    end
 end;
 
 procedure TsrdInterpreterDefine.Prepare;
@@ -455,11 +532,17 @@ begin
   inherited Next;
 end;
 
+procedure TsrdInterpreterDefine.Reset;
+begin
+  State := stName;
+  inherited;
+end;
+
 { TsrdControllerDefines }
 
 procedure TsrdControllerDefines.Control(AControl: TsardControl);
 begin
-  inherited Control(AControl);
+  //inherited Control(AControl);
 end;
 
 { TsrdInstruction }
@@ -498,13 +581,9 @@ begin
     RaiseError('Operator is not set!');
 end;
 
-procedure TsrdInstruction.Prepare;
+function TsrdInstruction.IsEmpty: Boolean;
 begin
-  if Identifier <> '' then
-  begin
-    SetInstance(Identifier);
-    Identifier := '';
-  end;
+  Result := not ((Identifier <> '') or (anObject <> nil) or (anOperator <> nil));
 end;
 
 { TstdControlDeclare }
@@ -557,11 +636,8 @@ begin
         begin
           aDeclare := Instruction.SetDeclare;
           Post;
-          //We need it after the second push finished, pop will return to it/
-          Push(TsrdInterpreterStatement.Create(Parser, aDeclare.Statement));
           //Now we push a define interpreter, finished with : or { or ;
-          Push(TsrdInterpreterDefine.Create(Parser, aDeclare.Defines));
-          SwitchController(TsrdControllerDeclare);
+          Push(TsrdInterpreterDefine.Create(Parser, aDeclare));
         end
         else
           RaiseError('You can not use assignment here!');
@@ -662,6 +738,12 @@ end;
 
 procedure TsrdInterpreterBlock.Prepare;
 begin
+  if Instruction.Identifier <> '' then
+  begin
+    if Instruction.anObject <> nil then
+      RaiseError('Object is already set!');
+    Instruction.SetInstance;
+  end;
   if Statement = nil then
   begin
     if Block = nil then
@@ -844,8 +926,8 @@ end;
 
 function TsrdInstruction.SetInstance: TsoInstance;
 begin
-  if Identifier <> '' then
-    RaiseError('Identifier is already set');
+  if Identifier = '' then
+    RaiseError('Identifier is not set');
   Result := SetInstance(Identifier);
   Identifier := '';
 end;
@@ -898,9 +980,10 @@ begin
   Parser.Push(vItem);
 end;
 
-procedure TsrdInterpreter.Pop;
+procedure TsrdInterpreter.Pop(vNextInterpreter: TsrdInterpreter);
 begin
-  Parser.PopItem := True;
+  Parser.PopInterpreter := True;
+  Parser.NextInterpreter := vNextInterpreter;
 end;
 
 procedure TsrdInterpreter.Reset;
@@ -911,13 +994,8 @@ end;
 
 procedure TsrdInterpreter.Post;
 begin
-  Instruction.Prepare;
-  if (Instruction.anObject <> nil) or (Instruction.anOperator <> nil) then
+  if (not Instruction.IsEmpty) then
   begin
-    if Instruction.Identifier <> '' then
-      RaiseError('Identifier is already set, can not Post');
-    if Instruction.anObject = nil then
-      RaiseError('Object is nil!');
     Prepare;
     InternalPost;
     Reset;
@@ -998,6 +1076,17 @@ begin
   inherited Created;
 end;
 
+procedure TsrdParser.CheckPop;
+begin
+  if PopInterpreter then
+  begin
+    PopInterpreter := False;
+    Pop;
+    if NextInterpreter <> nil then
+      Push(NextInterpreter);
+  end;
+end;
+
 procedure TsrdParser.Push(vItem: TsrdInterpreter);
 begin
   inherited Push(vItem);
@@ -1044,31 +1133,19 @@ end;
 procedure TsrdParser.DoSetToken(AToken: String; AType: TsrdType);
 begin
   Current.AddIdentifier(AToken, AType);
-  if PopItem then
-  begin
-    PopItem := False;
-    Pop;
-  end;
+  CheckPop;
 end;
 
 procedure TsrdParser.DoSetControl(AControl: TsardControl);
 begin
   Current.Control(AControl);
-  if PopItem then
-  begin
-    PopItem := False;
-    Pop;
-  end;
+  CheckPop;
 end;
 
 procedure TsrdParser.DoSetOperator(AOperator: TsardObject);
 begin
   Current.AddOperator(AOperator as TopOperator);
-  if PopItem then
-  begin
-    PopItem := False;
-    Pop;
-  end;
+  CheckPop;
 end;
 
 { TsrdControlScanner }

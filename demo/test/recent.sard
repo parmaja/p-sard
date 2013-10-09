@@ -1,1 +1,1 @@
-x:int;
+x:int(p1:integer; p2);

@@ -63,8 +63,13 @@ procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState)
 begin
   if Key = VK_F9 then
     Run
-  else if Key = VK_F9 then
-    Save;
+  else if Key = VK_CONTROL then
+    begin
+      if Key = VK_S then
+        Save
+      else if Key = VK_F9 then
+        Build(InputEdit.Lines);
+    end;
 end;
 
 procedure TForm1.Save;
