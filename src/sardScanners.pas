@@ -97,7 +97,18 @@ const
   sIdentifierSeparator = '.';
 
 type
-  TsrdFlag = (flagNone, flagInstance, flagDeclare, flagAssign, flagIdentifier, flagConst, flagParam, flagOperator, flagComment, flagBlock);
+  TsrdFlag = (
+    flagNone,
+    flagInstance,
+    flagDeclare,
+    flagAssign,
+    flagIdentifier,
+    flagConst,
+    flagParam,
+    flagOperator,
+    flagComment,
+    flagBlock
+  );
   TsrdFlags = set of TsrdFlag;
 
   TsrdStatementType = (stmNormal, stmAssign, stmDeclare);
@@ -107,10 +118,19 @@ type
   { TsrdInstruction }
 
   TsrdInstruction = object
+  protected
+    procedure InternalSetObject(AObject: TsoObject);
+  public
     Flag: TsrdFlag;
     Identifier: string;
     anOperator: TopOperator;
     anObject: TsoObject;
+    //Return true if Identifier is not empty and object is nil
+    function CheckIdentifier(vRaise: Boolean = False): Boolean;
+    //Return true if Object is not nil and Identifier is empty
+    function CheckObject(vRaise: Boolean = False): Boolean;
+    //Return true if Operator is not nil
+    function CheckOperator(vRaise: Boolean = False): Boolean;
     procedure Reset;
     procedure Prepare;
     procedure SetOperator(AOperator: TopOperator);
@@ -120,14 +140,38 @@ type
     function SetComment(AIdentifier: string): TsoComment;
     function SetInstance(AIdentifier: string): TsoInstance;
     function SetInstance: TsoInstance;
-    function SetDeclare: TsoDeclare;
     function SetAssign: TsoAssign;
+    function SetDeclare: TsoDeclare;
     procedure SetObject(AObject: TsoObject);
     procedure SetFlag(AFlag: TsrdFlag);
   end;
 
   TsrdParser = class;
   TsrdInterpreter = class;
+
+  { TsrdController }
+
+  TsrdController = class(TsardObject)
+  protected
+    Parser: TsrdParser;
+  public
+    constructor Create(AParser: TsrdParser);
+    procedure Control(AControl: TsardControl); virtual; abstract;
+  end;
+
+  TsrdControllerClass = class of TsrdController;
+
+  { TsrdControllers }
+
+  TsrdControllers = class(TsardObjectList)
+  private
+    function GetItem(Index: Integer): TsrdController;
+  protected
+  public
+    function Find(vControllerClass: TsrdControllerClass): TsrdController;
+    procedure Add(AController: TsrdController);
+    property Items[Index: Integer]: TsrdController read GetItem; default;
+  end;
 
   { TsrdInterpreter }
 
@@ -136,6 +180,7 @@ type
     FFlags: TsrdFlags;
   protected
     Instruction: TsrdInstruction;
+    Controller: TsrdController;//=nil
 
     Parser: TsrdParser;
     Statement: TsrdStatement;
@@ -152,10 +197,15 @@ type
     procedure AddIdentifier(AIdentifier: String; AType: TsrdType); virtual;
     procedure AddOperator(AOperator: TopOperator); virtual;
 
+    //IsInitial check if the next object will be the first one, usefule for Assign and Declare
+    function IsInitial:Boolean; virtual;
+
+    procedure SwitchController(vControllerClass: TsrdControllerClass);
+    procedure Control(AControl: TsardControl); virtual;
     property Flags: TsrdFlags read FFlags;
   end;
 
-  TsrdParseClass = class of TsrdInterpreter;
+  TsrdInterpreterClass = class of TsrdInterpreter;
 
   { TsrdParseInit }
 
@@ -185,44 +235,30 @@ type
     procedure EndStatement; override;
   end;
 
-  { TsrdControler }
+  { TsrdControllerNormal }
 
-  TsrdControler = class(TsardObject)
-  protected
-    Parser: TsrdParser;
-  public
-    constructor Create(AParser: TsrdParser);
-    procedure Control(AControl: TsardControl); virtual; abstract;
-  end;
-
-  { TsrdControlers }
-
-  TsrdControlers = class(TsardObjectList)
-  private
-    function GetItem(Index: Integer): TsrdControler;
-  protected
-  public
-    procedure Add(AControler: TsrdControler);
-    property Items[Index: Integer]: TsrdControler read GetItem; default;
-  end;
-
-  { TsrdControlerNormal }
-
-  TsrdControlerNormal = class(TsrdControler)
-  public
-    procedure Control(AControl: TsardControl); override;
-  end;
-
-  { TsrdControlerAssign }
-
-  TsrdControlerAssign = class(TsrdControlerNormal)
+  TsrdControllerNormal = class(TsrdController)
   public
     procedure Control(AControl: TsardControl); override;
   end;
 
   { TstdControlDeclare }
 
-  TsrdControlerDeclare = class(TsrdControlerNormal)
+  TsrdControllerDeclare = class(TsrdControllerNormal)
+  public
+    procedure Control(AControl: TsardControl); override;
+  end;
+
+  { TsrdControllerDeclareParams }
+
+  TsrdControllerDeclareParams = class(TsrdControllerNormal)
+  public
+    procedure Control(AControl: TsardControl); override;
+  end;
+
+  { TsrdControllerAssign }
+
+  TsrdControllerAssign = class(TsrdControllerNormal)
   public
     procedure Control(AControl: TsardControl); override;
   end;
@@ -235,15 +271,14 @@ type
     function GetCurrent: TsrdInterpreter;
     procedure Created; override;
   public
-    Controler: TsrdControler;//=nil
-    Controlers: TsrdControlers;
+    Controllers: TsrdControllers;
     PopItem: Boolean;
     constructor Create(AData: TrunData; ABlock: TsrdBlock);
     destructor Destroy; override;
 
     property Current: TsrdInterpreter read GetCurrent;
     procedure Push(vItem: TsrdInterpreter);
-    function Push(vItemClass: TsrdParseClass): TsrdInterpreter;
+    function Push(vItemClass: TsrdInterpreterClass): TsrdInterpreter;
 
     procedure Start; override;
     procedure Stop; override;
@@ -380,7 +415,48 @@ implementation
 uses
   StrUtils;
 
+{ TsrdControllerDeclareParams }
+
+procedure TsrdControllerDeclareParams.Control(AControl: TsardControl);
+begin
+  inherited Control(AControl);
+end;
+
 { TsrdInstruction }
+
+procedure TsrdInstruction.InternalSetObject(AObject: TsoObject);
+begin
+  if (anObject <> nil) and (AObject <> nil) then
+    RaiseError('Object is already set');
+  anObject := AObject;
+end;
+
+function TsrdInstruction.CheckIdentifier(vRaise: Boolean): Boolean;
+begin
+  Result := Identifier <> '';
+  if vRaise and not Result then
+    RaiseError('Identifier is not set!');
+  Result := Result and (anObject = nil);
+  if vRaise and not Result then
+    RaiseError('Object is already set!');
+end;
+
+function TsrdInstruction.CheckObject(vRaise: Boolean): Boolean;
+begin
+  Result := anObject <> nil;
+  if vRaise and not Result then
+    RaiseError('Object is not set!');
+  Result := Result and (Identifier = '');
+  if vRaise and not Result then
+    RaiseError('Identifier is already set!');
+end;
+
+function TsrdInstruction.CheckOperator(vRaise: Boolean): Boolean;
+begin
+  Result := anOperator <> nil;
+  if vRaise and not Result then
+    RaiseError('Operator is not set!');
+end;
 
 procedure TsrdInstruction.Reset;
 begin
@@ -401,14 +477,14 @@ end;
 
 { TstdControlDeclare }
 
-procedure TsrdControlerDeclare.Control(AControl: TsardControl);
+procedure TsrdControllerDeclare.Control(AControl: TsardControl);
 begin
   inherited Control(AControl);
 end;
 
 { TstdControlAssign }
 
-procedure TsrdControlerAssign.Control(AControl: TsardControl);
+procedure TsrdControllerAssign.Control(AControl: TsardControl);
 begin
   inherited;
 {  with Parser.Current do
@@ -416,9 +492,9 @@ begin
     end;}
 end;
 
-{ TsrdControlerNormal }
+{ TsrdControllerNormal }
 
-procedure TsrdControlerNormal.Control(AControl: TsardControl);
+procedure TsrdControllerNormal.Control(AControl: TsardControl);
 var
   stm: TsrdStatement;
 begin
@@ -426,7 +502,7 @@ begin
   case AControl of
     ctlAssign:
       begin
-        if (Flags = []) or (Flags = [flagIdentifier]) then
+        if IsInitial then
         begin
           Instruction.SetAssign;
           Flush;
@@ -436,10 +512,11 @@ begin
       end;
     ctlDeclare:
       begin
-        if (Flags = [flagIdentifier]) then
+        if IsInitial then
         begin
           stm := Instruction.SetDeclare.Statement;
           Flush;
+          SwitchController(TsrdControllerDeclare);
           Statement := stm;//<-- TODO: wrong wrong
         end
         else
@@ -466,10 +543,10 @@ begin
         //here we add block to TsoInstance if there is indienifier opened witout operator
         if Flags = [flagDeclare, flagIdentifier] then
         begin
-          //Switch Controler
+          //Switch Controller
         end
         else
-        if Flags = [flagIdentifier] then
+        if Instruction.CheckIdentifier then
         begin
           Push(TsrdInterpreterBlock.Create(Parser, Instruction.SetInstance.Items));
         end
@@ -509,21 +586,36 @@ begin
   end;
 end;
 
-{ TsrdControlers }
+{ TsrdControllers }
 
-function TsrdControlers.GetItem(Index: Integer): TsrdControler;
+function TsrdControllers.GetItem(Index: Integer): TsrdController;
 begin
-  Result := inherited Items[Index] as TsrdControler;
+  Result := inherited Items[Index] as TsrdController;
 end;
 
-procedure TsrdControlers.Add(AControler: TsrdControler);
+function TsrdControllers.Find(vControllerClass: TsrdControllerClass): TsrdController;
+var
+  i: Integer;
 begin
-  inherited Add(AControler);
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if vControllerClass = Items[i].ClassType then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
 end;
 
-{ TsrdControler }
+procedure TsrdControllers.Add(AController: TsrdController);
+begin
+  inherited Add(AController);
+end;
 
-constructor TsrdControler.Create(AParser: TsrdParser);
+{ TsrdController }
+
+constructor TsrdController.Create(AParser: TsrdParser);
 begin
   inherited Create;
   Parser := AParser;
@@ -648,11 +740,12 @@ function TsrdInstruction.SetNumber(AIdentifier: string): TsoNumber;
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
+  //TODO need to check anObject too
   if (pos('.', AIdentifier) > 0) or ((pos('E', AIdentifier) > 0)) then
     Result := TsoFloat.Create(StrToFloat(AIdentifier))
   else
     Result := TsoInteger.Create(StrToInt64(AIdentifier));
-  anObject := Result;
+  InternalSetObject(Result);
   SetFlag(flagConst);
 end;
 
@@ -660,12 +753,13 @@ function TsrdInstruction.SetString(AIdentifier: string): TsoString;
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
+  //TODO need to check anObject too
   Result := TsoString.Create;
   with Result do
   begin
     Value := AIdentifier;
   end;
-  anObject := Result;
+  InternalSetObject(Result);
   SetFlag(flagConst);
 end;
 
@@ -674,57 +768,63 @@ begin
   //We need to check if it the first expr in the statment
   if Identifier <> '' then
     RaiseError('Identifier is already set');
+  //TODO need to check anObject too
   Result := TsoComment.Create;
   with Result do
   begin
     Value := AIdentifier;
   end;
-  anObject := Result;
+  InternalSetObject(Result);
   SetFlag(flagComment);
 end;
 
 function TsrdInstruction.SetDeclare: TsoDeclare;
 begin
-{  if Statement <> nil then
-    RaiseError('Declare must be the first in a statement');}
+  if Identifier <> '' then
+    RaiseError('Identifier is already set');
   Result := TsoDeclare.Create;
   with Result do
   begin
     Name := Identifier;
 //    ID := Parser.Data.RegisterID(Name);
   end;
-  anObject := Result;
+  InternalSetObject(Result);
   Identifier := '';
   SetFlag(flagDeclare);
 end;
 
 function TsrdInstruction.SetAssign: TsoAssign;
 begin
+  //Do not check the Identifier if empty, becuase it is can be empty to assign to result of block
   Result := TsoAssign.Create;
   with Result do
   begin
     Name := Identifier;
     //ID := Parser.Data.RegisterID(Name);
   end;
-  anObject := Result;
+  InternalSetObject(Result);
   Identifier := '';
   SetFlag(flagAssign);
 end;
 
 function TsrdInstruction.SetInstance(AIdentifier: string):TsoInstance;
 begin
+  if AIdentifier <> '' then
+    RaiseError('Identifier not set');
   Result := TsoInstance.Create;
   with Result do
   begin
     Name := AIdentifier;
     //ID := Parser.Data.RegisterID(Name);
   end;
-  anObject := Result;
+  InternalSetObject(Result);
   SetFlag(flagInstance);
 end;
 
 function TsrdInstruction.SetInstance: TsoInstance;
 begin
+  if Identifier <> '' then
+    RaiseError('Identifier is already set');
   Result := SetInstance(Identifier);
   Identifier := '';
 end;
@@ -740,9 +840,7 @@ procedure TsrdInstruction.SetObject(AObject: TsoObject);
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
-  if anObject <> nil then
-    RaiseError('Object is already set');
-  anObject := AObject;
+  InternalSetObject(AObject);
 end;
 
 procedure TsrdInstruction.SetFlag(AFlag: TsrdFlag);
@@ -810,10 +908,26 @@ begin
   Instruction.SetOperator(AOperator);
 end;
 
+function TsrdInterpreter.IsInitial: Boolean;
+begin
+  Result := Statement.Count = 0;
+end;
+
+procedure TsrdInterpreter.SwitchController(vControllerClass: TsrdControllerClass);
+begin
+  Controller := Parser.Controllers.Find(vControllerClass);
+end;
+
+procedure TsrdInterpreter.Control(AControl: TsardControl);
+begin
+  Controller.Control(AControl);
+end;
+
 constructor TsrdInterpreter.Create(AParser: TsrdParser);
 begin
   inherited Create;
   Parser := AParser;
+  SwitchController(TsrdControllerNormal);
 end;
 
 destructor TsrdInterpreter.Destroy;
@@ -829,10 +943,9 @@ end;
 procedure TsrdParser.Created;
 begin
   inherited Created;
-  Controlers.Add(TsrdControlerNormal.Create(Self));
-  Controlers.Add(TsrdControlerAssign.Create(Self));
-  Controlers.Add(TsrdControlerDeclare.Create(Self));
-  Controler := Controlers[0];
+  Controllers.Add(TsrdControllerNormal.Create(Self));
+  Controllers.Add(TsrdControllerAssign.Create(Self));
+  Controllers.Add(TsrdControllerDeclare.Create(Self));
 end;
 
 procedure TsrdParser.Push(vItem: TsrdInterpreter);
@@ -840,7 +953,7 @@ begin
   inherited Push(vItem);
 end;
 
-function TsrdParser.Push(vItemClass: TsrdParseClass): TsrdInterpreter;
+function TsrdParser.Push(vItemClass: TsrdInterpreterClass): TsrdInterpreter;
 begin
   Result := vItemClass.Create(Self);
   Push(Result);
@@ -861,7 +974,7 @@ end;
 constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
 begin
   inherited Create;
-  Controlers := TsrdControlers.Create;
+  Controllers := TsrdControllers.Create;
   FData := AData;
   if ABlock <> nil then
     Push(TsrdInterpreterInit.Create(Self, ABlock));
@@ -869,7 +982,7 @@ end;
 
 destructor TsrdParser.Destroy;
 begin
-  FreeAndNil(Controlers);
+  FreeAndNil(Controllers);
   inherited;
 end;
 
@@ -885,7 +998,7 @@ end;
 
 procedure TsrdParser.TriggerControl(AControl: TsardControl);
 begin
-  Controler.Control(AControl);
+  Current.Control(AControl);
   //Current.TriggerControl(AControl);
   if PopItem then
   begin
