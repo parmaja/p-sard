@@ -39,7 +39,7 @@ begin
   Main := TsoMain.Create;
   Data:=TrunData.Create;
   { Compile }
-  Parser := TsrdParser.Create(Data, Main.Items);
+  Parser := TsrdParser.Create(Data, Main.Block);
   Lexical := TsrdLexical.Create(Parser);
   Feeder := TsrdFeeder.Create(Lexical);
 
@@ -70,7 +70,7 @@ begin
   Main := TsoMain.Create;
   Data := TrunData.Create;
   { Compile }
-  Parser := TsrdParser.Create(Data, Main.Items);
+  Parser := TsrdParser.Create(Data, Main.Block);
   Lexical := TsrdLexical.Create(Parser);
   Feeder := TsrdFeeder.Create(Lexical);
 

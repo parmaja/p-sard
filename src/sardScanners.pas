@@ -107,6 +107,7 @@ type
     flagParam,
     flagOperator,
     flagComment,
+    flagStatement,
     flagBlock
   );
   TsrdFlags = set of TsrdFlag;
@@ -140,6 +141,7 @@ type
     function SetComment(AIdentifier: string): TsoComment;
     function SetInstance(AIdentifier: string): TsoInstance;
     function SetInstance: TsoInstance;
+    function SetStatment: TsoStatement;//Statement object not srdStatement
     function SetAssign: TsoAssign;
     function SetDeclare: TsoDeclare;
     procedure SetObject(AObject: TsoObject);
@@ -180,7 +182,7 @@ type
     FFlags: TsrdFlags;
   protected
     Instruction: TsrdInstruction;
-    Controller: TsrdController;//=nil
+    Controller: TsrdController;
 
     Parser: TsrdParser;
     Statement: TsrdStatement;
@@ -270,6 +272,9 @@ type
     FData: TrunData;
     function GetCurrent: TsrdInterpreter;
     procedure Created; override;
+    procedure DoSetToken(AToken: String; AType: TsrdType); override;
+    procedure DoSetOperator(AOperator: TsardObject); override;
+    procedure DoSetControl(AControl: TsardControl); override;
   public
     Controllers: TsrdControllers;
     PopItem: Boolean;
@@ -283,9 +288,6 @@ type
     procedure Start; override;
     procedure Stop; override;
 
-    procedure TriggerToken(AToken: String; AType: TsrdType); override;
-    procedure TriggerOperator(AOperator: TsardObject); override;
-    procedure TriggerControl(AControl: TsardControl); override;
     property Data: TrunData read FData;
   end;
 
@@ -516,8 +518,8 @@ begin
         begin
           stm := Instruction.SetDeclare.Statement;
           Flush;
-          SwitchController(TsrdControllerDeclare);
           Statement := stm;//<-- TODO: wrong wrong
+          SwitchController(TsrdControllerDeclare);
         end
         else
           RaiseError('You can not use assignment here!');
@@ -528,7 +530,7 @@ begin
         with TsoSection.Create do
          begin
            Instruction.SetObject(This);
-           Push(TsrdInterpreterInit.Create(Parser, Items));
+           Push(TsrdInterpreterInit.Create(Parser, Block));
          end;
       end;
     ctlCloseBlock:
@@ -540,20 +542,15 @@ begin
       end;
     ctlOpenParams:
       begin
-        //here we add block to TsoInstance if there is indienifier opened witout operator
-        if Flags = [flagDeclare, flagIdentifier] then
-        begin
-          //Switch Controller
-        end
-        else
+        //Params of function or object like: Sin(10)
         if Instruction.CheckIdentifier then
         begin
-          Push(TsrdInterpreterBlock.Create(Parser, Instruction.SetInstance.Items));
+          with Instruction.SetInstance do
+            Push(TsrdInterpreterBlock.Create(Parser, Block));
         end
-        else
-        with TsoStatement.Create do
+        else //No it is just sub statment like: 10+(5*5)
+        with Instruction.SetStatment do
         begin
-          Instruction.SetObject(This);
           Push(TsrdInterpreterStatement.Create(Parser, Statement));
         end;
       end;
@@ -693,7 +690,7 @@ begin
     if (ScanCompare('*}', Text, Column)) then
     begin
       Buffer := Buffer + MidStr(Text, c, Column - c);
-      Lexical.Parser.TriggerToken(Buffer, tpComment);
+      Lexical.Parser.SetToken(Buffer, tpComment);
       Result := True;
       Buffer := '';
       Inc(Column, 2);//2 chars
@@ -717,13 +714,13 @@ end;
 procedure TsrdFeeder.DoStart;
 begin
   inherited;
-  Lexical.Parser.TriggerControl(ctlStart);
+  Lexical.Parser.SetControl(ctlStart);
 end;
 
 procedure TsrdFeeder.DoStop;
 begin
   inherited;
-  Lexical.Parser.TriggerControl(ctlStop);
+  Lexical.Parser.SetControl(ctlStop);
 end;
 
 { TsrdInstruction. }
@@ -829,6 +826,19 @@ begin
   Identifier := '';
 end;
 
+function TsrdInstruction.SetStatment: TsoStatement;
+begin
+  if Identifier <> '' then
+    RaiseError('Identifier is set');
+  Result := TsoStatement.Create;
+  with Result do
+  begin
+    //ID := Parser.Data.RegisterID(Name);
+  end;
+  InternalSetObject(Result);
+  SetFlag(flagStatement);
+end;
+
 procedure TsrdInstruction.SetOperator(AOperator: TopOperator);
 begin
   if anOperator <> nil then
@@ -910,7 +920,7 @@ end;
 
 function TsrdInterpreter.IsInitial: Boolean;
 begin
-  Result := Statement.Count = 0;
+  Result := (Statement = nil) or (Statement.Count = 0);
 end;
 
 procedure TsrdInterpreter.SwitchController(vControllerClass: TsrdControllerClass);
@@ -943,9 +953,6 @@ end;
 procedure TsrdParser.Created;
 begin
   inherited Created;
-  Controllers.Add(TsrdControllerNormal.Create(Self));
-  Controllers.Add(TsrdControllerAssign.Create(Self));
-  Controllers.Add(TsrdControllerDeclare.Create(Self));
 end;
 
 procedure TsrdParser.Push(vItem: TsrdInterpreter);
@@ -975,6 +982,9 @@ constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
 begin
   inherited Create;
   Controllers := TsrdControllers.Create;
+  Controllers.Add(TsrdControllerNormal.Create(Self));
+  Controllers.Add(TsrdControllerAssign.Create(Self));
+  Controllers.Add(TsrdControllerDeclare.Create(Self));
   FData := AData;
   if ABlock <> nil then
     Push(TsrdInterpreterInit.Create(Self, ABlock));
@@ -986,7 +996,7 @@ begin
   inherited;
 end;
 
-procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
+procedure TsrdParser.DoSetToken(AToken: String; AType: TsrdType);
 begin
   Current.AddIdentifier(AToken, AType);
   if PopItem then
@@ -996,10 +1006,9 @@ begin
   end;
 end;
 
-procedure TsrdParser.TriggerControl(AControl: TsardControl);
+procedure TsrdParser.DoSetControl(AControl: TsardControl);
 begin
   Current.Control(AControl);
-  //Current.TriggerControl(AControl);
   if PopItem then
   begin
     PopItem := False;
@@ -1007,7 +1016,7 @@ begin
   end;
 end;
 
-procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
+procedure TsrdParser.DoSetOperator(AOperator: TsardObject);
 begin
   Current.AddOperator(AOperator as TopOperator);
   if PopItem then
@@ -1029,7 +1038,7 @@ begin
   else
     RaiseError('Unkown control started with ' + Text[Column]);
 
-  Lexical.Parser.TriggerControl(aControl.Code);
+  Lexical.Parser.SetControl(aControl.Code);
   Result := True;
 end;
 
@@ -1139,7 +1148,7 @@ begin
   l := Length(Text);
   while (Column <= l) and (Lexical.IsNumber(Text[Column], False)) do
     Inc(Column);
-  Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpNumber);
+  Lexical.Parser.SetToken(MidStr(Text, c, Column - c), tpNumber);
   Result := True;
 end;
 
@@ -1160,7 +1169,7 @@ begin
   else
     RaiseError('Unkown operator started with ' + Text[Column]);
 
-  Lexical.Parser.TriggerOperator(lOperator);
+  Lexical.Parser.SetOperator(lOperator);
   Result := True;
 end;
 
@@ -1178,7 +1187,7 @@ begin
   c := Column;
   while (Column <= Length(Text)) and (Lexical.IsIdentifier(Text[Column], False)) do
     Inc(Column);
-  Lexical.Parser.TriggerToken(MidStr(Text, c, Column - c), tpIdentifier);
+  Lexical.Parser.SetToken(MidStr(Text, c, Column - c), tpIdentifier);
   Result := True;
 end;
 
@@ -1208,7 +1217,7 @@ begin
     if (Text[Column] = QuoteChar) then  //TODO Escape, not now
     begin
       Buffer := Buffer + MidStr(Text, c, Column - c);
-      Lexical.Parser.TriggerToken(Buffer, tpString);
+      Lexical.Parser.SetToken(Buffer, tpString);
       Result := True;
       Buffer := '';
       Inc(Column);

@@ -82,6 +82,11 @@ type
     ctlCloseParams, // )
     ctlOpenArray, // [
     ctlCloseArray, // ]
+{    //Triggers before triger tokens and operators
+    ctlSetOperator, // ]
+    ctlSetConst, // ]
+    ctlIdentifier, // ]}
+
     ctlNone
   );
 
@@ -217,10 +222,13 @@ type
   protected
     procedure Start; virtual;
     procedure Stop; virtual;
+    procedure DoSetControl(AControl: TsardControl); virtual; abstract;
+    procedure DoSetToken(AToken: String; AType: TsrdType); virtual; abstract;
+    procedure DoSetOperator(AOperator: TsardObject); virtual; abstract;
   public
-    procedure TriggerToken(AToken: String; AType: TsrdType); virtual; abstract;
-    procedure TriggerOperator(AOperator: TsardObject); virtual; abstract;
-    procedure TriggerControl(AControl: TsardControl); virtual; abstract;
+    procedure SetControl(AControl: TsardControl);
+    procedure SetToken(AToken: String; AType: TsrdType);
+    procedure SetOperator(AOperator: TsardObject);
   end;
 
   { TsardPrimeEngine }
@@ -283,6 +291,21 @@ end;
 
 procedure TsardParser.Stop;
 begin
+end;
+
+procedure TsardParser.SetControl(AControl: TsardControl);
+begin
+  DoSetControl(AControl);
+end;
+
+procedure TsardParser.SetToken(AToken: String; AType: TsrdType);
+begin
+  DoSetToken(AToken, AType);
+end;
+
+procedure TsardParser.SetOperator(AOperator: TsardObject);
+begin
+  DoSetOperator(AOperator);
 end;
 
 
@@ -594,7 +617,6 @@ var
   Column, OldColumn: Integer;
   OldScanner: TsardScanner;
   l: Integer;
-  Done: Boolean;
 begin
   FLine := ALine;
   Column := 1; //start of pascal string is 1

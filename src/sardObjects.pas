@@ -223,13 +223,13 @@ type
 
   TsoBlock = class abstract(TsoObject, IsrdBlock)
   protected
-    FItems: TsrdBlock;
+    FBlock: TsrdBlock;
     procedure Created; override;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
     constructor Create; override;
     destructor Destroy; override;
-    property Items: TsrdBlock read FItems;
+    property Block: TsrdBlock read FBlock;
   end;
 
   { TsoSection }
@@ -1313,18 +1313,18 @@ end;
 
 procedure TsoBlock.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  Done := Items.Execute(vStack);
+  Done := Block.Execute(vStack);
 end;
 
 constructor TsoBlock.Create;
 begin
   inherited Create;
-  FItems := TsrdBlock.Create(Self);
+  FBlock := TsrdBlock.Create(Self);
 end;
 
 destructor TsoBlock.Destroy;
 begin
-  FreeAndNil(FItems);
+  FreeAndNil(FBlock);
   inherited Destroy;
 end;
 
