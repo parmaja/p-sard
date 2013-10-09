@@ -9,7 +9,7 @@ When i finish it it will be clear than i can explain it.
 
 ###Examples###
 
-#Done:#
+#####Done:#####
 
     /*
       This examples are worked, and this comment will ignored, not compiled or parsed as we say.
@@ -52,7 +52,7 @@ When i finish it it will be clear than i can explain it.
 
     :=f + 10;
 
-#TODO:#
+#####TODO:#####
 
     x:=#0; // Boolean values, true and false words are just global variables.
     x:=#1;
