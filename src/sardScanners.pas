@@ -437,7 +437,7 @@ uses
 procedure TsrdInterpreterDeclare.Control(AControl: TsardControl);
 begin
   case AControl of
-    ctlEnd:
+    ctlEnd, ctlNext:
       begin
         Post;
         Action([paPopInterpreter, paBypass]);
@@ -538,7 +538,7 @@ begin
         begin
           Post;
           //Pop; //Finish it
-          Action([paPopInterpreter], TsrdInterpreterStatement.Create(Parser, Declare.Statement)); //return to the statment
+          Action([paPopInterpreter], TsrdInterpreterDeclare.Create(Parser, Declare.Statement)); //return to the statment
         end;
       else
         inherited;
