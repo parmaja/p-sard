@@ -2044,7 +2044,9 @@ begin
   s := StringOfChar('-', vStack.CurrentItem.Level)+'->';
   s := s + 'Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level);
   if AOperator <> nil then
-    s := s +'{'+ AOperator.ClassName+'}';
+    s := s +'{'+ AOperator.Name+'}';
+  if vStack.Current.Result.anObject <> nil then
+    s := s + ' Value: '+ vStack.Current.Result.anObject.AsString;
   WriteLn(s);
 end;
 

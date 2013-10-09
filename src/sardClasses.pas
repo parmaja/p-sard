@@ -416,13 +416,13 @@ var
 begin
   if FCurrentItem = nil then
     raise EsardException.Create('Stack is empty');
+  BeforePop;
   aObject := FCurrentItem.AnObject;
   aItem := FCurrentItem;
   FCurrentItem := aItem.Parent;
   Dec(FCount);
   aItem.Free;
   aObject.Free;
-  BeforePop;
 end;
 
 function TsardStack.GetParent: TObject;

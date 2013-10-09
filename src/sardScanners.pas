@@ -191,7 +191,7 @@ type
     constructor Create(AParser: TsrdParser);
     destructor Destroy; override;
     procedure SetFlag(AFlag: TsrdFlag);
-    //Push to the Parser
+    //Push to the Parser immediately
     procedure Push(vItem: TsrdInterpreter);
     //No pop, but when finish Parser will pop it
     procedure Action(vActions: TsrdActions = []; vNextInterpreter: TsrdInterpreter = nil); virtual;
@@ -234,6 +234,14 @@ type
     procedure Prepare; override;
   end;
 
+  { TsrdInterpreterDeclare }
+
+  TsrdInterpreterDeclare = class(TsrdInterpreterStatement)
+  protected
+  public
+    procedure Control(AControl: TsardControl); override;
+  end;
+
   { TsrdInterpreterDefine }
 
   TsrdInterpreterDefine = class (TsrdInterpreter)
@@ -260,24 +268,10 @@ type
     procedure Control(AControl: TsardControl); override;
   end;
 
-  { TstdControlDeclare }
-
-  TsrdControllerDeclare = class(TsrdControllerNormal)
-  public
-    procedure Control(AControl: TsardControl); override;
-  end;
-
   { TsrdControllerDeclareParams }
 
   TsrdControllerDefines = class(TsrdControllerNormal)
   protected
-  public
-    procedure Control(AControl: TsardControl); override;
-  end;
-
-  { TsrdControllerAssign }
-
-  TsrdControllerAssign = class(TsrdControllerNormal)
   public
     procedure Control(AControl: TsardControl); override;
   end;
@@ -293,6 +287,8 @@ type
     procedure DoSetToken(AToken: String; AType: TsrdType); override;
     procedure DoSetOperator(AOperator: TsardObject); override;
     procedure DoSetControl(AControl: TsardControl); override;
+    procedure AfterPush; override;
+    procedure BeforePop; override;
   public
     Actions: TsrdActions;
     NextInterpreter: TsrdInterpreter;
@@ -436,6 +432,21 @@ implementation
 uses
   StrUtils;
 
+{ TsrdInterpreterDeclare }
+
+procedure TsrdInterpreterDeclare.Control(AControl: TsardControl);
+begin
+  case AControl of
+    ctlEnd:
+      begin
+        Post;
+        Action([paPopInterpreter, paBypass]);
+      end;
+    else
+      inherited;
+  end;
+end;
+
 { TsrdInterpreterDefine }
 
 procedure TsrdInterpreterDefine.InternalPost;
@@ -485,7 +496,7 @@ begin
         //Need to close it and
         Post;
         //We will pass the control to the next interpreter
-        Action([paPopInterpreter, paBypass], TsrdInterpreterStatement.Create(Parser, Declare.Statement));
+        Action([paPopInterpreter, paBypass], TsrdInterpreterDeclare.Create(Parser, Declare.Statement));
       end;
       ctlDeclare:
         begin
@@ -497,7 +508,7 @@ begin
           else
           begin
             Post;
-            Action([paPopInterpreter], TsrdInterpreterStatement.Create(Parser, Declare.Statement)); //return to the statment
+            Action([paPopInterpreter], TsrdInterpreterDeclare.Create(Parser, Declare.Statement)); //return to the statment
           end;
         end;
       ctlEnd:
@@ -598,32 +609,6 @@ begin
   Result := not ((Identifier <> '') or (anObject <> nil) or (anOperator <> nil));
 end;
 
-{ TstdControlDeclare }
-
-procedure TsrdControllerDeclare.Control(AControl: TsardControl);
-begin
-  case AControl of
-    ctlOpenParams:
-      begin
-      end;
-    ctlCloseParams:
-      begin
-      end;
-    else
-      inherited
-  end;
-end;
-
-{ TstdControlAssign }
-
-procedure TsrdControllerAssign.Control(AControl: TsardControl);
-begin
-  inherited;
-{  with Parser.Current do
-    case AControl of
-    end;}
-end;
-
 { TsrdControllerNormal }
 
 procedure TsrdControllerNormal.Control(AControl: TsardControl);
@@ -670,6 +655,7 @@ begin
           RaiseError('Maybe you closed not opened Curly');
         Action([paPopInterpreter]);
       end;
+
     ctlOpenParams:
       begin
         //Params of function or object like: Sin(10)
@@ -786,8 +772,8 @@ end;
 
 procedure TsrdInterpreterStatement.Next;
 begin
-  Statement := nil;
   inherited;
+  Statement := nil;
 end;
 
 function TsrdInterpreterStatement.IsInitial: Boolean;
@@ -1057,7 +1043,6 @@ end;
 
 procedure TsrdInterpreter.InternalPost;
 begin
-
 end;
 
 function TsrdInterpreter.GetControllerClass: TsrdControllerClass;
@@ -1132,8 +1117,6 @@ begin
     RaiseError('You must set a block');
   Controllers := TsrdControllers.Create;
   Controllers.Add(TsrdControllerNormal.Create(Self));
-  Controllers.Add(TsrdControllerAssign.Create(Self));
-  Controllers.Add(TsrdControllerDeclare.Create(Self));
   Controllers.Add(TsrdControllerDefines.Create(Self));
   FData := AData;
   Push(TsrdInterpreterBlock.Create(Self, ABlock));
@@ -1159,6 +1142,18 @@ begin
   if paBypass in Actions then
     Current.Control(AControl);
   Actions := [];
+end;
+
+procedure TsrdParser.AfterPush;
+begin
+  inherited AfterPush;
+  WriteLn('Push: '+Current.ClassName);
+end;
+
+procedure TsrdParser.BeforePop;
+begin
+  WriteLn('Pop: '+Current.ClassName);
+  inherited BeforePop;
 end;
 
 procedure TsrdParser.DoSetOperator(AOperator: TsardObject);
@@ -1204,7 +1199,7 @@ begin
     Add(']', ctlCloseArray);
     Add('}', ctlCloseBlock);
     Add(';', ctlEnd);
-    Add(',', ctlEnd);
+    Add(',', ctlNext);
     Add(':', ctlDeclare);
     Add(':=', ctlAssign);
   end;
