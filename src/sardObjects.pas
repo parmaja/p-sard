@@ -62,6 +62,16 @@ type
   TrunVariables = class;
 
   TsoBlock = class;
+  TsrdDefines = class;
+
+  TsrdDefine = class(TsardObject)
+  public
+    ResultType: string;
+    DefineParams: TsrdDefines;
+  end;
+
+  TsrdDefines = class(TsardObjectList)
+  end;
 
   { TsrdStatementItem }
 

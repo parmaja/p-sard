@@ -114,11 +114,12 @@ type
 
   TsrdStatementType = (stmNormal, stmAssign, stmDeclare);
 
-  //instruction
+  TsrdParser = class;
+  TsrdInterpreter = class;
 
   { TsrdInstruction }
 
-  TsrdInstruction = object
+  TsrdInstruction = class(TsardObject)
   protected
     procedure InternalSetObject(AObject: TsoObject);
   public
@@ -132,7 +133,7 @@ type
     function CheckObject(vRaise: Boolean = False): Boolean;
     //Return true if Operator is not nil
     function CheckOperator(vRaise: Boolean = False): Boolean;
-    procedure Reset;
+
     procedure Prepare;
     procedure SetOperator(AOperator: TopOperator);
     procedure SetIdentifier(AIdentifier: string);
@@ -147,9 +148,6 @@ type
     procedure SetObject(AObject: TsoObject);
     procedure SetFlag(AFlag: TsrdFlag);
   end;
-
-  TsrdParser = class;
-  TsrdInterpreter = class;
 
   { TsrdController }
 
@@ -185,22 +183,24 @@ type
     Controller: TsrdController;
 
     Parser: TsrdParser;
-    Statement: TsrdStatement;
-    StatementType: TsrdStatementType;
+    procedure InternalPost; virtual;
   public
     constructor Create(AParser: TsrdParser);
     destructor Destroy; override;
     procedure SetFlag(AFlag: TsrdFlag);
+    //Push to the Parser
     procedure Push(vItem: TsrdInterpreter);
-    procedure Pop;
-    procedure Flush; virtual;
-    procedure PrepareStatement; virtual;
-    procedure EndStatement; virtual;
+    //No pop, but when finish Parser will pop it
+    procedure Pop; virtual;
+    procedure Reset; virtual;
+    procedure Post; virtual;
+    procedure Prepare; virtual;
+    procedure Next; virtual;
     procedure AddIdentifier(AIdentifier: String; AType: TsrdType); virtual;
     procedure AddOperator(AOperator: TopOperator); virtual;
 
     //IsInitial check if the next object will be the first one, usefule for Assign and Declare
-    function IsInitial:Boolean; virtual;
+    function IsInitial: Boolean; virtual;
 
     procedure SwitchController(vControllerClass: TsrdControllerClass);
     procedure Control(AControl: TsardControl); virtual;
@@ -209,32 +209,37 @@ type
 
   TsrdInterpreterClass = class of TsrdInterpreter;
 
-  { TsrdParseInit }
-
-  TsrdInterpreterInit = class (TsrdInterpreter)
-  protected
-    Block: TsrdBlock;
-  public
-    constructor Create(AParser: TsrdParser; ABlock: TsrdBlock);
-    procedure PrepareStatement; override;
-  end;
-
-  { TsrdParseBlock }
-
-  TsrdInterpreterBlock = class (TsrdInterpreter)
-  protected
-    Block: TsrdBlock;
-  public
-    constructor Create(AParser: TsrdParser; ABlock: TsrdBlock);
-    procedure PrepareStatement; override;
-  end;
-
-  { TsrdParseStatement }
+  { TsrdInterpreterStatement }
 
   TsrdInterpreterStatement = class (TsrdInterpreter)
+  protected
+    Statement: TsrdStatement;
+    StatementType: TsrdStatementType;
+    procedure InternalPost; override;
   public
     constructor Create(AParser: TsrdParser; AStatement: TsrdStatement);
-    procedure EndStatement; override;
+    procedure Next; override;
+    function IsInitial: Boolean; override;
+  end;
+
+  { TsrdInterpreterBlock }
+
+  TsrdInterpreterBlock = class (TsrdInterpreterStatement)
+  protected
+    Block: TsrdBlock;
+  public
+    constructor Create(AParser: TsrdParser; ABlock: TsrdBlock);
+    procedure Prepare; override;
+  end;
+
+  { TsrdInterpreterDefine }
+
+  TsrdInterpreterDefine = class (TsrdInterpreter)
+  protected
+    Define: TsrdDefine;
+  public
+    constructor Create(AParser: TsrdParser; ADefine: TsrdDefine);
+    procedure Prepare; override;
   end;
 
   { TsrdControllerNormal }
@@ -417,6 +422,19 @@ implementation
 uses
   StrUtils;
 
+{ TsrdInterpreterDefine }
+
+constructor TsrdInterpreterDefine.Create(AParser: TsrdParser; ADefine: TsrdDefine);
+begin
+  inherited Create(AParser);
+  Define := ADefine;
+end;
+
+procedure TsrdInterpreterDefine.Prepare;
+begin
+  inherited Prepare;
+end;
+
 { TsrdControllerDeclareParams }
 
 procedure TsrdControllerDeclareParams.Control(AControl: TsardControl);
@@ -460,14 +478,6 @@ begin
     RaiseError('Operator is not set!');
 end;
 
-procedure TsrdInstruction.Reset;
-begin
-  Identifier := '';
-  anOperator := nil;
-  anObject := nil;
-  Flag := flagNone;
-end;
-
 procedure TsrdInstruction.Prepare;
 begin
   if Identifier <> '' then
@@ -481,7 +491,16 @@ end;
 
 procedure TsrdControllerDeclare.Control(AControl: TsardControl);
 begin
-  inherited Control(AControl);
+  case AControl of
+    ctlOpenParams:
+      begin
+      end;
+    ctlCloseParams:
+      begin
+      end;
+    else
+      inherited
+  end;
 end;
 
 { TstdControlAssign }
@@ -507,7 +526,7 @@ begin
         if IsInitial then
         begin
           Instruction.SetAssign;
-          Flush;
+          Post;
         end
         else
           RaiseError('You can not use assignment here!');
@@ -517,8 +536,9 @@ begin
         if IsInitial then
         begin
           stm := Instruction.SetDeclare.Statement;
-          Flush;
-          Statement := stm;//<-- TODO: wrong wrong
+          Post;
+          //Push(TsrdInterpreterDefine.);
+          //Statement := stm;//<-- TODO: wrong wrong
           SwitchController(TsrdControllerDeclare);
         end
         else
@@ -530,12 +550,12 @@ begin
         with TsoSection.Create do
          begin
            Instruction.SetObject(This);
-           Push(TsrdInterpreterInit.Create(Parser, Block));
+           Push(TsrdInterpreterBlock.Create(Parser, Block));
          end;
       end;
     ctlCloseBlock:
       begin
-        Flush;
+        Post;
         if Parser.Count = 1 then
           RaiseError('Maybe you closed not opened Curly');
         Pop;
@@ -556,7 +576,7 @@ begin
       end;
     ctlCloseParams:
       begin
-        Flush;
+        Post;
         if Parser.Count = 1 then
           RaiseError('Maybe you closed not opened Bracket');
         Pop;
@@ -566,17 +586,17 @@ begin
       end;
     ctlStop:
       begin
-        Flush;
+        Post;
       end;
     ctlEnd:
       begin
-        Flush;
-        EndStatement;
+        Post;
+        Next;
       end;
     ctlNext:
       begin
-        Flush;
-        EndStatement;
+        Post;
+        Next;
       end;
     else
       RaiseError('Not implemented yet, sorry :(');
@@ -626,27 +646,9 @@ begin
   QuoteChar := '''';
 end;
 
-{ TsrdInterpreterInit }
-
-constructor TsrdInterpreterInit.Create(AParser: TsrdParser; ABlock: TsrdBlock);
-begin
-  inherited Create(AParser);
-  Block := ABlock;
-end;
-
-procedure TsrdInterpreterInit.PrepareStatement;
-begin
-  if Statement = nil then
-  begin
-    if Block = nil then
-      RaiseError('Maybe you need to set a block, or it single statment block');
-    Statement := Block.Add;
-  end;
-end;
-
 { TsrdInterpreterBlock }
 
-procedure TsrdInterpreterBlock.PrepareStatement;
+procedure TsrdInterpreterBlock.Prepare;
 begin
   if Statement = nil then
   begin
@@ -658,11 +660,17 @@ end;
 
 constructor TsrdInterpreterBlock.Create(AParser: TsrdParser; ABlock: TsrdBlock);
 begin
-  inherited Create(AParser);
+  inherited Create(AParser, nil);
   Block := ABlock;
 end;
 
 { TsrdInterpreterStatement }
+
+procedure TsrdInterpreterStatement.InternalPost;
+begin
+  inherited;
+  Statement.Add(Instruction.anOperator, Instruction.anObject);
+end;
 
 constructor TsrdInterpreterStatement.Create(AParser: TsrdParser; AStatement: TsrdStatement);
 begin
@@ -670,11 +678,15 @@ begin
   Statement := AStatement;
 end;
 
-procedure TsrdInterpreterStatement.EndStatement;
+procedure TsrdInterpreterStatement.Next;
 begin
   Statement := nil;
-  FFlags := [];
-  //FFlag := flagNone;
+  inherited;
+end;
+
+function TsrdInterpreterStatement.IsInitial: Boolean;
+begin
+  Result := (Statement = nil) or (Statement.Count = 0);
 end;
 
 { TsrdComment_Scanner }
@@ -865,7 +877,7 @@ begin
   FFlags := FFlags + [AFlag];
 end;
 
-procedure TsrdInterpreter.PrepareStatement;
+procedure TsrdInterpreter.Prepare;
 begin
 end;
 
@@ -879,26 +891,30 @@ begin
   Parser.PopItem := True;
 end;
 
-procedure TsrdInterpreter.Flush;
+procedure TsrdInterpreter.Reset;
+begin
+  FreeAndNil(Instruction);
+  Instruction := TsrdInstruction.Create;
+end;
+
+procedure TsrdInterpreter.Post;
 begin
   Instruction.Prepare;
   if (Instruction.anObject <> nil) or (Instruction.anOperator <> nil) then
   begin
     if Instruction.Identifier <> '' then
-      RaiseError('Identifier is already set, can not flush');
+      RaiseError('Identifier is already set, can not Post');
     if Instruction.anObject = nil then
       RaiseError('Object is nil!');
-    PrepareStatement;
-    Statement.Add(Instruction.anOperator, Instruction.anObject);
-    Instruction.Reset;
+    Prepare;
+    InternalPost;
+    Reset;
   end;
 end;
 
-procedure TsrdInterpreter.EndStatement;
+procedure TsrdInterpreter.Next;
 begin
-  Statement := nil;
   FFlags := [];
-  //FFlag := flagNone;
 end;
 
 procedure TsrdInterpreter.AddIdentifier(AIdentifier: String; AType: TsrdType);
@@ -914,13 +930,13 @@ end;
 
 procedure TsrdInterpreter.AddOperator(AOperator: TopOperator);
 begin
-  Flush;
+  Post;
   Instruction.SetOperator(AOperator);
 end;
 
 function TsrdInterpreter.IsInitial: Boolean;
 begin
-  Result := (Statement = nil) or (Statement.Count = 0);
+  Result := False;
 end;
 
 procedure TsrdInterpreter.SwitchController(vControllerClass: TsrdControllerClass);
@@ -933,11 +949,17 @@ begin
   Controller.Control(AControl);
 end;
 
+procedure TsrdInterpreter.InternalPost;
+begin
+
+end;
+
 constructor TsrdInterpreter.Create(AParser: TsrdParser);
 begin
   inherited Create;
   Parser := AParser;
   SwitchController(TsrdControllerNormal);
+  Reset;
 end;
 
 destructor TsrdInterpreter.Destroy;
@@ -981,13 +1003,14 @@ end;
 constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
 begin
   inherited Create;
+  if ABlock = nil then
+    RaiseError('You must set a block');
   Controllers := TsrdControllers.Create;
   Controllers.Add(TsrdControllerNormal.Create(Self));
   Controllers.Add(TsrdControllerAssign.Create(Self));
   Controllers.Add(TsrdControllerDeclare.Create(Self));
   FData := AData;
-  if ABlock <> nil then
-    Push(TsrdInterpreterInit.Create(Self, ABlock));
+  Push(TsrdInterpreterBlock.Create(Self, ABlock));
 end;
 
 destructor TsrdParser.Destroy;
