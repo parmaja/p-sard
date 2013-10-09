@@ -181,6 +181,7 @@ type
 
     Parser: TsrdParser;
     procedure InternalPost; virtual;
+    function GetControllerClass: TsrdControllerClass; virtual;
   public
     constructor Create(AParser: TsrdParser);
     destructor Destroy; override;
@@ -232,11 +233,17 @@ type
   { TsrdInterpreterDefine }
 
   TsrdInterpreterDefine = class (TsrdInterpreter)
+  type
+    TState = (stName, stType);
   protected
-    Define: TsrdDefine;
+    State: TState;
+    Defines: TsrdDefines;
+    procedure InternalPost; override;
+    function GetControllerClass: TsrdControllerClass; override;
   public
-    constructor Create(AParser: TsrdParser; ADefine: TsrdDefine);
+    constructor Create(AParser: TsrdParser; ADefines: TsrdDefines);
     procedure Prepare; override;
+    procedure Next; override;
   end;
 
   { TsrdControllerNormal }
@@ -255,7 +262,8 @@ type
 
   { TsrdControllerDeclareParams }
 
-  TsrdControllerDeclareParams = class(TsrdControllerNormal)
+  TsrdControllerDefines = class(TsrdControllerNormal)
+  protected
   public
     procedure Control(AControl: TsardControl); override;
   end;
@@ -421,10 +429,20 @@ uses
 
 { TsrdInterpreterDefine }
 
-constructor TsrdInterpreterDefine.Create(AParser: TsrdParser; ADefine: TsrdDefine);
+procedure TsrdInterpreterDefine.InternalPost;
+begin
+  inherited InternalPost;
+end;
+
+function TsrdInterpreterDefine.GetControllerClass: TsrdControllerClass;
+begin
+  Result := TsrdControllerDefines;
+end;
+
+constructor TsrdInterpreterDefine.Create(AParser: TsrdParser; ADefines: TsrdDefines);
 begin
   inherited Create(AParser);
-  Define := ADefine;
+  Defines := ADefines;
 end;
 
 procedure TsrdInterpreterDefine.Prepare;
@@ -432,9 +450,14 @@ begin
   inherited Prepare;
 end;
 
-{ TsrdControllerDeclareParams }
+procedure TsrdInterpreterDefine.Next;
+begin
+  inherited Next;
+end;
 
-procedure TsrdControllerDeclareParams.Control(AControl: TsardControl);
+{ TsrdControllerDefines }
+
+procedure TsrdControllerDefines.Control(AControl: TsardControl);
 begin
   inherited Control(AControl);
 end;
@@ -514,7 +537,7 @@ end;
 
 procedure TsrdControllerNormal.Control(AControl: TsardControl);
 var
-  stm: TsrdStatement;
+  aDeclare: TsoDeclare;
 begin
   with Parser.Current do
   case AControl of
@@ -532,10 +555,12 @@ begin
       begin
         if IsInitial then
         begin
-          stm := Instruction.SetDeclare.Statement;
+          aDeclare := Instruction.SetDeclare;
           Post;
-          //Push(TsrdInterpreterDefine.);
-          //Statement := stm;//<-- TODO: wrong wrong
+          //We need it after the second push finished, pop will return to it/
+          Push(TsrdInterpreterStatement.Create(Parser, aDeclare.Statement));
+          //Now we push a define interpreter, finished with : or { or ;
+          Push(TsrdInterpreterDefine.Create(Parser, aDeclare.Defines));
           SwitchController(TsrdControllerDeclare);
         end
         else
@@ -776,8 +801,8 @@ end;
 
 function TsrdInstruction.SetDeclare: TsoDeclare;
 begin
-  if Identifier <> '' then
-    RaiseError('Identifier is already set');
+  if Identifier = '' then
+    RaiseError('Identifier is not set');
   Result := TsoDeclare.Create;
   with Result do
   begin
@@ -805,7 +830,7 @@ end;
 
 function TsrdInstruction.SetInstance(AIdentifier: string):TsoInstance;
 begin
-  if AIdentifier <> '' then
+  if AIdentifier = '' then
     RaiseError('Identifier not set');
   Result := TsoInstance.Create;
   with Result do
@@ -828,7 +853,7 @@ end;
 function TsrdInstruction.SetStatment: TsoStatement;
 begin
   if Identifier <> '' then
-    RaiseError('Identifier is set');
+    RaiseError('Identifier is already set');
   Result := TsoStatement.Create;
   with Result do
   begin
@@ -928,7 +953,11 @@ end;
 
 procedure TsrdInterpreter.SwitchController(vControllerClass: TsrdControllerClass);
 begin
+  if vControllerClass = nil then
+    RaiseError('ControllerClass must have a value!');
   Controller := Parser.Controllers.FindClass(vControllerClass);
+  if Controller = nil then
+    RaiseError('Can not find this class!');
 end;
 
 procedure TsrdInterpreter.Control(AControl: TsardControl);
@@ -941,11 +970,16 @@ begin
 
 end;
 
+function TsrdInterpreter.GetControllerClass: TsrdControllerClass;
+begin
+  Result := TsrdControllerNormal;
+end;
+
 constructor TsrdInterpreter.Create(AParser: TsrdParser);
 begin
   inherited Create;
   Parser := AParser;
-  SwitchController(TsrdControllerNormal);
+  SwitchController(GetControllerClass);
   Reset;
 end;
 
@@ -996,6 +1030,7 @@ begin
   Controllers.Add(TsrdControllerNormal.Create(Self));
   Controllers.Add(TsrdControllerAssign.Create(Self));
   Controllers.Add(TsrdControllerDeclare.Create(Self));
+  Controllers.Add(TsrdControllerDefines.Create(Self));
   FData := AData;
   Push(TsrdInterpreterBlock.Create(Self, ABlock));
 end;
