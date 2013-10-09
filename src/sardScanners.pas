@@ -114,6 +114,11 @@ type
 
   TsrdStatementType = (stmNormal, stmAssign, stmDeclare);
 
+  TsrdActions = set of (
+      paPopInterpreter, //Pop the current interpreter
+      paBypass  //resend the control char to the next interpreter
+    );
+
   TsrdParser = class;
   TsrdInterpreter = class;
 
@@ -189,7 +194,7 @@ type
     //Push to the Parser
     procedure Push(vItem: TsrdInterpreter);
     //No pop, but when finish Parser will pop it
-    procedure Pop(vNextInterpreter: TsrdInterpreter = nil); virtual;
+    procedure Action(vActions: TsrdActions = []; vNextInterpreter: TsrdInterpreter = nil); virtual;
     procedure Reset; virtual;
     procedure Prepare; virtual;
     procedure Post; virtual;
@@ -284,14 +289,14 @@ type
     FData: TrunData;
     function GetCurrent: TsrdInterpreter;
     procedure Created; override;
-    procedure CheckPop;
+    procedure ActionStack;
     procedure DoSetToken(AToken: String; AType: TsrdType); override;
     procedure DoSetOperator(AOperator: TsardObject); override;
     procedure DoSetControl(AControl: TsardControl); override;
   public
-    Controllers: TsrdControllers;
-    PopInterpreter: Boolean;
+    Actions: TsrdActions;
     NextInterpreter: TsrdInterpreter;
+    Controllers: TsrdControllers;
     constructor Create(AData: TrunData; ABlock: TsrdBlock);
     destructor Destroy; override;
 
@@ -475,6 +480,13 @@ begin
 }
   with Parser.Current do
     case AControl of
+      ctlOpenBlock:
+      begin
+        //Need to close it and
+        Post;
+        //We will pass the control to the next interpreter
+        Action([paPopInterpreter, paBypass], TsrdInterpreterStatement.Create(Parser, Declare.Statement));
+      end;
       ctlDeclare:
         begin
           if Param then
@@ -485,7 +497,7 @@ begin
           else
           begin
             Post;
-            Pop(TsrdInterpreterStatement.Create(Parser, Declare.Statement)); //return to the statment
+            Action([paPopInterpreter], TsrdInterpreterStatement.Create(Parser, Declare.Statement)); //return to the statment
           end;
         end;
       ctlEnd:
@@ -498,7 +510,7 @@ begin
         else
         begin
           Post;
-          Pop; //Finish it, mean there is no body/statment for the decalre
+          Action([paPopInterpreter]); //Finish it, mean there is no body/statment for the decalre
         end;
       end;
       ctlNext:
@@ -515,7 +527,7 @@ begin
         begin
           Post;
           //Pop; //Finish it
-          Pop(TsrdInterpreterStatement.Create(Parser, Declare.Statement)); //return to the statment
+          Action([paPopInterpreter], TsrdInterpreterStatement.Create(Parser, Declare.Statement)); //return to the statment
         end;
       else
         inherited;
@@ -636,7 +648,7 @@ begin
         begin
           aDeclare := Instruction.SetDeclare;
           Post;
-          //Now we push a define interpreter, finished with : or { or ;
+          //Now we push a define interpreter, finished with : or or ; or { <- this need thinking alot of it
           Push(TsrdInterpreterDefine.Create(Parser, aDeclare));
         end
         else
@@ -656,7 +668,7 @@ begin
         Post;
         if Parser.Count = 1 then
           RaiseError('Maybe you closed not opened Curly');
-        Pop;
+        Action([paPopInterpreter]);
       end;
     ctlOpenParams:
       begin
@@ -677,7 +689,7 @@ begin
         Post;
         if Parser.Count = 1 then
           RaiseError('Maybe you closed not opened Bracket');
-        Pop;
+        Action([paPopInterpreter]);
       end;
     ctlStart:
       begin
@@ -980,9 +992,9 @@ begin
   Parser.Push(vItem);
 end;
 
-procedure TsrdInterpreter.Pop(vNextInterpreter: TsrdInterpreter);
+procedure TsrdInterpreter.Action(vActions: TsrdActions; vNextInterpreter: TsrdInterpreter);
 begin
-  Parser.PopInterpreter := True;
+  Parser.Actions := vActions;
   Parser.NextInterpreter := vNextInterpreter;
 end;
 
@@ -1076,14 +1088,17 @@ begin
   inherited Created;
 end;
 
-procedure TsrdParser.CheckPop;
+procedure TsrdParser.ActionStack;
 begin
-  if PopInterpreter then
+  if paPopInterpreter in Actions then
   begin
-    PopInterpreter := False;
+    Actions := Actions - [paPopInterpreter];
     Pop;
-    if NextInterpreter <> nil then
-      Push(NextInterpreter);
+  end;
+  if NextInterpreter <> nil then
+  begin
+    Push(NextInterpreter);
+    NextInterpreter := nil;
   end;
 end;
 
@@ -1133,19 +1148,26 @@ end;
 procedure TsrdParser.DoSetToken(AToken: String; AType: TsrdType);
 begin
   Current.AddIdentifier(AToken, AType);
-  CheckPop;
+  ActionStack;
+  Actions := [];
 end;
 
 procedure TsrdParser.DoSetControl(AControl: TsardControl);
 begin
   Current.Control(AControl);
-  CheckPop;
+  ActionStack;
+  if paBypass in Actions then
+    Current.Control(AControl);
+  Actions := [];
 end;
 
 procedure TsrdParser.DoSetOperator(AOperator: TsardObject);
 begin
   Current.AddOperator(AOperator as TopOperator);
-  CheckPop;
+  ActionStack;
+{  if paBypass in Actions then
+    Current.Control(AControl);}
+  Actions := [];
 end;
 
 { TsrdControlScanner }

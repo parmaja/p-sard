@@ -63,7 +63,7 @@ procedure TForm1.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState)
 begin
   if Key = VK_F9 then
     Run
-  else if Key = VK_CONTROL then
+  else if ssCtrl in Shift then
     begin
       if Key = VK_S then
         Save

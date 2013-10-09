@@ -3,7 +3,7 @@ object Form1: TForm1
   Height = 309
   Top = 213
   Width = 678
-  Caption = 'Form1'
+  Caption = 'SARD Script tester'
   ClientHeight = 309
   ClientWidth = 678
   KeyPreview = True
