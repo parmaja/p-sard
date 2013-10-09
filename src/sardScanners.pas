@@ -163,14 +163,11 @@ type
 
   { TsrdControllers }
 
-  TsrdControllers = class(TsardObjectList)
+  TsrdControllers = class(specialize GsardObjects<TsrdController>)
   private
-    function GetItem(Index: Integer): TsrdController;
   protected
   public
-    function Find(vControllerClass: TsrdControllerClass): TsrdController;
-    procedure Add(AController: TsrdController);
-    property Items[Index: Integer]: TsrdController read GetItem; default;
+    function FindClass(vControllerClass: TsrdControllerClass): TsrdController;
   end;
 
   { TsrdInterpreter }
@@ -605,12 +602,7 @@ end;
 
 { TsrdControllers }
 
-function TsrdControllers.GetItem(Index: Integer): TsrdController;
-begin
-  Result := inherited Items[Index] as TsrdController;
-end;
-
-function TsrdControllers.Find(vControllerClass: TsrdControllerClass): TsrdController;
+function TsrdControllers.FindClass(vControllerClass: TsrdControllerClass): TsrdController;
 var
   i: Integer;
 begin
@@ -623,11 +615,6 @@ begin
       break;
     end;
   end;
-end;
-
-procedure TsrdControllers.Add(AController: TsrdController);
-begin
-  inherited Add(AController);
 end;
 
 { TsrdController }
@@ -941,7 +928,7 @@ end;
 
 procedure TsrdInterpreter.SwitchController(vControllerClass: TsrdControllerClass);
 begin
-  Controller := Parser.Controllers.Find(vControllerClass);
+  Controller := Parser.Controllers.FindClass(vControllerClass);
 end;
 
 procedure TsrdInterpreter.Control(AControl: TsardControl);

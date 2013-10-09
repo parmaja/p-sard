@@ -39,6 +39,7 @@ uses
 
 const
   sSardVersion = '0.1';
+  iSardVersion = 010;
 
 type
 
@@ -70,7 +71,7 @@ type
     DefineParams: TsrdDefines;
   end;
 
-  TsrdDefines = class(TsardObjectList)
+  TsrdDefines = class(specialize GsardObjects<TsrdDefine>)
   end;
 
   { TsrdStatementItem }
@@ -156,14 +157,12 @@ type
 
   { TclsClasses }
 
-  TclsClasses = class(TsardObjectList)
+  TclsClasses = class(specialize GsardNamedObjects<TsoClass>)
   private
     function GetItem(Index: Integer): TsoClass;
   public
-    function Find(vName: string): TsoClass;
     function Add(vName: string; vStatement: TsrdStatement): TsoClass; overload;
-    function Add(vClass: TsoClass): Integer; overload;
-    property Items[Index: Integer]: TsoClass read GetItem; default;
+    function Add(vClass: TsoClass): Integer;
   end;
 
   { TsoObject }
@@ -212,11 +211,9 @@ type
 
   { TsoObjects }
 
-  TsrdObjects = class(TsardObjectList)
+  TsrdObjects = class(specialize GsardObjects<TsoObject>)
   private
-    function GetItem(Index: Integer): TsoObject;
   public
-    property Items[Index: Integer]: TsoObject read GetItem; default;
   end;
 
   {-------- Objects --------}
@@ -367,11 +364,7 @@ type
 
   { TprmParams }
 
-  TprmParams = class(TsardObjectList)
-  private
-    function GetItem(Index: Integer): TprmParam;
-  public
-    property Items[Index: Integer]: TprmParam read GetItem; default;
+  TprmParams = class(specialize GsardObjects<TprmParam>)
   end;
 
   { TsoDeclare }
@@ -522,19 +515,14 @@ type
 
   { TctlControls }
 
-  TctlControls = class(TsardObjectList)
+  TctlControls = class(specialize GsardNamedObjects<TctlControl>)
   private
-    function GetItem(Index: Integer): TctlControl;
   protected
-    function Check(AControl: TctlControl): Boolean; virtual;
   public
-    function Find(const vName: string): TctlControl;
-    function Add(AControl: TctlControl): Boolean;
-    function Add(AControlClass: TctlControlClass): Boolean;
-    function Add(AName: string; ACode: TsardControl): TctlControl;
+    function Add(AControlClass: TctlControlClass): Integer; overload;
+    function Add(AName: string; ACode: TsardControl): TctlControl; overload;
     function Scan(const vText: string; vIndex: Integer): TctlControl;
     function IsOpenBy(const C: Char): Boolean;
-    property Items[Index: Integer]: TctlControl read GetItem; default;
   end;
 
 {-------- Operators --------}
@@ -557,19 +545,14 @@ type
 
   { TopOperators }
 
-  TopOperators = class(TsardObjectList)
+  TopOperators = class(specialize GsardNamedObjects<TopOperator>)
   private
-    function GetItem(Index: Integer): TopOperator;
   protected
-    function Check(AOperator: TopOperator): Boolean; virtual;
   public
-    function Find(const vName: string): TopOperator;
     function FindByTitle(const vTitle: string): TopOperator;
-    function Add(AOperator: TopOperator): Boolean;
-    function Add(AOperatorClass: TopOperatorClass): Boolean;
+    function Add(AOperatorClass: TopOperatorClass): Integer; overload;
     function IsOpenBy(const C: Char): Boolean;
     function Scan(const vText: string; vIndex: Integer): TopOperator;
-    property Items[Index: Integer]: TopOperator read GetItem; default;
   end;
 
   { TopPlus }
@@ -682,12 +665,9 @@ type
 
   { TrunVariables }
 
-  TrunVariables = class(TsardObjectList)
+  TrunVariables = class(specialize GsardNamedObjects<TrunVariable>)
   private
-    function GetItem(Index: Integer): TrunVariable;
   public
-    property Items[Index: Integer]: TrunVariable read GetItem; default;
-    function Find(vName: string): TrunVariable;
     function Register(vName: string): TrunVariable;
     function SetValue(vName: string; vValue: TsoObject): TrunVariable;
   end;
@@ -868,21 +848,6 @@ begin
   Result := inherited GetItem(Index) as TsoClass;
 end;
 
-function TclsClasses.Find(vName: string): TsoClass;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if SameText(vName, Items[i].Name) then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
 function TclsClasses.Add(vName: string; vStatement: TsrdStatement): TsoClass;
 begin
   Result := TsoClass.Create;
@@ -895,13 +860,6 @@ end;
 function TclsClasses.Add(vClass: TsoClass): Integer;
 begin
   Result := inherited Add(vClass);
-end;
-
-{ TprmParams }
-
-function TprmParams.GetItem(Index: Integer): TprmParam;
-begin
-  Result := inherited Items[Index] as TprmParam;
 end;
 
 { TsoTime_Const }
@@ -1000,39 +958,7 @@ end;
 
 { TctlControls }
 
-function TctlControls.GetItem(Index: Integer): TctlControl;
-begin
-  Result := inherited Items[Index] as TctlControl;
-end;
-
-function TctlControls.Check(AControl: TctlControl): Boolean;
-begin
-  Result := True;
-end;
-
-function TctlControls.Find(const vName: string): TctlControl;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if vName = Items[i].Name then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
-function TctlControls.Add(AControl: TctlControl): Boolean;
-begin
-  Result := Check(AControl);
-  if Result then
-    Inherited Add(AControl);
-end;
-
-function TctlControls.Add(AControlClass: TctlControlClass): Boolean;
+function TctlControls.Add(AControlClass: TctlControlClass): Integer;
 begin
   Result := Add(AControlClass.Create);
 end;
@@ -1340,26 +1266,6 @@ end;
 
 { TsardVariables }
 
-function TrunVariables.GetItem(Index: Integer): TrunVariable;
-begin
-  Result := inherited Items[Index] as TrunVariable;
-end;
-
-function TrunVariables.Find(vName: string): TrunVariable;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if SameText(vName, Items[i].Name) then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
 function TrunVariables.Register(vName: string): TrunVariable;
 begin
   Result := Find(vName);
@@ -1562,21 +1468,6 @@ begin
   inherited Create;
 end;
 
-function TopOperators.Find(const vName: string): TopOperator;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if vName = Items[i].Name then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
 function TopOperators.FindByTitle(const vTitle: string): TopOperator;
 var
   i: Integer;
@@ -1592,14 +1483,7 @@ begin
   end;
 end;
 
-function TopOperators.Add(AOperator: TopOperator): Boolean;
-begin
-  Result := Check(AOperator);
-  if Result then
-    inherited Add(AOperator);
-end;
-
-function TopOperators.Add(AOperatorClass: TopOperatorClass): Boolean;
+function TopOperators.Add(AOperatorClass: TopOperatorClass): Integer;
 begin
   Result := Add(AOperatorClass.Create);
 end;
@@ -1648,18 +1532,6 @@ begin
   Title := 'Plus';
   Level := 50;
   Description := 'Add object to another object';
-end;
-
-{ TopOperators }
-
-function TopOperators.GetItem(Index: Integer): TopOperator;
-begin
-  Result := inherited Items[Index] as TopOperator;
-end;
-
-function TopOperators.Check(AOperator: TopOperator): Boolean;
-begin
-  Result := True;
 end;
 
 { TsrdEngine }
@@ -2085,13 +1957,6 @@ begin
   FreeAndNil(LogProc);
   FreeAndNil(VersionProc);
   inherited Destroy;
-end;
-
-{ TsrdObjects }
-
-function TsrdObjects.GetItem(Index: Integer): TsoObject;
-begin
-  Result := inherited Items[Index] as TsoObject;
 end;
 
 { TsoObject }

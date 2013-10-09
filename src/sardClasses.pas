@@ -69,6 +69,28 @@ type
     procedure AfterConstruction; override;
   end;
 
+  { GsardObjects }
+
+  generic GsardObjects<_Object_> = class(TsardObjectList)
+  protected
+    function GetItem(Index: Integer): _Object_;
+  public
+    function Add(AItem: _Object_): Integer;
+    property Items[Index: Integer]: _Object_ read GetItem; default;
+  end;
+
+  { GsardNamedObjects }
+
+  generic GsardNamedObjects<_Object_> = class(TsardObjectList)
+  protected
+    function GetItem(Index: Integer): _Object_;
+  public
+    function Add(AItem: _Object_): Integer;
+    function Find(const vName: string): _Object_;
+    property Items[Index: Integer]: _Object_ read GetItem; default;
+  end;
+
+
   TsardControl = (
     ctlStart, //Start parsing
     ctlStop, //Start parsing
@@ -143,7 +165,7 @@ type
     procedure SwitchScanner(NextScanner: TsardScanner);
     //This find the class and switch to it
     procedure SelectScanner(ScannerClass: TsardScannerClass);
-    function Find(const ScannerClass: TsardScannerClass): TsardScanner;
+    function FindClass(const ScannerClass: TsardScannerClass): TsardScanner;
     procedure ScanLine(const Text: string; const ALine: Integer);
     function AddScanner(ScannerClass: TsardScannerClass): TsardScanner;
     property Items[Index: Integer]: TsardScanner read GetItem; default;
@@ -283,6 +305,45 @@ begin
   end;
 end;
 
+{ GsardNamedObjects }
+
+function GsardNamedObjects.GetItem(Index: Integer): _Object_;
+begin
+  Result := _Object_(inherited Items[Index]);
+end;
+
+function GsardNamedObjects.Add(AItem: _Object_): Integer;
+begin
+  Result := inherited Add(AItem);
+end;
+
+function GsardNamedObjects.Find(const vName: string): _Object_;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if SameText(vName, Items[i].Name) then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
+{ GsardObjects }
+
+function GsardObjects.GetItem(Index: Integer): _Object_;
+begin
+  Result := _Object_(inherited Items[Index]);
+end;
+
+function GsardObjects.Add(AItem: _Object_): Integer;
+begin
+  Result := inherited Add(AItem);
+end;
+
 { TsardParser }
 
 procedure TsardParser.Start;
@@ -307,7 +368,6 @@ procedure TsardParser.SetOperator(AOperator: TsardObject);
 begin
   DoSetOperator(AOperator);
 end;
-
 
 { TsardObjectList }
 
@@ -511,7 +571,7 @@ begin
   SwitchScanner(Result);
 end;
 
-function TsardLexical.Find(const ScannerClass: TsardScannerClass): TsardScanner;
+function TsardLexical.FindClass(const ScannerClass: TsardScannerClass): TsardScanner;
 var
   i: Integer;
 begin
@@ -581,7 +641,7 @@ procedure TsardLexical.SelectScanner(ScannerClass: TsardScannerClass);
 var
   aScanner: TsardScanner;
 begin
-  aScanner := Find(ScannerClass);
+  aScanner := FindClass(ScannerClass);
   if aScanner = nil then
     RaiseError('Scanner not found');
   SwitchScanner(aScanner);
