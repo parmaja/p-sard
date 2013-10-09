@@ -102,27 +102,17 @@ type
 
   TsrdStatementType = (stmNormal, stmAssign, stmDeclare);
 
-  TsrdParser = class;
-  TsrdInterpreter = class;
+  //instruction
 
-  { TsrdInterpreter }
+  { TsrdInstruction }
 
-  TsrdInterpreter = class(TsardObject)
-  private
-    FFlags: TsrdFlags;
-    FFlag: TsrdFlag;
-  protected
+  TsrdInstruction = object
+    Flag: TsrdFlag;
     Identifier: string;
-    TokenOperator: TopOperator;
-    TokenObject: TsoObject;
-
-    Parser: TsrdParser;
-    Statement: TsrdStatement;
-    StatementType: TsrdStatementType;
-  public
-    constructor Create(AParser: TsrdParser);
-    destructor Destroy; override;
-
+    anOperator: TopOperator;
+    anObject: TsoObject;
+    procedure Reset;
+    procedure Prepare;
     procedure SetOperator(AOperator: TopOperator);
     procedure SetIdentifier(AIdentifier: string);
     function SetNumber(AIdentifier: string): TsoNumber;
@@ -134,18 +124,35 @@ type
     function SetAssign: TsoAssign;
     procedure SetObject(AObject: TsoObject);
     procedure SetFlag(AFlag: TsrdFlag);
+  end;
 
+  TsrdParser = class;
+  TsrdInterpreter = class;
+
+  { TsrdInterpreter }
+
+  TsrdInterpreter = class(TsardObject)
+  private
+    FFlags: TsrdFlags;
+  protected
+    Instruction: TsrdInstruction;
+
+    Parser: TsrdParser;
+    Statement: TsrdStatement;
+    StatementType: TsrdStatementType;
+  public
+    constructor Create(AParser: TsrdParser);
+    destructor Destroy; override;
+    procedure SetFlag(AFlag: TsrdFlag);
     procedure Push(vItem: TsrdInterpreter);
     procedure Pop;
     procedure Flush; virtual;
     procedure PrepareStatement; virtual;
     procedure EndStatement; virtual;
-
-    procedure TriggerToken(AToken: String; AType: TsrdType); virtual;
-    procedure TriggerOperator(AOperator: TopOperator); virtual;
+    procedure AddIdentifier(AIdentifier: String; AType: TsrdType); virtual;
+    procedure AddOperator(AOperator: TopOperator); virtual;
 
     property Flags: TsrdFlags read FFlags;
-    property Flag: TsrdFlag read FFlag;
   end;
 
   TsrdParseClass = class of TsrdInterpreter;
@@ -248,7 +255,6 @@ type
   end;
 
   {------  Scanners Objects ------}
-
 
   { TsrdFeeder }
 
@@ -374,6 +380,25 @@ implementation
 uses
   StrUtils;
 
+{ TsrdInstruction }
+
+procedure TsrdInstruction.Reset;
+begin
+  Identifier := '';
+  anOperator := nil;
+  anObject := nil;
+  Flag := flagNone;
+end;
+
+procedure TsrdInstruction.Prepare;
+begin
+  if Identifier <> '' then
+  begin
+    SetInstance(Identifier);
+    Identifier := '';
+  end;
+end;
+
 { TstdControlDeclare }
 
 procedure TsrdControlerDeclare.Control(AControl: TsardControl);
@@ -394,6 +419,8 @@ end;
 { TsrdControlerNormal }
 
 procedure TsrdControlerNormal.Control(AControl: TsardControl);
+var
+  stm: TsrdStatement;
 begin
   with Parser.Current do
   case AControl of
@@ -401,7 +428,7 @@ begin
       begin
         if (Flags = []) or (Flags = [flagIdentifier]) then
         begin
-          SetAssign;
+          Instruction.SetAssign;
           Flush;
         end
         else
@@ -411,7 +438,9 @@ begin
       begin
         if (Flags = [flagIdentifier]) then
         begin
-          SetDeclare;
+          stm := Instruction.SetDeclare.Statement;
+          Flush;
+          Statement := stm;//<-- TODO: wrong wrong
         end
         else
           RaiseError('You can not use assignment here!');
@@ -421,7 +450,7 @@ begin
       begin
         with TsoSection.Create do
          begin
-           SetObject(This);
+           Instruction.SetObject(This);
            Push(TsrdInterpreterInit.Create(Parser, Items));
          end;
       end;
@@ -442,12 +471,12 @@ begin
         else
         if Flags = [flagIdentifier] then
         begin
-          Push(TsrdInterpreterBlock.Create(Parser, SetInstance.Items));
+          Push(TsrdInterpreterBlock.Create(Parser, Instruction.SetInstance.Items));
         end
         else
         with TsoStatement.Create do
         begin
-          SetObject(This);
+          Instruction.SetObject(This);
           Push(TsrdInterpreterStatement.Create(Parser, Statement));
         end;
       end;
@@ -556,7 +585,7 @@ procedure TsrdInterpreterStatement.EndStatement;
 begin
   Statement := nil;
   FFlags := [];
-  FFlag := flagNone;
+  //FFlag := flagNone;
 end;
 
 { TsrdComment_Scanner }
@@ -605,9 +634,9 @@ begin
   Lexical.Parser.TriggerControl(ctlStop);
 end;
 
-{ TsrdInterpreter }
+{ TsrdInstruction. }
 
-procedure TsrdInterpreter.SetIdentifier(AIdentifier: string);
+procedure TsrdInstruction.SetIdentifier(AIdentifier: string);
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
@@ -615,7 +644,7 @@ begin
   SetFlag(flagIdentifier);
 end;
 
-function TsrdInterpreter.SetNumber(AIdentifier: string): TsoNumber;
+function TsrdInstruction.SetNumber(AIdentifier: string): TsoNumber;
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
@@ -623,11 +652,11 @@ begin
     Result := TsoFloat.Create(StrToFloat(AIdentifier))
   else
     Result := TsoInteger.Create(StrToInt64(AIdentifier));
-  TokenObject := Result;
+  anObject := Result;
   SetFlag(flagConst);
 end;
 
-function TsrdInterpreter.SetString(AIdentifier: string): TsoString;
+function TsrdInstruction.SetString(AIdentifier: string): TsoString;
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
@@ -636,11 +665,11 @@ begin
   begin
     Value := AIdentifier;
   end;
-  TokenObject := Result;
+  anObject := Result;
   SetFlag(flagConst);
 end;
 
-function TsrdInterpreter.SetComment(AIdentifier: string): TsoComment;
+function TsrdInstruction.SetComment(AIdentifier: string): TsoComment;
 begin
   //We need to check if it the first expr in the statment
   if Identifier <> '' then
@@ -650,79 +679,82 @@ begin
   begin
     Value := AIdentifier;
   end;
-  TokenObject := Result;
+  anObject := Result;
   SetFlag(flagComment);
 end;
 
-function TsrdInterpreter.SetDeclare: TsoDeclare;
+function TsrdInstruction.SetDeclare: TsoDeclare;
 begin
-  if Statement <> nil then
-    RaiseError('Declare must be the first in a statement');
+{  if Statement <> nil then
+    RaiseError('Declare must be the first in a statement');}
   Result := TsoDeclare.Create;
   with Result do
   begin
     Name := Identifier;
-    ID := Parser.Data.RegisterID(Name);
+//    ID := Parser.Data.RegisterID(Name);
   end;
-  TokenObject := Result;
+  anObject := Result;
   Identifier := '';
   SetFlag(flagDeclare);
-  Flush;
-  Statement := Result.Statement;
 end;
 
-function TsrdInterpreter.SetAssign: TsoAssign;
+function TsrdInstruction.SetAssign: TsoAssign;
 begin
   Result := TsoAssign.Create;
   with Result do
   begin
     Name := Identifier;
-    ID := Parser.Data.RegisterID(Name);
+    //ID := Parser.Data.RegisterID(Name);
   end;
-  TokenObject := Result;
+  anObject := Result;
   Identifier := '';
   SetFlag(flagAssign);
 end;
 
-function TsrdInterpreter.SetInstance(AIdentifier: string):TsoInstance;
+function TsrdInstruction.SetInstance(AIdentifier: string):TsoInstance;
 begin
   Result := TsoInstance.Create;
   with Result do
   begin
     Name := AIdentifier;
-    ID := Parser.Data.RegisterID(Name);
+    //ID := Parser.Data.RegisterID(Name);
   end;
-  TokenObject := Result;
+  anObject := Result;
   SetFlag(flagInstance);
 end;
 
-function TsrdInterpreter.SetInstance: TsoInstance;
+function TsrdInstruction.SetInstance: TsoInstance;
 begin
   Result := SetInstance(Identifier);
   Identifier := '';
 end;
 
-procedure TsrdInterpreter.SetOperator(AOperator: TopOperator);
+procedure TsrdInstruction.SetOperator(AOperator: TopOperator);
 begin
-  Flush;
-  if TokenOperator <> nil then
+  if anOperator <> nil then
     RaiseError('Operator is already set');
-  TokenOperator := AOperator;
+  anOperator := AOperator;
 end;
 
-procedure TsrdInterpreter.SetObject(AObject: TsoObject);
+procedure TsrdInstruction.SetObject(AObject: TsoObject);
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');
-  if TokenObject <> nil then
+  if anObject <> nil then
     RaiseError('Object is already set');
-  TokenObject := AObject;
+  anObject := AObject;
 end;
+
+procedure TsrdInstruction.SetFlag(AFlag: TsrdFlag);
+begin
+  Flag := AFlag;
+end;
+
+{ TsrdInterpreter }
 
 procedure TsrdInterpreter.SetFlag(AFlag: TsrdFlag);
 begin
   FFlags := FFlags + [AFlag];
-  FFlag := AFlag;
 end;
 
 procedure TsrdInterpreter.PrepareStatement;
@@ -741,21 +773,16 @@ end;
 
 procedure TsrdInterpreter.Flush;
 begin
-  if Identifier <> '' then
+  Instruction.Prepare;
+  if (Instruction.anObject <> nil) or (Instruction.anOperator <> nil) then
   begin
-    SetInstance(Identifier);
-    Identifier := '';
-  end;
-  if (TokenObject <> nil) or (TokenOperator <> nil) then
-  begin
-    if Identifier <> '' then
+    if Instruction.Identifier <> '' then
       RaiseError('Identifier is already set, can not flush');
-    if TokenObject = nil then
+    if Instruction.anObject = nil then
       RaiseError('Object is nil!');
     PrepareStatement;
-    Statement.Add(TokenOperator, TokenObject);
-    TokenObject := nil;
-    TokenOperator := nil;
+    Statement.Add(Instruction.anOperator, Instruction.anObject);
+    Instruction.Reset;
   end;
 end;
 
@@ -763,23 +790,24 @@ procedure TsrdInterpreter.EndStatement;
 begin
   Statement := nil;
   FFlags := [];
-  FFlag := flagNone;
+  //FFlag := flagNone;
 end;
 
-procedure TsrdInterpreter.TriggerToken(AToken: String; AType: TsrdType);
+procedure TsrdInterpreter.AddIdentifier(AIdentifier: String; AType: TsrdType);
 begin
   case AType of
-    tpNumber: SetNumber(AToken);
-    tpString: SetString(AToken);
-    tpComment: SetComment(AToken);
+    tpNumber: Instruction.SetNumber(AIdentifier);
+    tpString: Instruction.SetString(AIdentifier);
+    tpComment: Instruction.SetComment(AIdentifier);
     else
-       SetIdentifier(AToken);
+       Instruction.SetIdentifier(AIdentifier);
   end
 end;
 
-procedure TsrdInterpreter.TriggerOperator(AOperator: TopOperator);
+procedure TsrdInterpreter.AddOperator(AOperator: TopOperator);
 begin
-  SetOperator(AOperator);
+  Flush;
+  Instruction.SetOperator(AOperator);
 end;
 
 constructor TsrdInterpreter.Create(AParser: TsrdParser);
@@ -847,7 +875,7 @@ end;
 
 procedure TsrdParser.TriggerToken(AToken: String; AType: TsrdType);
 begin
-  Current.TriggerToken(AToken, AType);
+  Current.AddIdentifier(AToken, AType);
   if PopItem then
   begin
     PopItem := False;
@@ -868,7 +896,7 @@ end;
 
 procedure TsrdParser.TriggerOperator(AOperator: TsardObject);
 begin
-  Current.TriggerOperator(AOperator as TopOperator);
+  Current.AddOperator(AOperator as TopOperator);
   if PopItem then
   begin
     PopItem := False;
@@ -1011,15 +1039,15 @@ end;
 
 function TopOperator_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 var
-  aOperator: TopOperator;
+  lOperator: TopOperator;
 begin
-  aOperator := (Lexical as TsrdLexical).Operators.Scan(Text, Column);
-  if aOperator <> nil then
-    Column := Column + Length(aOperator.Name)
+  lOperator := (Lexical as TsrdLexical).Operators.Scan(Text, Column);
+  if lOperator <> nil then
+    Column := Column + Length(lOperator.Name)
   else
     RaiseError('Unkown operator started with ' + Text[Column]);
 
-  Lexical.Parser.TriggerOperator(aOperator);
+  Lexical.Parser.TriggerOperator(lOperator);
   Result := True;
 end;
 

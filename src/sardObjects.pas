@@ -67,8 +67,8 @@ type
 
   TsrdStatementItem = class(TsardObject)
   public
-    AnOperator: TopOperator;
-    AnObject: TsoObject;
+    anOperator: TopOperator;
+    anObject: TsoObject;
     function Execute(vStack: TrunStack): Boolean;
   end;
 
@@ -686,14 +686,14 @@ type
 
   TrunResult = class(TsardObject)
   private
-    FAnObject: TsoObject;
-    procedure SetAnObject(AValue: TsoObject);
+    FanObject: TsoObject;
+    procedure SetanObject(AValue: TsoObject);
   public
     destructor Destroy; override;
     function HasValue: Boolean;
     procedure Assign(AResult: TrunResult); virtual;
     function Extract: TsoObject;
-    property AnObject: TsoObject read FAnObject write SetAnObject;
+    property anObject: TsoObject read FanObject write SetanObject;
   end;
 
   { TrunScope }
@@ -828,8 +828,8 @@ var
 begin
   inherited;
   T := vStack.Pull;
-  if T.Result.AnObject <> nil then
-    T.Result.AnObject.Execute(vStack, AOperator);
+  if T.Result.anObject <> nil then
+    T.Result.anObject.Execute(vStack, AOperator);
   FreeAndNil(T);
 end;
 
@@ -899,14 +899,14 @@ end;
 procedure TsoTime_Const.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
   inherited;;
-  vStack.Current.Result.AnObject := TsoString.Create(TimeToStr(Time));
+  vStack.Current.Result.anObject := TsoString.Create(TimeToStr(Time));
 end;
 
 { TsoVersion_Const }
 
 procedure TsoVersion_Const.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  vStack.Current.Result.AnObject := TsoString.Create(sSardVersion);
+  vStack.Current.Result.anObject := TsoString.Create(sSardVersion);
 end;
 
 { TsoLog_Proc }
@@ -1109,8 +1109,8 @@ var
 begin
   inherited;
   T := vStack.Pull;
-  if T.Result.AnObject <> nil then
-    T.Result.AnObject.Execute(vStack, AOperator);
+  if T.Result.anObject <> nil then
+    T.Result.anObject.Execute(vStack, AOperator);
   FreeAndNil(T);
   vStack.Scope.Pop;
 end;
@@ -1173,39 +1173,39 @@ end;
 
 { TrunResult }
 
-procedure TrunResult.SetAnObject(AValue: TsoObject);
+procedure TrunResult.SetanObject(AValue: TsoObject);
 begin
-  if FAnObject <> AValue then
+  if FanObject <> AValue then
   begin
-    if FAnObject <> nil then
-      FreeAndNil(FAnObject);
-    FAnObject := AValue;
+    if FanObject <> nil then
+      FreeAndNil(FanObject);
+    FanObject := AValue;
   end;
 end;
 
 destructor TrunResult.Destroy;
 begin
-  FreeAndNil(FAnObject);
+  FreeAndNil(FanObject);
   inherited Destroy;
 end;
 
 function TrunResult.HasValue: Boolean;
 begin
-  Result := AnObject <> nil;
+  Result := anObject <> nil;
 end;
 
 procedure TrunResult.Assign(AResult: TrunResult);
 begin
-  if AResult.AnObject = nil then
-    AnObject := nil
+  if AResult.anObject = nil then
+    anObject := nil
   else
-    AnObject := AResult.AnObject.Clone;
+    anObject := AResult.anObject.Clone;
 end;
 
 function TrunResult.Extract: TsoObject;
 begin
-  Result := FAnObject;
-  FAnObject := nil;
+  Result := FanObject;
+  FanObject := nil;
 end;
 
 { TrunScopeItem }
@@ -1226,16 +1226,16 @@ end;
 
 procedure TsoConstObject.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  if (vStack.Current.Result.AnObject = nil) and (AOperator = nil) then
+  if (vStack.Current.Result.anObject = nil) and (AOperator = nil) then
   begin
-    vStack.Current.Result.AnObject := Clone;
+    vStack.Current.Result.anObject := Clone;
     Done := True;
   end
   else
   begin
-    if vStack.Current.Result.AnObject = nil then
-      vStack.Current.Result.AnObject := Clone(False);
-    Done := vStack.Current.Result.AnObject.Operate(Self, AOperator);
+    if vStack.Current.Result.anObject = nil then
+      vStack.Current.Result.anObject := Clone(False);
+    Done := vStack.Current.Result.anObject.Operate(Self, AOperator);
   end;
 end;
 
@@ -1365,7 +1365,7 @@ function TrunVariables.SetValue(vName: string; vValue: TsoObject): TrunVariable;
 begin
   Result := Find(vName);
   if Result <> nil then
-    Result.Value.AnObject := vValue;
+    Result.Value.anObject := vValue;
 end;
 
 { TrunVariable }
@@ -1668,9 +1668,9 @@ end;
 
 function TsrdStatementItem.Execute(vStack: TrunStack): Boolean;
 begin
-  if AnObject = nil then
+  if anObject = nil then
     RaiseError('Object not set!');
-  Result := AnObject.Execute(vStack, AnOperator);
+  Result := anObject.Execute(vStack, anOperator);
 end;
 
 { TsrdClass }
@@ -1733,9 +1733,9 @@ begin
     v := vStack.Scope.Current.Variables.Register(Name);//TODO find it not register it
     if v <> nil then
     begin
-      if v.Value.AnObject = nil then
+      if v.Value.anObject = nil then
         RaiseError(v.Name + ' variable have no value yet');//TODO make it as empty
-      Done := v.Value.AnObject.Execute(vStack, AOperator);
+      Done := v.Value.anObject.Execute(vStack, AOperator);
     end
     else
       Done := False;
@@ -2018,7 +2018,7 @@ begin
     Result := Items[i].Execute(vStack) and Result;
 
     if vStack.Current.Reference <> nil then
-      vStack.Current.Reference.AnObject := vStack.Current.Result.Extract;  //it is responsible of assgin to parent result or to variable
+      vStack.Current.Reference.anObject := vStack.Current.Result.Extract;  //it is responsible of assgin to parent result or to variable
 
     vStack.Pop;
   end;
@@ -2045,8 +2045,8 @@ end;
 function TsrdStatement.Add(AOperator: TopOperator; AObject: TsoObject): TsrdStatementItem;
 begin
   Result := TsrdStatementItem.Create;
-  Result.AnOperator := AOperator;
-  Result.AnObject := AObject;
+  Result.anOperator := AOperator;
+  Result.anObject := AObject;
   AObject.Parent := Parent;
   Add(Result);
 end;
