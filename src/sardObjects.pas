@@ -67,11 +67,22 @@ type
 
   TsrdDefine = class(TsardObject)
   public
+    Name: string;
     ResultType: string;
-    DefineParams: TsrdDefines;
   end;
 
-  TsrdDefines = class(specialize GsardObjects<TsrdDefine>)
+  TsrdDefineParams = class(specialize GsardNamedObjects<TsrdDefine>)
+  end;
+
+  { TsrdDefines }
+
+  TsrdDefines = class(specialize GsardNamedObjects<TsrdDefine>)
+  private
+    FParams: TsrdDefineParams;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Params: TsrdDefineParams read FParams;
   end;
 
   { TsrdStatementItem }
@@ -257,9 +268,7 @@ type
     property Classes: TclsClasses read FClasses; //It is cache of object listed inside statments, it is for fast find the object
   end;
 
-  { TsoStatement }
-
-  { TsoClass }
+  { TsoCustomStatement }
 
   TsoCustomStatement = class(TsoObject)
   private
@@ -282,16 +291,20 @@ type
     destructor Destroy; override;
   end;
 
-  { TsoStatement }
+  { TsoClass }
 
   TsoClass = class(TsoCustomStatement)
   private
+    FDefines: TsrdDefines;
     FName: string;
   protected
   public
     //TODO  ResultClass, DefineParams
+    constructor Create; override;
+    destructor Destroy; override;
     procedure SetStatement(vStatement: TsrdStatement);
     property Name: string read FName write FName;
+    property Defines: TsrdDefines read FDefines;
   end;
 
   { TsoNamedObject }
@@ -805,6 +818,20 @@ begin
   Result := FsardEngine;
 end;
 
+{ TsrdDefines }
+
+constructor TsrdDefines.Create;
+begin
+  inherited Create;
+  FParams := TsrdDefineParams.Create;
+end;
+
+destructor TsrdDefines.Destroy;
+begin
+  FreeAndNil(FParams);
+  inherited Destroy;
+end;
+
 { TsoCustomStatement }
 
 procedure TsoCustomStatement.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
@@ -826,6 +853,18 @@ end;
 procedure TsoCustomStatement.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
   Done := FStatement.Execute(vStack);
+end;
+
+constructor TsoClass.Create;
+begin
+  inherited Create;
+  FDefines := TsrdDefines.Create;
+end;
+
+destructor TsoClass.Destroy;
+begin
+  FreeAndNil(FDefines);
+  inherited Destroy;
 end;
 
 procedure TsoClass.SetStatement(vStatement: TsrdStatement);
