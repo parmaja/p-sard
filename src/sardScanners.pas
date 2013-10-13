@@ -122,6 +122,8 @@ type
   TsrdParser = class;
   TsrdInterpreter = class;
 
+  //Instruction or clause!?
+
   { TsrdInstruction }
 
   TsrdInstruction = class(TsardObject)

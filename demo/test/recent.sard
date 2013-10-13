@@ -1,2 +1,13 @@
-x:(p1){ := 10 };
-:=20;
+person:(name:string; height:integer) {
+   walk:{
+   }
+}
+
+x:int=10;
+x:int:10;
+
+x:(p1){
+       := p1 + 10;
+      };
+
+:=x(10);

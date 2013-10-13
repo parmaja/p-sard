@@ -14,7 +14,9 @@ unit sardObjects;
 {$INTERFACES CORBA}
 
 {*TODO:
-create variable manually in the example to test return value in formual
+
+Create variable manually in the example to test return value in formual
+
 10+x
 
 soVariable find it is value in the stack and use it in formual
@@ -38,8 +40,8 @@ uses
   sardClasses;
 
 const
-  sSardVersion = '0.1';
-  iSardVersion = 010;
+  sSardVersion = '0.01';
+  iSardVersion = 001;
 
 type
 
@@ -65,7 +67,7 @@ type
   TsoBlock = class;
   TsrdDefines = class;
 
-  { TsrdDefine }
+  { TsrdDefine } //or prototype
 
   TsrdDefine = class(TsardObject)
   public
@@ -297,10 +299,12 @@ type
     FName: string;
     FDeclare: TsoDeclare;
   protected
+    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
     constructor Create; override;
     destructor Destroy; override;
     procedure SetDeclare(ADeclare: TsoDeclare);
+    property Declare: TsoDeclare read FDeclare;
     property Name: string read FName write FName;
   end;
 
@@ -688,18 +692,18 @@ type
   TrunResult = class(TsardObject)
   private
     FanObject: TsoObject;
-    procedure SetanObject(AValue: TsoObject);
+    procedure SetObject(AValue: TsoObject);
   public
     destructor Destroy; override;
     function HasValue: Boolean;
     procedure Assign(AResult: TrunResult); virtual;
     function Extract: TsoObject;
-    property anObject: TsoObject read FanObject write SetanObject;
+    property anObject: TsoObject read FanObject write SetObject;
   end;
 
-  { TrunScope }
+  { TrunLocal }
 
-  TrunScopeItem = class(TsardObject)
+  TrunLocalItem = class(TsardObject)
   private
     FVariables: TrunVariables;
   public
@@ -708,18 +712,18 @@ type
     property Variables: TrunVariables read FVariables;
   end;
 
-  { TrunScopes }
+  { TrunLocals }
 
-  TrunScope = class(TsardStack)
+  TrunLocal = class(TsardStack)
   private
-    function GetCurrent: TrunScopeItem;
+    function GetCurrent: TrunLocalItem;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Push(vObject: TrunScopeItem);
-    function Push: TrunScopeItem; overload;
-    function Pull: TrunScopeItem;
-    property Current: TrunScopeItem read GetCurrent;
+    procedure Push(vObject: TrunLocalItem);
+    function Push: TrunLocalItem; overload;
+    function Pull: TrunLocalItem;
+    property Current: TrunLocalItem read GetCurrent;
   end;
 
   { TrunStackItem }
@@ -741,7 +745,7 @@ type
   TrunStack = class(TsardStack)
   private
     FData: TrunData;
-    FScope: TrunScope;
+    FLocal: TrunLocal;
     function GetCurrent: TrunStackItem;
     function GetParent: TrunStackItem;
   public
@@ -753,7 +757,7 @@ type
     property Current: TrunStackItem read GetCurrent;
     property Parent: TrunStackItem read GetParent;
     property Data: TrunData read FData;
-    property Scope: TrunScope read FScope;
+    property Local: TrunLocal read FLocal;
   end;
 
   {----------------------------------}
@@ -860,6 +864,15 @@ begin
   Done := FStatement.Execute(vStack);
 end;
 
+procedure TsoClass.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
+{var
+  v: TrunVariable;}
+begin
+  //v := vStack.Local.Current.Variables.Register('p1');
+  //v.Value
+  inherited DoExecute(vStack, AOperator, Done);
+end;
+
 constructor TsoClass.Create;
 begin
   inherited Create;
@@ -959,37 +972,37 @@ begin
   FObjectType := otComment;
 end;
 
-{ TrunScope }
+{ TrunLocal }
 
-function TrunScope.GetCurrent: TrunScopeItem;
+function TrunLocal.GetCurrent: TrunLocalItem;
 begin
-  Result := (inherited GetCurrent) as TrunScopeItem;
+  Result := (inherited GetCurrent) as TrunLocalItem;
 end;
 
-constructor TrunScope.Create;
+constructor TrunLocal.Create;
 begin
 
 end;
 
-destructor TrunScope.Destroy;
+destructor TrunLocal.Destroy;
 begin
   inherited Destroy;
 end;
 
-procedure TrunScope.Push(vObject: TrunScopeItem);
+procedure TrunLocal.Push(vObject: TrunLocalItem);
 begin
   inherited Push(vObject);
 end;
 
-function TrunScope.Push: TrunScopeItem;
+function TrunLocal.Push: TrunLocalItem;
 begin
-  Result := TrunScopeItem.Create;
+  Result := TrunLocalItem.Create;
   Push(Result);
 end;
 
-function TrunScope.Pull: TrunScopeItem;
+function TrunLocal.Pull: TrunLocalItem;
 begin
-  Result := (inherited Pull) as TrunScopeItem;
+  Result := (inherited Pull) as TrunLocalItem;
 end;
 
 { TctlControl }
@@ -1079,7 +1092,7 @@ procedure TsoSection.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
 begin
   inherited;
   vStack.Push; //<--here we can push a variable result or create temp result to drop it
-  vStack.Scope.Push;
+  vStack.Local.Push;
 end;
 
 procedure TsoSection.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
@@ -1091,7 +1104,7 @@ begin
   if T.Result.anObject <> nil then
     T.Result.anObject.Execute(vStack, AOperator);
   FreeAndNil(T);
-  vStack.Scope.Pop;
+  vStack.Local.Pop;
 end;
 
 constructor TsoSection.Create;
@@ -1152,7 +1165,7 @@ end;
 
 { TrunResult }
 
-procedure TrunResult.SetanObject(AValue: TsoObject);
+procedure TrunResult.SetObject(AValue: TsoObject);
 begin
   if FanObject <> AValue then
   begin
@@ -1187,15 +1200,15 @@ begin
   FanObject := nil;
 end;
 
-{ TrunScopeItem }
+{ TrunLocalItem }
 
-constructor TrunScopeItem.Create;
+constructor TrunLocalItem.Create;
 begin
   inherited Create;
   FVariables := TrunVariables.Create;
 end;
 
-destructor TrunScopeItem.Destroy;
+destructor TrunLocalItem.Destroy;
 begin
   FreeAndNil(FVariables);
   inherited Destroy;
@@ -1256,13 +1269,13 @@ constructor TrunStack.Create;
 begin
   inherited;
   FData := TrunData.Create;
-  FScope := TrunScope.Create;
+  FLocal := TrunLocal.Create;
 end;
 
 destructor TrunStack.Destroy;
 begin
   FreeAndNil(FData);
-  FreeAndNil(FScope);
+  FreeAndNil(FLocal);
   inherited;
 end;
 
@@ -1455,7 +1468,7 @@ begin
     vStack.Current.Reference := vStack.Parent.Result
   else
   begin
-    v := vStack.Scope.Current.Variables.Register(Name);
+    v := vStack.Local.Current.Variables.Register(Name);
     if v <> nil then
     begin
       vStack.Current.Reference := v.Value;
@@ -1651,11 +1664,13 @@ begin
   p := FindClass(Name);
   if p <> nil then
   begin
+    //v := vStack.Local.Current.Variables.Register('p1');
+    //v.Value.anObject := TsoStatement.Create
     Done := p.Execute(vStack, AOperator);
   end
   else
   begin
-    v := vStack.Scope.Current.Variables.Register(Name);//TODO find it not register it
+    v := vStack.Local.Current.Variables.Register(Name);//TODO find it not register it
     if v <> nil then
     begin
       if v.Value.anObject = nil then

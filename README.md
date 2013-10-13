@@ -7,6 +7,12 @@ The idea behind it, it is not use any of reserved word only signs, only objects 
 
 When i finish it it will be clear than i can explain it.
 
+It is: File parsed, result executed in interpreter (possibly multiple times)
+
+####Reference####
+
+  https://www.d.umn.edu/~rmaclin/cs5641/Notes/L16_Interpreters.pdf
+
 ###Examples###
 
 #####Done:#####
@@ -107,4 +113,4 @@ I need contributors to port it to Java or C, it is easy to port becuase i still 
 
 ###License###
 
-The Laravel framework is open-sourced software licensed under the [MIT license](http://opensource.org/licenses/MIT)
+The SARD script is open-sourced software licensed under the [MIT license](http://opensource.org/licenses/MIT)
