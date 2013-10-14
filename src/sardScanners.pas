@@ -499,7 +499,7 @@ begin
         //Need to close it and
         Post;
         //We will pass the control to the next interpreter
-        Action([paPopInterpreter, paBypass], TsrdInterpreterDeclare.Create(Parser, Declare.Statement));
+        Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, Declare.Block));
       end;
       ctlDeclare:
         begin
@@ -511,7 +511,6 @@ begin
           else
           begin
             Post;
-            Action([paPopInterpreter], TsrdInterpreterDeclare.Create(Parser, Declare.Statement)); //return to the statment
           end;
         end;
       ctlEnd:
@@ -535,13 +534,16 @@ begin
       ctlOpenParams:
         begin
           Post;
+          if Declare.Defines.Count > 0 then
+            RaiseError('You already define params! we expected open block.');
           Param := True;
         end;
       ctlCloseParams:
         begin
           Post;
           //Pop; //Finish it
-          Action([paPopInterpreter], TsrdInterpreterDeclare.Create(Parser, Declare.Statement)); //return to the statment
+          Param := False;
+          //Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, Declare.Block)); //return to the statment
         end;
       else
         inherited;

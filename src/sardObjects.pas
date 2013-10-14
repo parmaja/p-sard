@@ -115,7 +115,8 @@ type
   public
     function Add(AObject: TsrdStatementItem): Integer;
     function Add(AOperator:TopOperator; AObject: TsoObject): TsrdStatementItem;
-    function Execute(vStack: TrunStack): Boolean;
+    procedure Execute(vStack: TrunStack);
+    procedure Call(vStack: TrunStack);
     property Items[Index: Integer]: TsrdStatementItem read GetItem; default;
     property Debug: TsrdDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
@@ -131,9 +132,9 @@ type
     function Add(AStatement: TsrdStatement): Integer;
     function Add: TsrdStatement;
     procedure Check; //Check if empty then create first statement
+    function Execute(vStack: TrunStack): Boolean;
     property Items[Index: Integer]: TsrdStatement read GetItem; default;
     property Statement: TsrdStatement read GetStatement;
-    function Execute(vStack: TrunStack): Boolean;
   end;
 
   { TsrdBlockStack }
@@ -164,17 +165,17 @@ type
     function Execute(vStack: TrunStack; AOperator: TopOperator): Boolean;
   end;
 
-  TsoClass = class;
+  TsrdClass = class;
   TsoDeclare = class;
 
   { TclsClasses }
 
-  TsrdDeclares = class(specialize GsardNamedObjects<TsoClass>)
+  TsrdDeclares = class(specialize GsardNamedObjects<TsrdClass>)
   private
-    function GetItem(Index: Integer): TsoClass;
+    function GetItem(Index: Integer): TsrdClass;
   public
-    function Add(vName: string; vDeclare: TsoDeclare): TsoClass; overload;
-    function Add(vClass: TsoClass): Integer;
+    function Add(vName: string; vDeclare: TsoDeclare): TsrdClass; overload;
+    function Add(vClass: TsrdClass): Integer;
   end;
 
   { TsoObject }
@@ -205,8 +206,8 @@ type
 
     property Parent: TsoObject read FParent write SetParent;
 
-    function AddDeclare(vName: string; vDeclare: TsoDeclare): TsoClass; virtual;
-    function FindDeclare(vName: string): TsoObject; virtual;
+    function AddDeclare(vName: string; vDeclare: TsoDeclare): TsrdClass; virtual;
+    function FindDeclare(vName: string): TsrdClass; virtual;
 
     property ObjectType: TsrdObjectType read FObjectType;
 
@@ -245,11 +246,11 @@ type
     FBlock: TsrdBlock;
     procedure Created; override;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-    function DoCall(vStack: TrunStack): Boolean; virtual;
+    procedure DoCall(vStack: TrunStack); virtual;
   public
     constructor Create; override;
     destructor Destroy; override;
-    function Call(vStack: TrunStack; vBlock: TsoBlock): Boolean;
+    procedure Call(vStack: TrunStack); virtual;//vBlock here is params
     property Block: TsrdBlock read FBlock;
   end;
 
@@ -265,8 +266,8 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
-    function FindDeclare(vName: string): TsoObject; override;
-    function AddDeclare(vName: string; vDeclare: TsoDeclare): TsoClass; override;
+    function FindDeclare(vName: string): TsrdClass; override;
+    function AddDeclare(vName: string; vDeclare: TsoDeclare): TsrdClass; override;
     property Declares: TsrdDeclares read FDeclares; //It is cache of object listed inside statments, it is for fast find the object
   end;
 
@@ -293,22 +294,6 @@ type
     destructor Destroy; override;
   end;
 
-  { TsoClass }
-
-  TsoClass = class(TsoObject)
-  private
-    FName: string;
-    FDeclare: TsoDeclare;
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-    constructor Create; override;
-    destructor Destroy; override;
-    procedure SetDeclare(ADeclare: TsoDeclare);
-    property Declare: TsoDeclare read FDeclare;
-    property Name: string read FName write FName;
-  end;
-
   { TsoNamedObject }
 
   TsoNamedObject = class(TsoObject)
@@ -333,6 +318,22 @@ type
   public
     property Name: string read FName write SetName;
     property ID: Integer read FID write SetID;
+  end;
+
+  { TsrdClass }
+
+  TsrdClass = class(TsardObject) //behavor like section but the block is in Declare
+  private
+  FName: string;
+    FDeclare: TsoDeclare;
+  protected
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Call(vStack: TrunStack; vBlock: TsrdBlock = nil);
+    procedure SetDeclare(ADeclare: TsoDeclare);
+    property Declare: TsoDeclare read FDeclare;
+    property Name: string read FName write FName;
   end;
 
   {*  Variables objects *}
@@ -383,11 +384,10 @@ type
 
   { TsoDeclare }
 
-  TsoDeclare = class(TsoNamedObject)
+  TsoDeclare = class(TsoSection)
   private
     FDefines: TsrdDefines;
-    FStatement: TsrdStatement;
-    procedure SetStatement(AValue: TsrdStatement);
+    FName: string;
   protected
     procedure Created; override;
     procedure DoSetParent(AValue: TsoObject); override;
@@ -397,8 +397,9 @@ type
     IsAssign: Boolean;
     constructor Create; override;
     destructor Destroy; override;
+    procedure Call(vStack: TrunStack; vBlock: TsrdBlock = nil);//vBlock here is params
     property Defines: TsrdDefines read FDefines;
-    property Statement: TsrdStatement read FStatement write SetStatement;
+    property Name: string read FName write FName;
   end;
 
 {-------- Const Objects --------}
@@ -670,13 +671,15 @@ type
 
   TrunVariable = class(TsardObject)
   private
+    FValue: TrunResult;
     FName: string;
     procedure SetName(AValue: string);
+    procedure SetValue(AValue: TrunResult);
   public
-    Value: TrunResult;
     constructor Create;
     destructor Destroy; override;
     property Name: string read FName write SetName;
+    property Value: TrunResult read FValue write SetValue;
   end;
 
   { TrunVariables }
@@ -737,6 +740,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    //ReleaseResult return the Result and set FResult to nil witout free it, you need to free the Result by your self
+    function ReleaseResult: TrunResult;
     property Result: TrunResult read FResult;
     property Reference: TrunResult read FReference write SetReference;
   end;
@@ -789,7 +794,7 @@ type
 
   { TsoMain }
 
-  TsoMain = class(TsoSection)
+  TsoMain = class(TsoDeclare)
   public
     LogProc: TsoLog_Proc; //for test
     VersionProc: TsoVersion_Const;
@@ -819,6 +824,13 @@ begin
   if FsardEngine = nil then
     FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
+end;
+
+{ TsrdClass }
+
+procedure TsrdClass.Call(vStack: TrunStack; vBlock: TsrdBlock);
+begin
+  Declare.Call(vStack, vBlock);
 end;
 
 { TsrdDefine }
@@ -862,25 +874,21 @@ end;
 
 procedure TsoCustomStatement.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  Done := FStatement.Execute(vStack);
+  FStatement.Call(vStack);
+  Done := True;
 end;
 
-procedure TsoClass.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-  Done := FDeclare.Statement.Execute(vStack);
-end;
-
-constructor TsoClass.Create;
+constructor TsrdClass.Create;
 begin
   inherited Create;
 end;
 
-destructor TsoClass.Destroy;
+destructor TsrdClass.Destroy;
 begin
   inherited Destroy;
 end;
 
-procedure TsoClass.SetDeclare(ADeclare: TsoDeclare);
+procedure TsrdClass.SetDeclare(ADeclare: TsoDeclare);
 begin
   if FDeclare <> nil then
     RaiseError('Declare is already set!');
@@ -895,21 +903,20 @@ end;
 
 { TsrdDeclares }
 
-function TsrdDeclares.GetItem(Index: Integer): TsoClass;
+function TsrdDeclares.GetItem(Index: Integer): TsrdClass;
 begin
-  Result := inherited GetItem(Index) as TsoClass;
+  Result := inherited GetItem(Index) as TsrdClass;
 end;
 
-function TsrdDeclares.Add(vName: string; vDeclare: TsoDeclare): TsoClass;
+function TsrdDeclares.Add(vName: string; vDeclare: TsoDeclare): TsrdClass;
 begin
-  Result := TsoClass.Create;
+  Result := TsrdClass.Create;
   Result.Name := vName;
   Result.SetDeclare(vDeclare);
-  Result.Parent := vDeclare;
   Add(Result);
 end;
 
-function TsrdDeclares.Add(vClass: TsoClass): Integer;
+function TsrdDeclares.Add(vClass: TsrdClass): Integer;
 begin
   Result := inherited Add(vClass);
 end;
@@ -1087,19 +1094,12 @@ end;
 procedure TsoSection.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
 begin
   inherited;
-  vStack.Push; //<--here we can push a variable result or create temp result to drop it
   vStack.Local.Push;
 end;
 
 procedure TsoSection.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-var
-  T: TrunStackItem;
 begin
   inherited;
-  T := vStack.Pull;
-  if T.Result.anObject <> nil then
-    T.Result.anObject.Execute(vStack, AOperator);
-  FreeAndNil(T);
   vStack.Local.Pop;
 end;
 
@@ -1115,12 +1115,12 @@ begin
   inherited Destroy;
 end;
 
-function TsoSection.AddDeclare(vName: string; vDeclare: TsoDeclare): TsoClass;
+function TsoSection.AddDeclare(vName: string; vDeclare: TsoDeclare): TsrdClass;
 begin
   Result := Declares.Add(vName, vDeclare);
 end;
 
-function TsoSection.FindDeclare(vName: string): TsoObject;
+function TsoSection.FindDeclare(vName: string): TsrdClass;
 begin
   Result := Declares.Find(vName);
   if Result = nil then
@@ -1249,6 +1249,12 @@ begin
   inherited Destroy;
 end;
 
+function TrunStackItem.ReleaseResult: TrunResult;
+begin
+  Result := FResult;
+  FResult := nil;
+end;
+
 { TrunStack }
 
 function TrunStack.GetCurrent: TrunStackItem;
@@ -1300,13 +1306,22 @@ begin
 end;
 
 procedure TsoBlock.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
+var
+  T: TrunStackItem;
 begin
-  Done := Block.Execute(vStack);
+  vStack.Push; //<--here we can push a variable result or create temp result to drop it
+  Call(vStack);
+  T := vStack.Pull;
+  //I dont know what if ther is an object there what we do???
+  if T.Result.anObject <> nil then
+    T.Result.anObject.Execute(vStack, AOperator);
+  FreeAndNil(T);
+  Done := True;
 end;
 
-function TsoBlock.DoCall(vStack: TrunStack): Boolean;
+procedure TsoBlock.DoCall(vStack: TrunStack);
 begin
-
+  Block.Execute(vStack);
 end;
 
 constructor TsoBlock.Create;
@@ -1321,9 +1336,9 @@ begin
   inherited Destroy;
 end;
 
-function TsoBlock.Call(vStack: TrunStack; vBlock: TsoBlock): Boolean;
+procedure TsoBlock.Call(vStack: TrunStack);
 begin
-
+  DoCall(vStack);
 end;
 
 { TsardVariables }
@@ -1354,6 +1369,13 @@ begin
   FName :=AValue;
 end;
 
+procedure TrunVariable.SetValue(AValue: TrunResult);
+begin
+  if FValue =AValue then Exit;
+  FreeAndNil(FValue);
+  FValue :=AValue;
+end;
+
 constructor TrunVariable.Create;
 begin
   inherited Create;
@@ -1362,7 +1384,7 @@ end;
 
 destructor TrunVariable.Destroy;
 begin
-  FreeAndNil(Value);
+  FreeAndNil(FValue);
   inherited Destroy;
 end;
 
@@ -1619,12 +1641,6 @@ end;
 
 { TsrdClass }
 
-procedure TsoDeclare.SetStatement(AValue: TsrdStatement);
-begin
-  if FStatement =AValue then Exit;
-  FStatement :=AValue;
-end;
-
 procedure TsoDeclare.Created;
 begin
   inherited Created;
@@ -1633,7 +1649,7 @@ end;
 
 procedure TsoDeclare.DoSetParent(AValue: TsoObject);
 begin
-  AddDeclare(Name, Self);
+  AValue.AddDeclare(Name, Self);
 end;
 
 procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
@@ -1660,15 +1676,37 @@ end;
 constructor TsoDeclare.Create;
 begin
   inherited;
-  FStatement := TsrdStatement.Create(Self);
   FDefines := TsrdDefines.Create;
 end;
 
 destructor TsoDeclare.Destroy;
 begin
   FreeAndNil(FDefines);
-  FreeAndNil(FStatement);
   inherited Destroy;
+end;
+
+procedure TsoDeclare.Call(vStack: TrunStack; vBlock: TsrdBlock);
+var
+  i, c: Integer;
+  v: TrunVariable;
+begin
+  vStack.Local.Push;
+  if vBlock <> nil then
+  begin
+    for i := 0 to vBlock.Count -1 do
+    begin
+      vStack.Push;
+      vBlock[i].Call(vStack);
+      if i < Defines.Count then
+      begin
+        v := vStack.Local.Current.Variables.Register(Defines[i].Name);//must find it locally//bug//todo
+        v.Value := vStack.Current.ReleaseResult;
+      end;
+      vStack.Pop;
+    end;
+  end;
+  inherited Call(vStack);
+  vStack.Local.Pop;
 end;
 
 { TsrdInstance }
@@ -1682,14 +1720,21 @@ end;
 procedure TsoInstance.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 var
   v: TrunVariable;
-  p: TsoObject;
+  p: TsrdClass;
+var
+  T: TrunStackItem;
 begin
   p := FindDeclare(Name);
   if p <> nil then
   begin
-    //v := vStack.Local.Current.Variables.Register('p1');
-    //v.Value.anObject := TsoStatement.Create
-    Done := p.Execute(vStack, AOperator);
+    vStack.Push; //<--here we can push a variable result or create temp result to drop it
+    p.Call(vStack, Block);
+    T := vStack.Pull;
+    //I dont know what if ther is an object there what we do???
+    if T.Result.anObject <> nil then
+      T.Result.anObject.Execute(vStack, AOperator);
+    FreeAndNil(T);
+    Done := True;
   end
   else
   begin
@@ -1976,14 +2021,8 @@ begin
   Result := Count > 0;
   for i := 0 to Count -1 do
   begin
-    vStack.Push;
-
-    Result := Items[i].Execute(vStack) and Result;
-
-    if vStack.Current.Reference <> nil then
-      vStack.Current.Reference.anObject := vStack.Current.Result.Extract;  //it is responsible of assgin to parent result or to variable
-
-    vStack.Pop;
+    Items[i].Execute(vStack);
+    //if the current statment assigned to parent or variable result "Reference" here have this object, or we will throw the result
   end;
 end;
 
@@ -2014,13 +2053,21 @@ begin
   Add(Result);
 end;
 
-function TsrdStatement.Execute(vStack: TrunStack): Boolean;
+procedure TsrdStatement.Execute(vStack: TrunStack);
+begin
+  vStack.Push; //Each staement have own result
+  Call(vStack);
+  if vStack.Current.Reference <> nil then
+    vStack.Current.Reference.anObject := vStack.Current.Result.Extract;  //it is responsible of assgin to parent result or to a variable
+  vStack.Pop;
+end;
+
+procedure TsrdStatement.Call(vStack: TrunStack);
 var
   i: Integer;
 begin
-  Result := Count > 0;
   for i := 0 to Count -1 do
-    Result := Items[i].Execute(vStack) and Result;
+    Items[i].Execute(vStack);
 end;
 
 constructor TsoMain.Create;
@@ -2100,7 +2147,7 @@ begin
     Result.Assign(Self);
 end;
 
-function TsoObject.AddDeclare(vName: string; vDeclare: TsoDeclare): TsoClass;
+function TsoObject.AddDeclare(vName: string; vDeclare: TsoDeclare): TsrdClass;
 begin
   if Parent = nil then
     Result := nil
@@ -2108,7 +2155,7 @@ begin
     Result := Parent.AddDeclare(vName, vDeclare);
 end;
 
-function TsoObject.FindDeclare(vName: string): TsoObject;
+function TsoObject.FindDeclare(vName: string): TsrdClass;
 begin
   if Parent <> nil then
     Result := Parent.FindDeclare(vName)

@@ -79,16 +79,17 @@ begin
   { Run }
   Stack := TrunStack.Create;
   Stack.Push;
-  //Stack.Scope.Push;
-  //Stack.Scope.Current.Variables.SetValue('__ver__', TsoInteger.Create(101));
+//  Stack.Local.Push;
+  //Stack.Local.Current.Variables.SetValue('__ver__', TsoInteger.Create(101));
   //Main.AddClass('__ver__', nil);
-  Main.Execute(Stack, nil);
+  Main.Call(Stack, nil);
   if Stack.Current.Result.AnObject <> nil then
   begin
     vResult := Stack.Current.Result.AnObject.AsString;
     WriteLn('=== Result:  ' + Stack.Current.Result.AnObject.AsString + '  ===');
   end;
   Stack.Pop;
+//  Stack.Local.Pop;
 
   { End }
   FreeAndNil(Stack);
