@@ -58,6 +58,16 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 
     :=f + 10;
 
+Declare function/object with parameters
+
+    foo:(p1, p2) {
+      := p1 * p2;
+    };
+
+    x := 10;
+
+    := x + foo(5, 5);
+
 #####TODO:#####
 
     x:=#0; // Boolean values, true and false words are just global variables.
@@ -69,16 +79,9 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 
     //declare a variable type //not sure if i can do that
 
-    x:integer;
+    x:integer; //<- not sure
 
-    x:integer=10;
-
-    //declare function/object with params
-
-    f:integer(p1:integer; p2:string) {
-      b:{
-      }
-    };
+    x:integer=10; //<- not sure
 
     //include external file to compile it
 

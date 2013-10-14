@@ -224,6 +224,7 @@ type
   public
     constructor Create(AParser: TsrdParser; AStatement: TsrdStatement);
     procedure Next; override;
+    procedure Prepare; override;
     function IsInitial: Boolean; override;
   end;
 
@@ -741,12 +742,7 @@ end;
 
 procedure TsrdInterpreterBlock.Prepare;
 begin
-  if Instruction.Identifier <> '' then
-  begin
-    if Instruction.anObject <> nil then
-      RaiseError('Object is already set!');
-    Instruction.SetInstance;
-  end;
+  inherited;
   if Statement = nil then
   begin
     if Block = nil then
@@ -779,6 +775,17 @@ procedure TsrdInterpreterStatement.Next;
 begin
   inherited;
   Statement := nil;
+end;
+
+procedure TsrdInterpreterStatement.Prepare;
+begin
+  inherited;
+  if Instruction.Identifier <> '' then
+  begin
+    if Instruction.anObject <> nil then
+      RaiseError('Object is already set!');
+    Instruction.SetInstance;
+  end;
 end;
 
 function TsrdInterpreterStatement.IsInitial: Boolean;

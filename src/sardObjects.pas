@@ -1730,7 +1730,7 @@ begin
     vStack.Push; //<--here we can push a variable result or create temp result to drop it
     p.Call(vStack, Block);
     T := vStack.Pull;
-    //I dont know what if ther is an object there what we do???
+    //I dont know what if there is no object there, what we do???
     if T.Result.anObject <> nil then
       T.Result.anObject.Execute(vStack, AOperator);
     FreeAndNil(T);
