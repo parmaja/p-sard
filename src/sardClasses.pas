@@ -95,7 +95,8 @@ type
     ctlStart, //Start parsing
     ctlStop, //Start parsing
     ctlDeclare, //Declare a class of object
-    ctlAssign, //Assign to object/variable
+    ctlAssign, //Assign to object/variable used as :=
+//    ctlLet, //Same as assign in the initial but is equal operator if not in initial statment used to be =
     ctlNext, //End Params, Comma
     ctlEnd, //End Statement Semicolon
     ctlOpenBlock, // {

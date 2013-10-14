@@ -394,7 +394,7 @@ type
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
     ResultType: string;
-    IsAssign: Boolean;
+    IsAssign: Boolean;//hmmm let me thing!
     constructor Create; override;
     destructor Destroy; override;
     procedure Call(vStack: TrunStack; vBlock: TsrdBlock = nil);//vBlock here is params
@@ -554,6 +554,7 @@ type
     Title: string;
     Level: Integer;
     Description: string;
+    Control: TsardControl;// Fall back to control if is initial, only used for for = to fall back as :=
     function Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
     constructor Create; virtual;
   end;
@@ -1448,6 +1449,7 @@ begin
   Name := '=';
   Title := 'Equal';
   Level := 51;
+  Control := ctlAssign;
 end;
 
 { TopGreater }

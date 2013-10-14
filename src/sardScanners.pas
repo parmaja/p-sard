@@ -75,7 +75,7 @@ unit sardScanners;
   Scope
   Block
   Statment
-  Instruction
+  Instruction, Preface, clause,
   Expression
 }
 
@@ -1320,7 +1320,10 @@ begin
   else
     RaiseError('Unkown operator started with ' + Text[Column]);
 
-  Lexical.Parser.SetOperator(lOperator);
+  if (lOperator.Control <> ctlNone) and ((Lexical.Parser as TsrdParser).Current.IsInitial) then //<- very stupid idea
+    Lexical.Parser.SetControl(lOperator.Control)
+  else
+    Lexical.Parser.SetOperator(lOperator);
   Result := True;
 end;
 
