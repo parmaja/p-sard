@@ -49,7 +49,7 @@ type
     property Line: Integer read FLine write FLine;
   end;
 
-  //Base classes
+{* Base classes *}
 
   { TsardObject }
 
@@ -104,11 +104,6 @@ type
     ctlCloseParams, // )
     ctlOpenArray, // [
     ctlCloseArray, // ]
-{    //Triggers before triger tokens and operators
-    ctlSetOperator, // ]
-    ctlSetConst, // ]
-    ctlIdentifier, // ]}
-
     ctlNone
   );
 

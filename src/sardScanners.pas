@@ -19,6 +19,7 @@ unit sardScanners;
     Assigning ":=", compare "=", object child "."
     Dot as Identifier separator "."
     Not equal operator "<>"
+    Return value not end the execute of block
 
     foo:{
       bar: integer;
