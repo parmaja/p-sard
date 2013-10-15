@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, SynEdit, SynHighlighterCss, Forms, Controls,
   Graphics, Dialogs, StdCtrls,
-  LCLType,
+  LCLType, Menus,
   sard;
 
 type
@@ -19,12 +19,18 @@ type
     Button2: TButton;
     Label1: TLabel;
     InputEdit: TSynEdit;
+    MainMenu1: TMainMenu;
+    MenuItem1: TMenuItem;
+    MenuItem2: TMenuItem;
+    MenuItem3: TMenuItem;
+    MenuItem4: TMenuItem;
     ResultEdit: TMemo;
     SynCssSyn1: TSynCssSyn;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure MenuItem4Click(Sender: TObject);
   private
   public
     procedure Save;
@@ -70,6 +76,11 @@ begin
       else if Key = VK_F9 then
         Build(InputEdit.Lines);
     end;
+end;
+
+procedure TForm1.MenuItem4Click(Sender: TObject);
+begin
+  InputEdit.Lines.LoadFromFile(Application.Location + '../../examples/full_test.sard')
 end;
 
 procedure TForm1.Save;
