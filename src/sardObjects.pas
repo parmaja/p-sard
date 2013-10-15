@@ -246,7 +246,6 @@ type
     FBlock: TsrdBlock;
     procedure Created; override;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-    procedure DoCall(vStack: TrunStack); virtual;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -320,22 +319,6 @@ type
     property ID: Integer read FID write SetID;
   end;
 
-  { TsrdClass }
-
-  TsrdClass = class(TsardObject) //behavor like section but the block is in Declare
-  private
-  FName: string;
-    FDeclare: TsoDeclare;
-  protected
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Call(vStack: TrunStack; vBlock: TsrdBlock = nil);
-    procedure SetDeclare(ADeclare: TsoDeclare);
-    property Declare: TsoDeclare read FDeclare;
-    property Name: string read FName write FName;
-  end;
-
   {*  Variables objects *}
 
   { TsoInstance }
@@ -362,23 +345,40 @@ type
   public
   end;
 
+  { TsrdClass }
+
+  TsrdClass = class(TsardObject) //behavor like section but the block is in Declare
+  private
+    FName: string;
+    FDeclare: TsoDeclare;
+  protected
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure SetDeclare(ADeclare: TsoDeclare);
+    property Declare: TsoDeclare read FDeclare;
+    property Name: string read FName write FName;
+  end;
+
   { TsoDeclare }
 
-  TsoDeclare = class(TsoSection)
+  TsoDeclare = class(TsoNamedObject)
   private
     FDefines: TsrdDefines;
-    FName: string;
+    //FSection: TsoSection;
   protected
     procedure Created; override;
     procedure DoSetParent(AValue: TsoObject); override;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
+    AnObject: TsoObject;//You create it but Declare will free it
     ResultType: string;
     constructor Create; override;
     destructor Destroy; override;
-    procedure Call(vStack: TrunStack; vBlock: TsrdBlock = nil);//vBlock here is params
+    //This outside execute it will force to execute the section
+    procedure Execute(vStack: TrunStack; AOperator: TopOperator; AParamters: TsrdBlock; var Done: Boolean);//vBlock here is params
     property Defines: TsrdDefines read FDefines;
-    property Name: string read FName write FName;
+    //property Section: TsoSection read FSection;//<-- change it to object and can be assigned
   end;
 
 {-------- Const Objects --------}
@@ -774,12 +774,13 @@ type
 
   { TsoMain }
 
-  TsoMain = class(TsoDeclare)
+  TsoMain = class(TsoSection)
   public
     LogProc: TsoLog_Proc; //for test
     VersionProc: TsoVersion_Const;
     constructor Create; override;
     destructor Destroy; override;
+    procedure Run(vStack: TrunStack; AParamters: TsrdBlock = nil);
   end;
 
   { TsrdEngine }
@@ -804,13 +805,6 @@ begin
   if FsardEngine = nil then
     FsardEngine := TsrdEngine.Create;
   Result := FsardEngine;
-end;
-
-{ TsrdClass }
-
-procedure TsrdClass.Call(vStack: TrunStack; vBlock: TsrdBlock);
-begin
-  Declare.Call(vStack, vBlock);
 end;
 
 { TsrdDefine }
@@ -1291,11 +1285,6 @@ begin
   Done := True;
 end;
 
-procedure TsoBlock.DoCall(vStack: TrunStack);
-begin
-  Block.Execute(vStack);
-end;
-
 constructor TsoBlock.Create;
 begin
   inherited Create;
@@ -1310,7 +1299,7 @@ end;
 
 procedure TsoBlock.Call(vStack: TrunStack);
 begin
-  DoCall(vStack);
+  Block.Execute(vStack);
 end;
 
 { TsardVariables }
@@ -1634,26 +1623,29 @@ constructor TsoDeclare.Create;
 begin
   inherited;
   FDefines := TsrdDefines.Create;
+  //FSection := TsoSection.Create;
 end;
 
 destructor TsoDeclare.Destroy;
 begin
+  //FreeAndNil(FSection);
+  FreeAndNil(AnObject);
   FreeAndNil(FDefines);
   inherited Destroy;
 end;
 
-procedure TsoDeclare.Call(vStack: TrunStack; vBlock: TsrdBlock);
+procedure TsoDeclare.Execute(vStack: TrunStack; AOperator: TopOperator; AParamters: TsrdBlock; var Done: Boolean);
 var
-  i, c: Integer;
+  i: Integer;
   v: TrunVariable;
 begin
   vStack.Local.Push;
-  if vBlock <> nil then
+  if AParamters <> nil then
   begin
-    for i := 0 to vBlock.Count -1 do
+    for i := 0 to AParamters.Count -1 do
     begin
       vStack.Push;
-      vBlock[i].Call(vStack);
+      AParamters[i].Call(vStack);
       if i < Defines.Count then
       begin
         v := vStack.Local.Current.Variables.Register(Defines[i].Name);//must find it locally//bug//todo
@@ -1662,7 +1654,8 @@ begin
       vStack.Pop;
     end;
   end;
-  inherited Call(vStack);
+  //Section.Execute(vStack, AOperator);
+  AnObject.Execute(vStack, AOperator);
   vStack.Local.Pop;
 end;
 
@@ -1678,20 +1671,11 @@ procedure TsoInstance.DoExecute(vStack: TrunStack; AOperator: TopOperator; var D
 var
   v: TrunVariable;
   p: TsrdClass;
-var
-  T: TrunStackItem;
 begin
   p := FindDeclare(Name);
   if p <> nil then
   begin
-    vStack.Push; //<--here we can push a variable result or create temp result to drop it
-    p.Call(vStack, Block);
-    T := vStack.Pull;
-    //I dont know what if there is no object there, what we do???
-    if T.Result.anObject <> nil then
-      T.Result.anObject.Execute(vStack, AOperator);
-    FreeAndNil(T);
-    Done := True;
+    p.Declare.Execute(vStack, AOperator, Block, Done);
   end
   else
   begin
@@ -2042,6 +2026,11 @@ begin
   FreeAndNil(LogProc);
   FreeAndNil(VersionProc);
   inherited Destroy;
+end;
+
+procedure TsoMain.Run(vStack: TrunStack; AParamters: TsrdBlock);
+begin
+  Execute(vStack, nil);
 end;
 
 { TsoObject }

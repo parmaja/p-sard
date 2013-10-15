@@ -82,7 +82,7 @@ begin
 //  Stack.Local.Push;
   //Stack.Local.Current.Variables.SetValue('__ver__', TsoInteger.Create(101));
   //Main.AddClass('__ver__', nil);
-  Main.Call(Stack, nil);
+  Main.Execute(Stack, nil);
   if Stack.Current.Result.AnObject <> nil then
   begin
     vResult := Stack.Current.Result.AnObject.AsString;

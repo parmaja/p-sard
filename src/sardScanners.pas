@@ -500,7 +500,7 @@ begin
         //Need to close it and
         Post;
         //We will pass the control to the next interpreter
-        Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, Declare.Block));
+        Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, (Declare.AnObject as TsoSection).Block));
       end;
       ctlDeclare:
         begin
@@ -899,6 +899,8 @@ begin
   with Result do
   begin
     Name := Identifier;
+    AnObject := TsoSection.Create;
+    AnObject.Parent := Result;
 //    ID := Parser.Data.RegisterID(Name);
   end;
   InternalSetObject(Result);
