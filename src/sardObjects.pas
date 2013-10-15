@@ -236,6 +236,7 @@ type
     procedure SetID(AValue: Integer);
     procedure SetName(AValue: string);
   public
+    constructor Create(vParent:TsoObject; vName: string); overload;
     function RegisterVariable(vStack: TrunStack): TrunVariable; virtual;
     property Name: string read FName write SetName;
     property ID: Integer read FID write SetID;
@@ -278,7 +279,7 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
-    procedure AddDeclares(vDefines: TsrdDefines); overload;//Add defines as Declares
+    //procedure AddDeclares(vDefines: TsrdDefines); overload;//Add defines as Declares
     function FindDeclare(vName: string): TsoDeclare; override;
     function AddDeclare(vDeclare: TsoDeclare): Integer; override;
     property Declares: TsrdDeclares read FDeclares; //It is cache of object listed inside statments, it is for fast find the object
@@ -328,8 +329,6 @@ type
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
     ResultType: TsoObjectClass;
-    function RegisterVariable(vStack: TrunStack): TrunVariable; override;
-    constructor Create(vName: string); overload;
   end;
 
   { TsoAssign }
@@ -355,7 +354,10 @@ type
     procedure DoSetParent(AValue: TsoObject); override;
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
-    AnObject: TsoNamedObject;//You create it but Declare will free it
+    //ExecuteObject will execute in a context of statement if it is not null,
+    ExecuteObject: TsoNamedObject;//You create it but Declare will free it
+    //ExecuteObject will execute by call, when called from outside,
+    CallObject: TsoNamedObject;//You create it but Declare will free it
     ResultType: string;
     constructor Create; override;
     destructor Destroy; override;
@@ -804,17 +806,6 @@ begin
   Done := v.Value.anObject.Execute(vStack, AOperator);
 end;
 
-function TsoVariable.RegisterVariable(vStack: TrunStack): TrunVariable;
-begin
-  Result := vStack.Local.Current.Variables.Register(Name);
-end;
-
-constructor TsoVariable.Create(vName: string);
-begin
-  inherited Create;
-  Name := vName;
-end;
-
 { TsrdDefine }
 
 constructor TsrdDefine.Create(vName: string; vResult: string);
@@ -1058,7 +1049,7 @@ begin
   FreeAndNil(FDeclares);
   inherited Destroy;
 end;
-
+{
 procedure TsoSection.AddDeclares(vDefines: TsrdDefines);
 var
   i: Integer;
@@ -1073,7 +1064,7 @@ begin
     aDeclare.Parent := Self;
     AddDeclare(aDeclare);
   end;
-end;
+end;}
 
 function TsoSection.AddDeclare(vDeclare: TsoDeclare): Integer;
 begin
@@ -1097,9 +1088,16 @@ begin
   end;
 end;
 
+constructor TsoNamedObject.Create(vParent: TsoObject; vName: string);
+begin
+  Create;
+  Name := vName;
+  Parent := vParent;
+end;
+
 function TsoNamedObject.RegisterVariable(vStack: TrunStack): TrunVariable;
 begin
-  Result := nil;
+  Result := vStack.Local.Current.Variables.Register(Name);
 end;
 
 procedure TsoNamedObject.SetID(AValue: Integer);
@@ -1448,15 +1446,15 @@ begin
 end;
 
 procedure TsoAssign.DoSetParent(AValue: TsoObject);
-var
-  aDeclare: TsoDeclare;
+{var
+  aDeclare: TsoDeclare;}
 begin
   inherited;
-  aDeclare := TsoDeclare.Create;
+  {aDeclare := TsoDeclare.Create;
   aDeclare.Name := Name;
   aDeclare.AnObject := TsoVariable.Create(Name);
   aDeclare.Parent := Self;
-  AValue.AddDeclare(aDeclare);
+  AValue.AddDeclare(aDeclare);}
 end;
 
 procedure TsoAssign.Created;
@@ -1476,12 +1474,20 @@ begin
     vStack.Current.Reference := vStack.Parent.Result
   else
   begin
-    aDeclare := FindDeclare(Name);
-    if aDeclare = nil then
-      RaiseError('Can not find a declare: '+ Name);
-    if aDeclare.AnObject <> nil then
+    aDeclare := FindDeclare(Name);//TODO: maybe we can cashe it
+    if aDeclare <> nil then
     begin
-      v := aDeclare.AnObject.RegisterVariable(vStack);//parent becuase we are in the statment
+      if aDeclare.CallObject <> nil then
+      begin
+        v := aDeclare.CallObject.RegisterVariable(vStack);//parent becuase we are in the statment
+        if v = nil then
+          RaiseError('Variable not found!');
+        vStack.Current.Reference := v.Value;
+      end;
+    end
+    else
+    begin //Ok let is declare it locally
+      v := RegisterVariable(vStack);//parent becuase we are in the statment
       if v = nil then
         RaiseError('Variable not found!');
       vStack.Current.Reference := v.Value;
@@ -1639,7 +1645,10 @@ end;
 
 procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  Done := True;
+  if ExecuteObject <> nil then
+    Done := ExecuteObject.Execute(vStack, AOperator)
+  else
+    Done := True;
 end;
 
 constructor TsoDeclare.Create;
@@ -1650,14 +1659,15 @@ end;
 
 destructor TsoDeclare.Destroy;
 begin
-  FreeAndNil(AnObject);
+  FreeAndNil(ExecuteObject);
+  FreeAndNil(CallObject);
   FreeAndNil(FDefines);
   inherited Destroy;
 end;
 
 procedure TsoDeclare.Call(vStack: TrunStack; AOperator: TopOperator; AParameters: TsrdBlock; var Done: Boolean);
 begin
-  Done := AnObject.Execute(vStack, AOperator, Defines, AParameters);
+  Done := CallObject.Execute(vStack, AOperator, Defines, AParameters);
 end;
 
 { TsrdInstance }
@@ -1671,12 +1681,18 @@ end;
 procedure TsoInstance.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 var
   p: TsoDeclare;
+  v: TrunVariable;
 begin
   p := FindDeclare(Name);
-  if p <> nil then //maybe we must check Define.count, cuz it refere to it class
+  if (p <> nil) then //maybe we must check Define.count, cuz it refere to it class
     p.Call(vStack, AOperator, Block, Done)
   else
-    RaiseError('Can not find a variable: '+Name);
+  begin
+    v := vStack.Local.Current.Variables.Find(Name);
+    if v = nil then
+      RaiseError('Can not find a variable: '+Name);
+    Done := v.Value.anObject.Execute(vStack, AOperator);
+  end;
 end;
 
 { TsrdBoolean }

@@ -263,6 +263,7 @@ type
     procedure Prepare; override;
     procedure Next; override;
     procedure Reset; override;
+    function IsInitial: Boolean; override;
   end;
 
   { TsrdControllerNormal }
@@ -488,6 +489,8 @@ end;
 procedure TsrdInterpreterDefine.Control(AControl: TsardControl);
 var
   aSection: TsoSection;
+  aVariable: TsoVariable;
+  aAssign: TsoAssign;
 begin
 {
   x:int  (p1:int; p2:string);
@@ -503,8 +506,8 @@ begin
         Post;
         aSection := TsoSection.Create;
         aSection.Parent := Declare;
-        Declare.AnObject := aSection;
-        aSection.AddDeclares(Declare.Defines);
+        Declare.CallObject := aSection;
+//        aSection.AddDeclares(Declare.Defines);//nop it is local
         //We will pass the control to the next interpreter
         Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, aSection.Block));
       end;
@@ -518,7 +521,21 @@ begin
           else
           begin
             Post;
+{            aVariable := TsoVariable.Create;
+            aVariable.Parent := Declare;
+            Declare.AnObject := aVariable;
+            //Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, aSection.Block));
+            Pop;}
+            Action([paPopInterpreter]);
           end;
+        end;
+      ctlAssign:
+        begin
+          Post;
+          Declare.ExecuteObject := TsoAssign.Create(Declare, Declare.Name);
+          Declare.CallObject := TsoVariable.Create(Declare, Declare.Name);
+
+          Action([paPopInterpreter]); //Finish it, mean there is no body/statment for the declare
         end;
       ctlEnd:
       begin
@@ -530,7 +547,11 @@ begin
         else
         begin
           Post;
-          Action([paPopInterpreter]); //Finish it, mean there is no body/statment for the decalre
+{          aAssign := TsoAssign.Create;
+          aAssign.Name := Declare.Name;
+          aAssign.Parent := Declare;
+          Declare.AnObject := aAssign;}
+          Action([paPopInterpreter]);
         end;
       end;
       ctlNext:
@@ -571,6 +592,11 @@ procedure TsrdInterpreterDefine.Reset;
 begin
   State := stName;
   inherited;
+end;
+
+function TsrdInterpreterDefine.IsInitial: Boolean;
+begin
+  Result := True;//It is always true, hmmm?
 end;
 
 { TsrdControllerDefines }
