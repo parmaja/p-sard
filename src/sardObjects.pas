@@ -173,7 +173,6 @@ type
   private
   public
     constructor Create;//Just a references
-    function Add(vName: string; vDeclare: TsoDeclare): Integer; overload;
   end;
 
   { TsoObject }
@@ -205,7 +204,7 @@ type
 
     property Parent: TsoObject read FParent write SetParent;
 
-    function AddDeclare(vName: string; vDeclare: TsoDeclare): Integer; virtual;
+    function AddDeclare(vDeclare: TsoDeclare): Integer; virtual;
     function FindDeclare(vName: string): TsoDeclare; virtual;
 
     property ObjectType: TsrdObjectType read FObjectType;
@@ -279,8 +278,9 @@ type
   public
     constructor Create; override;
     destructor Destroy; override;
+    procedure AddDeclares(vDefines: TsrdDefines); overload;//Add defines as Declares
     function FindDeclare(vName: string): TsoDeclare; override;
-    function AddDeclare(vName: string; vDeclare: TsoDeclare): Integer; override;
+    function AddDeclare(vDeclare: TsoDeclare): Integer; override;
     property Declares: TsrdDeclares read FDeclares; //It is cache of object listed inside statments, it is for fast find the object
   end;
 
@@ -327,6 +327,7 @@ type
   protected
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
+    ResultType: TsoObjectClass;
     function RegisterVariable(vStack: TrunStack): TrunVariable; override;
     constructor Create(vName: string); overload;
   end;
@@ -797,9 +798,9 @@ var
 begin
   v := RegisterVariable(vStack);
   if v = nil then
-    RaiseError('Can not register a varibale :(');
+    RaiseError('Can not register a varibale: ' + Name) ;
   if v.Value.anObject = nil then
-    RaiseError(v.Name + ' variable have no value yet');//TODO make it as empty
+    RaiseError(v.Name + ' variable have no value yet:' + Name);//TODO make it as empty
   Done := v.Value.anObject.Execute(vStack, AOperator);
 end;
 
@@ -857,11 +858,6 @@ procedure TsoCustomStatement.DoExecute(vStack: TrunStack; AOperator: TopOperator
 begin
   FStatement.Call(vStack);
   Done := True;
-end;
-
-function TsrdDeclares.Add(vName: string; vDeclare: TsoDeclare): Integer;
-begin
-  Result := inherited Add(vDeclare);
 end;
 
 constructor TsrdDeclares.Create;
@@ -1063,9 +1059,25 @@ begin
   inherited Destroy;
 end;
 
-function TsoSection.AddDeclare(vName: string; vDeclare: TsoDeclare): Integer;
+procedure TsoSection.AddDeclares(vDefines: TsrdDefines);
+var
+  i: Integer;
+  aDeclare: TsoDeclare;
 begin
-  Result := Declares.Add(vName, vDeclare);
+  inherited;
+  for i := 0 to vDefines.Count -1 do
+  begin
+    aDeclare := TsoDeclare.Create;
+    aDeclare.Name := vDefines[i].Name;
+    aDeclare.AnObject := TsoVariable.Create(vDefines[i].Name);
+    aDeclare.Parent := Self;
+    AddDeclare(aDeclare);
+  end;
+end;
+
+function TsoSection.AddDeclare(vDeclare: TsoDeclare): Integer;
+begin
+  Result := Declares.Add(vDeclare);
 end;
 
 function TsoSection.FindDeclare(vName: string): TsoDeclare;
@@ -1444,7 +1456,7 @@ begin
   aDeclare.Name := Name;
   aDeclare.AnObject := TsoVariable.Create(Name);
   aDeclare.Parent := Self;
-  AValue.AddDeclare(Name, aDeclare);
+  AValue.AddDeclare(aDeclare);
 end;
 
 procedure TsoAssign.Created;
@@ -1622,7 +1634,7 @@ end;
 
 procedure TsoDeclare.DoSetParent(AValue: TsoObject);
 begin
-  AValue.AddDeclare(Name, Self);
+  AValue.AddDeclare(Self);
 end;
 
 procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
@@ -1664,7 +1676,7 @@ begin
   if p <> nil then //maybe we must check Define.count, cuz it refere to it class
     p.Call(vStack, AOperator, Block, Done)
   else
-    RaiseError('Can not register a varibale :(');
+    RaiseError('Can not find a variable: '+Name);
 end;
 
 { TsrdBoolean }
@@ -2074,12 +2086,12 @@ begin
     Result.Assign(Self);
 end;
 
-function TsoObject.AddDeclare(vName: string; vDeclare: TsoDeclare): Integer;
+function TsoObject.AddDeclare(vDeclare: TsoDeclare): Integer;
 begin
   if Parent = nil then
     Result := -1
   else
-    Result := Parent.AddDeclare(vName, vDeclare);
+    Result := Parent.AddDeclare(vDeclare);
 end;
 
 function TsoObject.FindDeclare(vName: string): TsoDeclare;

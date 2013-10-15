@@ -486,6 +486,8 @@ begin
 end;
 
 procedure TsrdInterpreterDefine.Control(AControl: TsardControl);
+var
+  aSection: TsoSection;
 begin
 {
   x:int  (p1:int; p2:string);
@@ -499,8 +501,12 @@ begin
       begin
         //Need to close it and
         Post;
+        aSection := TsoSection.Create;
+        aSection.Parent := Declare;
+        Declare.AnObject := aSection;
+        aSection.AddDeclares(Declare.Defines);
         //We will pass the control to the next interpreter
-        Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, (Declare.AnObject as TsoSection).Block));
+        Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, aSection.Block));
       end;
       ctlDeclare:
         begin
@@ -899,8 +905,6 @@ begin
   with Result do
   begin
     Name := Identifier;
-    AnObject := TsoSection.Create;
-    AnObject.Parent := Result;
 //    ID := Parser.Data.RegisterID(Name);
   end;
   InternalSetObject(Result);
