@@ -92,6 +92,7 @@ type
 
 
   TsardControl = (
+    ctlNone,
     ctlStart, //Start parsing
     ctlStop, //Start parsing
     ctlDeclare, //Declare a class of object
@@ -104,8 +105,7 @@ type
     ctlOpenParams, // (
     ctlCloseParams, // )
     ctlOpenArray, // [
-    ctlCloseArray, // ]
-    ctlNone
+    ctlCloseArray // ]
   );
 
   TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
