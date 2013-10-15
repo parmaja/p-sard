@@ -350,26 +350,6 @@ type
     procedure Created; override;
   end;
 
-    { TsoParam }
-
-  TsoParam = class(TsoNamedObject)
-  private
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-  end;
-
-  TprmParam = class(TsardObject)
-  public
-    Name: string;
-    ParamType: string; //TODO must be object
-  end;
-
-  { TprmParams }
-
-  TprmParams = class(specialize GsardObjects<TprmParam>)
-  end;
-
   { TsoAssign }
 
   { It is assign a variable value, x:=10 + y}
@@ -394,7 +374,6 @@ type
     procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
   public
     ResultType: string;
-    IsAssign: Boolean;//hmmm let me thing!
     constructor Create; override;
     destructor Destroy; override;
     procedure Call(vStack: TrunStack; vBlock: TsrdBlock = nil);//vBlock here is params
@@ -895,14 +874,6 @@ begin
     RaiseError('Declare is already set!');
   FDeclare := ADeclare;
 end;
-
-{ TsoParam }
-
-procedure TsoParam.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-end;
-
-{ TsrdDeclares }
 
 function TsrdDeclares.GetItem(Index: Integer): TsrdClass;
 begin
@@ -1655,24 +1626,8 @@ begin
 end;
 
 procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-var
-  v: TrunVariable;
 begin
   Done := True;
-  if IsAssign then
-  begin
-    { if not name it assign to parent result }
-    if Name = '' then
-      vStack.Current.Reference := vStack.Parent.Result
-    else
-    begin
-      v := vStack.Local.Current.Variables.Register(Name);
-      if v <> nil then
-      begin
-        vStack.Current.Reference := v.Value;
-      end;
-    end;
-  end;
 end;
 
 constructor TsoDeclare.Create;
