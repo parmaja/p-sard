@@ -11,17 +11,19 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 
 ####Compare####
 
-#####Like pascal#####
+_Like pascal_
 
   It is case insensitive
 
   Declareing after the name
 
-  Assigning ":=", compare "=", object child "."
+  Assigning ":=" or "=", compare "=", object child "."
+
+  There is no assign as operator
 
   Dot as Identifier separator "."
 
-  Not equal: "<>"
+  Not equal: "<>" or "!="
 
   Return value not end the execute of block
 ```javascript
@@ -36,7 +38,7 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
     foo.bar := 10;
 ```
 
-#####Like C#####
+_#Like C_
 
   Blocks: { }, no more "begin" and "end"
 
@@ -44,11 +46,11 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 
   Not: "!"  or "|"
 
-#####Like PHP#####
+_Like PHP_
 
   Multi line strings "" or ''
 
-#####Like its self#####
+_Like its self_
 
   No escaping chars inside the string you need to escape it outside it
 
@@ -56,7 +58,7 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 
   Identifiers can take unicode/utf8 characters, so it will support forign languages
 
-#####Not have#####
+_Not have_
 
   There is no "For" "While" "Repeat" or even "If" "Else"
   Ops, what a programming language this, it is not programming language, it object script
