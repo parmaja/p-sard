@@ -14,10 +14,15 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 #####Like pascal#####
 
   It is case insensitive
+
   Declareing after the name
+
   Assigning ":=", compare "=", object child "."
+
   Dot as Identifier separator "."
-  Not equal operator "<>"
+
+  Not equal: "<>"
+
   Return value not end the execute of block
 
     foo:{
@@ -32,10 +37,21 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 
 #####Like C#####
 
-  Block { }, no more begin end
-  comments //single line and /* multiline */
-  Not "!"  or "|"
+  Blocks: { }, no more "begin" and "end"
 
+  Comments: //single line and /* multiline */
+
+  Not: "!"  or "|"
+
+#####Like PHP#####
+
+  Multi line strings "" or ''
+
+#####Like its self#####
+
+  No escaping chars inside the string you need to escape it outside it
+
+    s := "text"\n;  (not implemented)
 
 ####Reference####
 
@@ -48,6 +64,7 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
     /*
       This examples are worked, and this comment will ignored, not compiled or parsed as we say.
     */
+
     x := 10 +5 - (5 * 5); //Single Line comment
 
     x := x + 10; //Using same variable, until now local variable implemented
