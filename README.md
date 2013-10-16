@@ -24,7 +24,7 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
   Not equal: "<>"
 
   Return value not end the execute of block
-
+```javascript
     foo:{
       bar: integer;
       i: integer = 5; //Declare and Assign
@@ -34,6 +34,7 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
     }
 
     foo.bar := 10;
+```
 
 #####Like C#####
 
@@ -60,7 +61,7 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 ###Examples###
 
 #####Done:#####
-
+```javascript
     /*
       This examples are worked, and this comment will ignored, not compiled or parsed as we say.
     */
@@ -74,9 +75,9 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
       }; //do not forget to add ; here
     {* This a block comment, compiled, useful for documentation, or regenrate the code *};
     := x; //Return result to the main object
-
+```
 First init of the variable define the type
-
+```javascript
     s:='Foo';
     s:=s+' Bar';
     :=s; //It will retrun 'Foo Bar';
@@ -88,9 +89,9 @@ First init of the variable define the type
     i := 10.0;
     i := i + 5.5;
     //variable i now have 15.5
-
+```
 Next f is a function or let us say it is an object we can run it.
-
+```javascript
     f:{
         x := 10;
         z: {
@@ -102,9 +103,9 @@ Next f is a function or let us say it is an object we can run it.
       };
 
     :=f + 10;
-
+```
 Declare function/object with parameters
-
+```javascript
     foo:(p1, p2) {
       := p1 * p2;
     };
@@ -112,22 +113,21 @@ Declare function/object with parameters
     x := 10;
 
     := x + foo(5, 5);
-
-
+```
 
 Declare a variable type, type now not working but parsed
-
+```javascript
     x:integer;
 
     x:integer=10;
-
+```
 You can use = as assignment
-
+```javascript
     x=10;
-
+```
 
 #####TODO:#####
-
+```javascript
     x:=#0; // Boolean values, true and false words are just global variables.
     x:=#1;
     x:=#fc0f1c; //Color const and operator mix the colors not just add it
@@ -157,6 +157,7 @@ You can use = as assignment
     // -With-
     object.{     <-not sure
     };
+```
 
 Still working on it.
 
