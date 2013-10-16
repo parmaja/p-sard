@@ -53,6 +53,16 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
 
     s := "text"\n;  (not implemented)
 
+  Identifiers can take unicode/utf8 characters, so it will support forign languages
+
+#####Not have#####
+
+  There is no "For" "While" "Repeat" or even "If" "Else"
+  Ops, what a programming language this, it is not programming language, it object script
+  But:
+  We can declare internal objects (in FPC source) any kind of object can control the blocks
+  so we can do it as internal objects
+
 ####Reference####
 
   https://www.d.umn.edu/~rmaclin/cs5641/Notes/L16_Interpreters.pdf
@@ -149,22 +159,21 @@ You can use = as assignment
     //Run child object
     f.b;
 
-    //there is no 'if' so we need this, still have no idea how i can do it by scanner
+There is no 'if' so we need this, still have no idea how i can do it by scanner
+
     (x=10)?{ true bock }:{ false block }
-    maybe statment not blocks
-    condition statment ? true statment : false statment;  // and you can put a block inside ur statment to be like example above.
+
+    maybe statment not a blocks
+
+    condition statment ? true statment : false statment;
 
     // -With-
     object.{     <-not sure
     };
 
-Still working on it.
-
 ###Compile###
 
 FreePascal 2.6.4
-
-I need contributors to port it to Java or C, it is easy to port becuase i still not use any special features of FPC.
 
 ###License###
 
