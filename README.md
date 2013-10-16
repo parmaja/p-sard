@@ -9,6 +9,34 @@ When i finish it it will be clear than i can explain it.
 
 It is: File parsed, result executed in interpreter (possibly multiple times)
 
+####Compare####
+
+#####Like pascal#####
+
+  It is case insensitive
+  Declareing after the name
+  Assigning ":=", compare "=", object child "."
+  Dot as Identifier separator "."
+  Not equal operator "<>"
+  Return value not end the execute of block
+
+    foo:{
+      bar: integer;
+      i: integer = 5; //Declare and Assign
+      method1:{
+        :=i * bar //return value
+      }
+    }
+
+    foo.bar := 10;
+
+#####Like C#####
+
+  Block { }, no more begin end
+  comments //single line and /* multiline */
+  Not "!"  or "|"
+
+
 ####Reference####
 
   https://www.d.umn.edu/~rmaclin/cs5641/Notes/L16_Interpreters.pdf

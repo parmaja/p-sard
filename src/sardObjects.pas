@@ -13,18 +13,6 @@ unit sardObjects;
 {$H+}{$M+}
 {$INTERFACES CORBA}
 
-{*TODO:
-
-Create variable manually in the example to test return value in formual
-
-10+x
-
-soVariable find it is value in the stack and use it in formual
-
-soVariable create a runtime variable in the stack
-x := 10;
-}
-
 {
   Prefix guid:
     srd: global classes inherited from sard
