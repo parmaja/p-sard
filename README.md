@@ -30,6 +30,8 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
     {* This a block comment, compiled, useful for documentation, or regenrate the code *};
     := x; //Return result to the main object
 
+First init of the variable define the type
+
     s:='Foo';
     s:=s+' Bar';
     :=s; //It will retrun 'Foo Bar';
@@ -42,9 +44,7 @@ It is: File parsed, result executed in interpreter (possibly multiple times)
     i := i + 5.5;
     //variable i now have 15.5
 
-    {* First init of the variable define the type *}
-
-    //Next f is a function or let us say it is an object we can run it.
+Next f is a function or let us say it is an object we can run it.
 
     f:{
         x := 10;
@@ -68,6 +68,15 @@ Declare function/object with parameters
 
     := x + foo(5, 5);
 
+
+
+Declare a variable type, type now not working but parsed
+
+    x:integer; //<- not sure
+
+    x:integer=10; //<- not sure
+
+
 #####TODO:#####
 
     x:=#0; // Boolean values, true and false words are just global variables.
@@ -76,12 +85,6 @@ Declare function/object with parameters
     x:=0xffec;  //hex integer number like but the style of print it as hex we need to override ToString
     x:="foo"\13"bar"; //escape char outside the string
     x:="I said:"\""As he said";
-
-    //declare a variable type //not sure if i can do that
-
-    x:integer; //<- not sure
-
-    x:integer=10; //<- not sure
 
     //include external file to compile it
 
