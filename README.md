@@ -72,9 +72,13 @@ Declare function/object with parameters
 
 Declare a variable type, type now not working but parsed
 
-    x:integer; //<- not sure
+    x:integer;
 
-    x:integer=10; //<- not sure
+    x:integer=10;
+
+You can use = as assignment
+
+    x=10;
 
 
 #####TODO:#####
