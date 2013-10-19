@@ -20,6 +20,18 @@ unit sardScanners;
           but my problem i cant mix outputs into the program like php, it is illogical for me, sorry guys :(
 
   Preprocessor: When scan {?somthing it will passed to addon in engine to return the result to rescan it or replace it with this preprocessor
+
+  What about private, public or protected, the default must be protected
+    x:(p1, p2){ block } //protected
+    x:-(){} //private
+    x:+(){} //public
+
+  We need to add multi blocks to the identifier like this
+    x(10,10){ ... } { ... }
+    or with : as seperator
+    x(10,10){ ... }:{ ... }
+  it is good to make the "if" object with "else" as the second block.
+
 *)
 
 {

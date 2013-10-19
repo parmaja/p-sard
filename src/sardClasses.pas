@@ -12,13 +12,6 @@ unit sardClasses;
 {$ENDIF}
 {$H+}{$M+}
 
-{TODO:
-  Check S is not empty before push
-  Push with the scanner class and id
-
-  Result := Integer + Float <-- it convert to float or not, hmmm not sure
-}
-
 interface
 
 uses
@@ -105,12 +98,42 @@ type
     ctlCloseArray // ]
   );
 
-  TsardTokinKind = (tkComment, tkIdentifier, tkNumber, tkSpace, tkString, tkSymbol, tkUnknown);
-
   TsardLexical = class;
   TsardFeeder = class;
   TsardParser = class;
   TsardStack = class;
+
+  TsardStackItem = class(TsardObject)
+  protected
+    AnObject: TObject;
+    Parent: TsardStackItem;
+  public
+    Owner: TsardStack;
+    Level: Integer;
+  end;
+
+  { TsardStack }
+
+  TsardStack = class(TsardObject)
+  private
+    FCount: Integer;
+    FCurrentItem: TsardStackItem;
+  protected
+    function GetParent: TObject;
+    function GetCurrent: TObject;
+    procedure AfterPush; virtual;
+    procedure BeforePop; virtual;
+  public
+    function IsEmpty: Boolean;
+    procedure Push(vObject: TObject);
+    procedure Pop;
+    function Pull: TObject; //Pop but do not delete delete the ibject
+    function Peek: TObject;
+    property Current: TObject read GetCurrent;
+    property Parent: TObject read GetParent;
+    property CurrentItem: TsardStackItem read FCurrentItem;
+    property Count: Integer read FCount;
+  end;
 
   TsardScannerClass = class of TsardScanner;
 
@@ -174,7 +197,9 @@ type
     FActive: Boolean;
     FVersion: string;
     FCharset: string;
-    FLexical: TsardLexical;//TODO use stacker
+    FLexical: TsardLexical; //TODO: use stack to wrap the code inside <?sard ... ?>,
+                            //the current one must detect ?> to stop scanning and pop
+                            //but the other lexcial will throw none code to output provider
     procedure SetLexical(AValue: TsardLexical);
   protected
     procedure DoStart; virtual;
@@ -187,46 +212,12 @@ type
     //procedure Scan(const FileName: string); overload; //TODO
     //procedure Scan(const Stream: TStream); overload; //TODO
     //procedure Scan(const Stream: IStream); overload; //TODO
-
     procedure Start;
     procedure Stop;
     property Active: Boolean read FActive write FActive;
     property Version: string read FVersion write FVersion;
     property Charset: string read FCharset write FCharset;
     property Lexical: TsardLexical read FLexical write SetLexical;
-
-  end;
-
-  TsardStackItem = class(TsardObject)
-  protected
-    AnObject: TObject;
-    Parent: TsardStackItem;
-  public
-    Owner: TsardStack;
-    Level: Integer;
-  end;
-
-  { TsardStack }
-
-  TsardStack = class(TsardObject)
-  private
-    FCount: Integer;
-    FCurrentItem: TsardStackItem;
-  protected
-    function GetParent: TObject;
-    function GetCurrent: TObject;
-    procedure AfterPush; virtual;
-    procedure BeforePop; virtual;
-  public
-    function IsEmpty: Boolean;
-    procedure Push(vObject: TObject);
-    procedure Pop;
-    function Pull: TObject; //Pop but do not delete delete the ibject
-    function Peek: TObject;
-    property Current: TObject read GetCurrent;
-    property Parent: TObject read GetParent;
-    property CurrentItem: TsardStackItem read FCurrentItem;
-    property Count: Integer read FCount;
   end;
 
   TsrdType = (tpNone, tpIdentifier, tpNumber, tpColor, tpString, tpComment);
@@ -256,7 +247,7 @@ type
   end;
 
 procedure RaiseError(AError: string);
-function ScanCompare(S: string; const Text: string; const Index: Integer): Boolean;
+function ScanCompare(S: string; const Text: string; Index: Integer): Boolean;
 function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
 function StringRepeat(S: string; C: Integer): string;
 
@@ -272,11 +263,9 @@ begin
     get_caller_frame(get_frame);
 end;
 
-function ScanCompare(S: string; const Text: string; const Index: Integer): Boolean;
+function ScanCompare(S: string; const Text: string; Index: Integer): Boolean;
 begin
-  Result := (Length(Text) - Index) >= length(S);
-  if Result then
-    Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive
+  Result := ScanText(S, Text, Index);
 end;
 
 function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
@@ -432,8 +421,6 @@ end;
 
 function TsardStack.GetCurrent: TObject;
 begin
-{  if FCurrentItem = nil then
-    RaiseError('Stack is empty');}
   if FCurrentItem = nil then
     Result := nil
   else

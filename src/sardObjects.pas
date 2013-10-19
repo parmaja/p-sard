@@ -36,6 +36,9 @@ unit sardObjects;
               Engine cache also compile files to use it again and it check the timestamp before recompile it
 
   TsrdAddons: It have any kind of addon, parsing, preprocessor, or debugger
+
+  TmdModifier: It is like operator but with one side can be in the context before the identifier like + !x %x $x
+
 }
 
 interface
@@ -626,17 +629,6 @@ type
 
 {-------- Run Time Engine --------}
 
-  { TrunData }
-
-  TrunData = class(TsardObject)
-  private
-    FCount: Integer;
-  public
-    //Objects:
-    function RegisterID(vName: string): Integer;
-    property Count: Integer read FCount;
-  end;
-
   { TrunVariable }
 
   TrunVariable = class(TsardObject)
@@ -700,9 +692,9 @@ type
     property Current: TrunLocalItem read GetCurrent;
   end;
 
-  { TrunStackItem }
+  { TrunReturnItem }
 
-  TrunStackItem = class(TsardObject)
+  TrunReturnItem = class(TsardObject)
   private
     FResult: TrunResult;
     FReference: TrunResult; //nil but if it exist we use it to assign it after statment executed
@@ -716,24 +708,31 @@ type
     property Reference: TrunResult read FReference write SetReference;
   end;
 
+  { TrunReturn }
+
+  TrunReturn = class(TsardStack)
+  private
+    function GetCurrent: TrunReturnItem;
+    function GetParent: TrunReturnItem;
+  public
+    procedure Push(vObject: TrunReturnItem);
+    function Push: TrunReturnItem; overload;
+    function Pull: TrunReturnItem;
+    property Current: TrunReturnItem read GetCurrent;
+    property Parent: TrunReturnItem read GetParent;
+  end;
+
   { TrunStack }
 
-  TrunStack = class(TsardStack)
+  TrunStack = class(TsardObject)
   private
-    FData: TrunData;
     FLocal: TrunLocal;
-    function GetCurrent: TrunStackItem;
-    function GetParent: TrunStackItem;
+    FReturn:TrunReturn;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Push(vObject: TrunStackItem);
-    function Push: TrunStackItem; overload;
-    function Pull: TrunStackItem;
-    property Current: TrunStackItem read GetCurrent;
-    property Parent: TrunStackItem read GetParent;
-    property Data: TrunData read FData;
     property Local: TrunLocal read FLocal;
+    property Return: TrunReturn read FReturn;
   end;
 
   {----------------------------------}
@@ -797,6 +796,20 @@ begin
   Result := FsardEngine;
 end;
 
+{ TrunStack }
+
+constructor TrunStack.Create;
+begin
+  inherited;
+  FLocal := TrunLocal.Create;
+end;
+
+destructor TrunStack.Destroy;
+begin
+  FreeAndNil(FLocal);
+  inherited;
+end;
+
 { TsoVariable }
 
 procedure TsoVariable.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
@@ -836,15 +849,15 @@ end;
 
 procedure TsoCustomStatement.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
 begin
-  vStack.Push;
+  vStack.Return.Push;
 end;
 
 procedure TsoCustomStatement.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
 var
-  T: TrunStackItem;
+  T: TrunReturnItem;
 begin
   inherited;
-  T := vStack.Pull;
+  T := vStack.Return.Pull;
   if T.Result.anObject <> nil then
     T.Result.anObject.Execute(vStack, AOperator);
   FreeAndNil(T);
@@ -866,14 +879,14 @@ end;
 procedure TsoTime_Const.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
   inherited;;
-  vStack.Current.Result.anObject := TsoString.Create(TimeToStr(Time));
+  vStack.Return.Current.Result.anObject := TsoString.Create(TimeToStr(Time));
 end;
 
 { TsoVersion_Const }
 
 procedure TsoVersion_Const.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  vStack.Current.Result.anObject := TsoString.Create(sSardVersion);
+  vStack.Return.Current.Result.anObject := TsoString.Create(sSardVersion);
 end;
 
 { TsoLog_Proc }
@@ -1021,14 +1034,6 @@ begin
   DoSetParent(FParent);
 end;
 
-{ TrunData }
-
-function TrunData.RegisterID(vName: string): Integer;
-begin
-  FCount := FCount + 1;
-  Result := FCount;
-end;
-
 { TsoSection }
 
 procedure TsoSection.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
@@ -1150,22 +1155,22 @@ end;
 
 procedure TsoConstObject.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 begin
-  if (vStack.Current.Result.anObject = nil) and (AOperator = nil) then
+  if (vStack.Return.Current.Result.anObject = nil) and (AOperator = nil) then
   begin
-    vStack.Current.Result.anObject := Clone;
+    vStack.Return.Current.Result.anObject := Clone;
     Done := True;
   end
   else
   begin
-    if vStack.Current.Result.anObject = nil then
-      vStack.Current.Result.anObject := Clone(False);
-    Done := vStack.Current.Result.anObject.Operate(Self, AOperator);
+    if vStack.Return.Current.Result.anObject = nil then
+      vStack.Return.Current.Result.anObject := Clone(False);
+    Done := vStack.Return.Current.Result.anObject.Operate(Self, AOperator);
   end;
 end;
 
-{ TrunStackItem }
+{ TrunReturnItem }
 
-procedure TrunStackItem.SetReference(AValue: TrunResult);
+procedure TrunReturnItem.SetReference(AValue: TrunResult);
 begin
   if FReference =AValue then Exit;
   if FReference <> nil then
@@ -1173,19 +1178,19 @@ begin
   FReference :=AValue;
 end;
 
-constructor TrunStackItem.Create;
+constructor TrunReturnItem.Create;
 begin
   inherited;
   FResult := TrunResult.Create;
 end;
 
-destructor TrunStackItem.Destroy;
+destructor TrunReturnItem.Destroy;
 begin
   FreeAndNil(FResult);
   inherited Destroy;
 end;
 
-function TrunStackItem.ReleaseResult: TrunResult;
+function TrunReturnItem.ReleaseResult: TrunResult;
 begin
   Result := FResult;
   FResult := nil;
@@ -1193,44 +1198,30 @@ end;
 
 { TrunStack }
 
-function TrunStack.GetCurrent: TrunStackItem;
+function TrunReturn.GetCurrent: TrunReturnItem;
 begin
-  Result := (inherited GetCurrent) as TrunStackItem;
+  Result := (inherited GetCurrent) as TrunReturnItem;
 end;
 
-function TrunStack.GetParent: TrunStackItem;
+function TrunReturn.GetParent: TrunReturnItem;
 begin
-  Result := (inherited GetParent) as TrunStackItem;
+  Result := (inherited GetParent) as TrunReturnItem;
 end;
 
-constructor TrunStack.Create;
-begin
-  inherited;
-  FData := TrunData.Create;
-  FLocal := TrunLocal.Create;
-end;
-
-destructor TrunStack.Destroy;
-begin
-  FreeAndNil(FData);
-  FreeAndNil(FLocal);
-  inherited;
-end;
-
-procedure TrunStack.Push(vObject: TrunStackItem);
+procedure TrunReturn.Push(vObject: TrunReturnItem);
 begin
   inherited Push(vObject);
 end;
 
-function TrunStack.Push: TrunStackItem;
+function TrunReturn.Push: TrunReturnItem;
 begin
-  Result := TrunStackItem.Create;
+  Result := TrunReturnItem.Create;
   Push(Result);
 end;
 
-function TrunStack.Pull: TrunStackItem;
+function TrunReturn.Pull: TrunReturnItem;
 begin
-  Result := (inherited Pull) as TrunStackItem;
+  Result := (inherited Pull) as TrunReturnItem;
 end;
 
 { TsoBlock }
@@ -1251,25 +1242,25 @@ begin
   begin
     for i := 0 to vParameters.Count -1 do
     begin
-      vStack.Push;
+      vStack.Return.Push;
       vParameters[i].Call(vStack);
       if i < vDefines.Count then
       begin
         v := vStack.Local.Current.Variables.Register(vDefines[i].Name);//must find it locally//bug//todo
-        v.Value := vStack.Current.ReleaseResult;
+        v.Value := vStack.Return.Current.ReleaseResult;
       end;
-      vStack.Pop;
+      vStack.Return.Pop;
     end;
   end;
 end;
 
 procedure TsoBlock.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
 var
-  T: TrunStackItem;
+  T: TrunReturnItem;
 begin
-  vStack.Push; //<--here we can push a variable result or create temp result to drop it
+  vStack.Return.Push; //<--here we can push a variable result or create temp result to drop it
   Call(vStack);
-  T := vStack.Pull;
+  T := vStack.Return.Pull;
   //I dont know what if ther is an object there what we do???
   if T.Result.anObject <> nil then
     T.Result.anObject.Execute(vStack, AOperator);
@@ -1460,7 +1451,7 @@ begin
   { if not name it assign to parent result }
   Done := True;
   if Name = '' then
-    vStack.Current.Reference := vStack.Parent.Result
+    vStack.Return.Current.Reference := vStack.Return.Parent.Result
   else
   begin
     aDeclare := FindDeclare(Name);//TODO: maybe we can cashe it
@@ -1471,7 +1462,7 @@ begin
         v := aDeclare.CallObject.RegisterVariable(vStack);//parent becuase we are in the statment
         if v = nil then
           RaiseError('Variable not found!');
-        vStack.Current.Reference := v.Value;
+        vStack.Return.Current.Reference := v.Value;
       end;
     end
     else
@@ -1479,7 +1470,7 @@ begin
       v := RegisterVariable(vStack);//parent becuase we are in the statment
       if v = nil then
         RaiseError('Variable not found!');
-      vStack.Current.Reference := v.Value;
+      vStack.Return.Current.Reference := v.Value;
     end;
   end;
 end;
@@ -1989,11 +1980,11 @@ end;
 
 procedure TsrdStatement.Execute(vStack: TrunStack);
 begin
-  vStack.Push; //Each staement have own result
+  vStack.Return.Push; //Each staement have own result
   Call(vStack);
-  if vStack.Current.Reference <> nil then
-    vStack.Current.Reference.anObject := vStack.Current.Result.Extract;  //it is responsible of assgin to parent result or to a variable
-  vStack.Pop;
+  if vStack.Return.Current.Reference <> nil then
+    vStack.Return.Current.Reference.anObject := vStack.Return.Current.Result.Extract;  //it is responsible of assgin to parent result or to a variable
+  vStack.Return.Pop;
 end;
 
 procedure TsrdStatement.Call(vStack: TrunStack);
@@ -2070,12 +2061,12 @@ begin
   DoExecute(vStack, AOperator, Result);
   AfterExecute(vStack, AOperator);
 
-  s := StringOfChar('-', vStack.CurrentItem.Level)+'->';
-  s := s + 'Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.CurrentItem.Level);
+  s := StringOfChar('-', vStack.Return.CurrentItem.Level)+'->';
+  s := s + 'Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.Return.CurrentItem.Level);
   if AOperator <> nil then
     s := s +'{'+ AOperator.Name+'}';
-  if vStack.Current.Result.anObject <> nil then
-    s := s + ' Value: '+ vStack.Current.Result.anObject.AsString;
+  if vStack.Return.Current.Result.anObject <> nil then
+    s := s + ' Value: '+ vStack.Return.Current.Result.anObject.AsString;
   WriteLn(s);
 end;
 

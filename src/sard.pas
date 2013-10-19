@@ -78,21 +78,19 @@ var
 begin
   WriteLn('');
   WriteLn('-------------------------------');
-  { Run }
   Stack := TrunStack.Create;
-  Stack.Push;
+  Stack.Return.Push;
 //  Stack.Local.Push;
   //Stack.Local.Current.Variables.SetValue('__ver__', TsoInteger.Create(101));
   //Main.AddClass('__ver__', nil);
   Main.Execute(Stack, nil);
-  if Stack.Current.Result.AnObject <> nil then
+  if Stack.Return.Current.Result.AnObject <> nil then
   begin
-    Result := Stack.Current.Result.AnObject.AsString;
-    WriteLn('=== Result:  ' + Stack.Current.Result.AnObject.AsString + '  ===');
+    Result := Stack.Return.Current.Result.AnObject.AsString;
+    WriteLn('=== Result:  ' + Stack.Return.Current.Result.AnObject.AsString + '  ===');
   end;
-  Stack.Pop;
+  Stack.Return.Pop;
 //  Stack.Local.Pop;
-  { End }
   FreeAndNil(Stack);
 end;
 
