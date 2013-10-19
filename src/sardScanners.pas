@@ -7,6 +7,15 @@ unit sardScanners;
  * @author    Zaher Dirkey <zaher at parmaja dot com>
  *}
 
+{**
+  Unit: Scanner, scan the source code and generate runtime objects
+  TsrdFeeder: Load the source lines and feed it to the Lexical, line by line
+  TsrdLexical: divied the source code (line) and pass it to small scanners, scanner tell it when it finished
+  TsrdScanner: Take this part of source code and convert it to control, operator or indentifier
+  TsrdParser: Generate the runtime objects, it use the current Interpreter
+*}
+
+
 {$IFDEF FPC}
 {$mode objfpc}
 {$ENDIF}
@@ -284,16 +293,20 @@ type
 
   TsrdLexical = class(TsardLexical)
   private
+    FControls: TctlControls;
     FEnv: TsrdEnvironment;
   protected
     procedure Created; override;
   public
+    constructor Create;
+    destructor Destroy; override;
     function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsControl(vChar: AnsiChar): Boolean; override;
     function IsOperator(vChar: AnsiChar): Boolean; override;
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
 
+    property Controls: TctlControls read FControls;
     property Env: TsrdEnvironment read FEnv write FEnv;
   end;
 
@@ -1148,7 +1161,7 @@ function TsrdControl_Scanner.Scan(const Text: string; var Column: Integer): Bool
 var
   aControl: TctlControl;
 begin
-  aControl := (Lexical as TsrdLexical).Env.Controls.Scan(Text, Column);
+  aControl := (Lexical as TsrdLexical).Controls.Scan(Text, Column);
   if aControl <> nil then
     Column := Column + Length(aControl.Name)
   else
@@ -1167,6 +1180,20 @@ end;
 
 procedure TsrdLexical.Created;
 begin
+  with Controls do
+  begin
+    Add('(', ctlOpenParams);
+    Add('[', ctlOpenArray);
+    Add('{', ctlOpenBlock);
+    Add(')', ctlCloseParams);
+    Add(']', ctlCloseArray);
+    Add('}', ctlCloseBlock);
+    Add(';', ctlEnd);
+    Add(',', ctlNext);
+    Add(':', ctlDeclare);
+    Add(':=', ctlAssign);
+  end;
+
   AddScanner(TsrdWhitespace_Scanner);
   AddScanner(TsrdBlockComment_Scanner);
   AddScanner(TsrdComment_Scanner);
@@ -1179,6 +1206,18 @@ begin
   AddScanner(TsrdIdentifier_Scanner);//Last one
 end;
 
+constructor TsrdLexical.Create;
+begin
+  inherited;
+  FControls := TctlControls.Create;
+end;
+
+destructor TsrdLexical.Destroy;
+begin
+  FreeAndNil(FControls);
+  inherited Destroy;
+end;
+
 function TsrdLexical.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := vChar in sWhitespace;
@@ -1186,7 +1225,7 @@ end;
 
 function TsrdLexical.IsControl(vChar: AnsiChar): Boolean;
 begin
-  Result := Env.Controls.IsOpenBy(vChar);
+  Result := Controls.IsOpenBy(vChar);
 end;
 
 function TsrdLexical.IsOperator(vChar: AnsiChar): Boolean;
