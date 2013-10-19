@@ -284,21 +284,17 @@ type
 
   TsrdLexical = class(TsardLexical)
   private
-    FControls: TctlControls;
-    FOperators: TopOperators;
+    FEnv: TsrdEnvironment;
   protected
     procedure Created; override;
   public
-    constructor Create(vParser: TsardParser);
-    destructor Destroy; override;
     function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsControl(vChar: AnsiChar): Boolean; override;
     function IsOperator(vChar: AnsiChar): Boolean; override;
     function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
     function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
 
-    property Operators: TopOperators read FOperators;
-    property Controls: TctlControls read FControls;
+    property Env: TsrdEnvironment read FEnv write FEnv;
   end;
 
   { TsrdWhitespaceScanner }
@@ -448,8 +444,6 @@ end;
 procedure TsrdInterpreterDefine.Control(AControl: TsardControl);
 var
   aSection: TsoSection;
-  aVariable: TsoVariable;
-  aAssign: TsoAssign;
 begin
 {
   x:int  (p1:int; p2:string);
@@ -466,7 +460,6 @@ begin
         aSection := TsoSection.Create;
         aSection.Parent := Declare;
         Declare.CallObject := aSection;
-//        aSection.AddDeclares(Declare.Defines);//nop it is local
         //We will pass the control to the next interpreter
         Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, aSection.Block));
       end;
@@ -480,11 +473,6 @@ begin
           else
           begin
             Post;
-{            aVariable := TsoVariable.Create;
-            aVariable.Parent := Declare;
-            Declare.AnObject := aVariable;
-            //Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, aSection.Block));
-            Pop;}
             Action([paPopInterpreter]);
           end;
         end;
@@ -506,10 +494,6 @@ begin
         else
         begin
           Post;
-{          aAssign := TsoAssign.Create;
-          aAssign.Name := Declare.Name;
-          aAssign.Parent := Declare;
-          Declare.AnObject := aAssign;}
           Action([paPopInterpreter]);
         end;
       end;
@@ -1155,8 +1139,6 @@ procedure TsrdParser.DoSetOperator(AOperator: TsardObject);
 begin
   Current.AddOperator(AOperator as TopOperator);
   ActionStack;
-{  if paBypass in Actions then
-    Current.Control(AControl);}
   Actions := [];
 end;
 
@@ -1166,7 +1148,7 @@ function TsrdControl_Scanner.Scan(const Text: string; var Column: Integer): Bool
 var
   aControl: TctlControl;
 begin
-  aControl := (Lexical as TsrdLexical).Controls.Scan(Text, Column);
+  aControl := (Lexical as TsrdLexical).Env.Controls.Scan(Text, Column);
   if aControl <> nil then
     Column := Column + Length(aControl.Name)
   else
@@ -1185,39 +1167,6 @@ end;
 
 procedure TsrdLexical.Created;
 begin
-  with Controls do
-  begin
-    Add('(', ctlOpenParams);
-    Add('[', ctlOpenArray);
-    Add('{', ctlOpenBlock);
-    Add(')', ctlCloseParams);
-    Add(']', ctlCloseArray);
-    Add('}', ctlCloseBlock);
-    Add(';', ctlEnd);
-    Add(',', ctlNext);
-    Add(':', ctlDeclare);
-    Add(':=', ctlAssign);
-  end;
-
-  with Operators do
-  begin
-    Add(TopPlus);
-    Add(TopMinus);
-    Add(TopMultiply);
-    Add(TopDivide);
-
-    Add(TopEqual);
-    Add(TopNotEqual);
-    Add(TopAnd);
-    Add(TopOr);
-    Add(TopNot);
-
-    Add(TopGreater);
-    Add(TopLesser);
-
-    Add(TopPower);
-  end;
-
   AddScanner(TsrdWhitespace_Scanner);
   AddScanner(TsrdBlockComment_Scanner);
   AddScanner(TsrdComment_Scanner);
@@ -1230,20 +1179,6 @@ begin
   AddScanner(TsrdIdentifier_Scanner);//Last one
 end;
 
-constructor TsrdLexical.Create(vParser: TsardParser);
-begin
-  inherited Create(vParser);
-  FOperators := TopOperators.Create;
-  FControls := TctlControls.Create;
-end;
-
-destructor TsrdLexical.Destroy;
-begin
-  FreeAndNil(FControls);
-  FreeAndNil(FOperators);
-  inherited Destroy;
-end;
-
 function TsrdLexical.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
 begin
   Result := vChar in sWhitespace;
@@ -1251,12 +1186,12 @@ end;
 
 function TsrdLexical.IsControl(vChar: AnsiChar): Boolean;
 begin
-  Result := Controls.IsOpenBy(vChar);
+  Result := Env.Controls.IsOpenBy(vChar);
 end;
 
 function TsrdLexical.IsOperator(vChar: AnsiChar): Boolean;
 begin
-  Result := Operators.IsOpenBy(vChar);
+  Result := Env.Operators.IsOpenBy(vChar);
 end;
 
 function TsrdLexical.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
@@ -1297,7 +1232,7 @@ function TopOperator_Scanner.Scan(const Text: string; var Column: Integer): Bool
 var
   lOperator: TopOperator;
 begin
-  lOperator := (Lexical as TsrdLexical).Operators.Scan(Text, Column);
+  lOperator := (Lexical as TsrdLexical).Env.Operators.Scan(Text, Column);
   if lOperator <> nil then
     Column := Column + Length(lOperator.Name)
   else

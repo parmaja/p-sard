@@ -25,6 +25,7 @@ type
   TsardRun = class(TsardObject)
   protected
   public
+    Env: TsrdEnvironment;
     Main: TsoMain;
     Result: string;//Temp
     constructor Create;
@@ -39,12 +40,14 @@ implementation
 
 constructor TsardRun.Create;
 begin
-
+  inherited;
+  Env := TsrdEnvironment.Create;
 end;
 
 destructor TsardRun.Destroy;
 begin
   FreeAndNil(Main);
+  FreeAndNil(Env);
   inherited;
 end;
 
@@ -60,7 +63,9 @@ begin
 
   { Compile }
   Parser := TsrdParser.Create(Main.Block);
-  Lexical := TsrdLexical.Create(Parser);
+  Lexical := TsrdLexical.Create;
+  Lexical.Parser := Parser;
+  Lexical.Env := Env;
   Feeder := TsrdFeeder.Create(Lexical);
 
   Feeder.Scan(Lines);
@@ -79,7 +84,6 @@ begin
   WriteLn('');
   WriteLn('-------------------------------');
   Stack := TrunStack.Create;
-  Stack.Return.Push;
 //  Stack.Local.Push;
   //Stack.Local.Current.Variables.SetValue('__ver__', TsoInteger.Create(101));
   //Main.AddClass('__ver__', nil);
@@ -89,8 +93,7 @@ begin
     Result := Stack.Return.Current.Result.AnObject.AsString;
     WriteLn('=== Result:  ' + Stack.Return.Current.Result.AnObject.AsString + '  ===');
   end;
-  Stack.Return.Pop;
-//  Stack.Local.Pop;
+
   FreeAndNil(Stack);
 end;
 

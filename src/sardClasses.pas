@@ -166,7 +166,7 @@ type
     function GetItem(Index: Integer): TsardScanner;
     procedure SetParser(AValue: TsardParser);
   public
-    constructor Create(vParser: TsardParser);
+    constructor Create;
     {
       Open mean first char in it, like Numbers must start with number 0..9 but can contain a..z
         or Identifier start a..z or _ but can contain numbers
@@ -186,8 +186,9 @@ type
     function AddScanner(ScannerClass: TsardScannerClass): TsardScanner;
     property Items[Index: Integer]: TsardScanner read GetItem; default;
     property Scanner: TsardScanner read FScanner;
-    property Parser: TsardParser read FParser ;//write SetParser;
     property Line: Integer read FLine;
+
+    property Parser: TsardParser read FParser write SetParser;
   end;
 
   { TsardFeeder }
@@ -529,10 +530,9 @@ begin
   FParser := AValue;
 end;
 
-constructor TsardLexical.Create(vParser: TsardParser);
+constructor TsardLexical.Create;
 begin
   inherited Create;
-  FParser := vParser;
 end;
 
 function TsardLexical.DetectScanner(const Text: string; var Column: Integer): TsardScanner;

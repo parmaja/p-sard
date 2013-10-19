@@ -27,7 +27,7 @@ unit sardObjects;
   TsoArray:   From the name, object have another objects, a list of objectd without execute it,
               it is save the result of statment come from the parser
 
-  TsrdShadow: This object shadow of another object, he resposible of the memory storage like a varible
+* TsrdShadow: This object shadow of another object, he resposible of the memory storage like a varible
               When need to execute an object it will done by this shadow and insure it is exist before run
               Also we can make muliple shadow of one object when creating link to it, i mean creating another object based on first one
               Also it is made for dynamic scoping, we can access the value in it instead of local variable
@@ -68,8 +68,10 @@ type
   TsoObjectClass = class of TsoObject;
 
   TopOperator = class;
+  TmodModifier = class;
   TrunResult = class;
   TrunStack = class;
+  TsrdEnvironment = class;
 
   TrunVariable = class;
   TrunVariables = class;
@@ -105,13 +107,18 @@ type
     property Parent: TsoObject read FParent;
   end;
 
-  { TsrdStatementItem }
+  { TsrdClause }
 
-  TsrdStatementItem = class(TsardObject)
+  TsrdClause = class(TsardObject)
+  private
+    FanOperator: TopOperator;
+    FanObject: TsoObject;
   public
-    anOperator: TopOperator;
-    anObject: TsoObject;
+    constructor Create(AOperator: TopOperator; AObject: TsoObject);
+    destructor Destroy; override;
     function Execute(vStack: TrunStack): Boolean;
+    property anOperator: TopOperator read FanOperator;
+    property anObject: TsoObject read FanObject;
   end;
 
   { TsrdStatement }
@@ -119,15 +126,15 @@ type
   TsrdStatement = class(TsrdObjectList)
   private
     FDebug: TsrdDebug;
-    function GetItem(Index: Integer): TsrdStatementItem;
+    function GetItem(Index: Integer): TsrdClause;
     procedure SetDebug(AValue: TsrdDebug);
   protected
   public
-    function Add(AObject: TsrdStatementItem): Integer;
-    function Add(AOperator:TopOperator; AObject: TsoObject): TsrdStatementItem;
+    function Add(AObject: TsrdClause): Integer;
+    function Add(AOperator:TopOperator; AObject: TsoObject): TsrdClause;
     procedure Execute(vStack: TrunStack);
     procedure Call(vStack: TrunStack);
-    property Items[Index: Integer]: TsrdStatementItem read GetItem; default;
+    property Items[Index: Integer]: TsrdClause read GetItem; default;
     property Debug: TsrdDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
   end;
 
@@ -157,24 +164,6 @@ type
     property Current: TsrdBlock read GetCurrent;
   end;
 
-  IsrdObject = interface['{9FD9AEE0-507E-4EEA-88A8-AE686E6A1D98}']
-  end;
-
-  IsrdOperate = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
-    function Add(var vResult: TrunResult): Boolean;
-    function Sub(var vResult: TrunResult): Boolean;
-    function Mulpiply(var vResult: TrunResult): Boolean;
-    function Divide(var vResult: TrunResult): Boolean;
-  end;
-
-  IsrdCompare = interface['{4B036431-57FA-4E6D-925C-51BC1B67331A}']
-    function Compare(var vResult: TrunResult): TsrdCompare;
-  end;
-
-  IsrdBlock = interface['{CB4C0FA1-E233-431E-8CC2-3755F62D93F2}']
-    function Execute(vStack: TrunStack; AOperator: TopOperator; vDefines: TsrdDefines = nil; vParameters: TsrdBlock = nil): Boolean;
-  end;
-
   TsoDeclare = class;
 
   TsrdDeclares = class(specialize GsardNamedObjects<TsoDeclare>)
@@ -185,7 +174,7 @@ type
 
   { TsoObject }
 
-  TsoObject = class abstract(TsardObject, IsrdObject)
+  TsoObject = class abstract(TsardObject)
   private
     FParent: TsoObject;
   protected
@@ -262,7 +251,7 @@ type
 
   { TsoBlock }
 
-  TsoBlock = class abstract(TsoNamedObject, IsrdBlock)
+  TsoBlock = class abstract(TsoNamedObject)
   protected
     FBlock: TsrdBlock;
     procedure Created; override;
@@ -529,6 +518,7 @@ type
     Control: TsardControl;// Fall back to control if is initial, only used for for = to fall back as :=
     function Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
     constructor Create; virtual;
+    destructor Destroy; override;
   end;
 
   TopOperatorClass = class of TopOperator;
@@ -543,6 +533,10 @@ type
     function Add(AOperatorClass: TopOperatorClass): Integer; overload;
     function IsOpenBy(const C: Char): Boolean;
     function Scan(const vText: string; vIndex: Integer): TopOperator;
+  end;
+
+
+  TmodModifier = class(TsardObject) //TODO
   end;
 
   { TopPlus }
@@ -726,6 +720,7 @@ type
 
   TrunStack = class(TsardObject)
   private
+    FEnv: TsrdEnvironment;
     FLocal: TrunLocal;
     FReturn:TrunReturn;
   public
@@ -733,6 +728,8 @@ type
     destructor Destroy; override;
     property Local: TrunLocal read FLocal;
     property Return: TrunReturn read FReturn;
+
+    property Env: TsrdEnvironment read FEnv write FEnv; //External Environment
   end;
 
   {----------------------------------}
@@ -772,6 +769,21 @@ type
     procedure Run(vStack: TrunStack; AParameters: TsrdBlock = nil);
   end;
 
+  { TsrdEnvironment }
+
+  TsrdEnvironment = class(TsardObject)
+  private
+    FControls: TctlControls;
+    FOperators: TopOperators;
+  protected
+    procedure Created; override;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Operators: TopOperators read FOperators;
+    property Controls: TctlControls read FControls;
+  end;
+
   { TsrdEngine }
 
   TsrdEngine = class(TsardCustomEngine)
@@ -796,17 +808,78 @@ begin
   Result := FsardEngine;
 end;
 
+{ TsrdEnvironment }
+
+procedure TsrdEnvironment.Created;
+begin
+  inherited Created;
+  with Controls do
+  begin
+    Add('(', ctlOpenParams);
+    Add('[', ctlOpenArray);
+    Add('{', ctlOpenBlock);
+    Add(')', ctlCloseParams);
+    Add(']', ctlCloseArray);
+    Add('}', ctlCloseBlock);
+    Add(';', ctlEnd);
+    Add(',', ctlNext);
+    Add(':', ctlDeclare);
+    Add(':=', ctlAssign);
+  end;
+
+  with Operators do
+  begin
+    Add(TopPlus);
+    Add(TopMinus);
+    Add(TopMultiply);
+    Add(TopDivide);
+
+    Add(TopEqual);
+    Add(TopNotEqual);
+    Add(TopAnd);
+    Add(TopOr);
+    Add(TopNot);
+
+    Add(TopGreater);
+    Add(TopLesser);
+
+    Add(TopPower);
+  end;
+end;
+
+constructor TsrdEnvironment.Create;
+begin
+  inherited Create;
+  FOperators := TopOperators.Create;
+  FControls := TctlControls.Create;
+end;
+
+destructor TsrdEnvironment.Destroy;
+begin
+  FreeAndNil(FControls);
+  FreeAndNil(FOperators);
+  inherited Destroy;
+end;
+
 { TrunStack }
 
 constructor TrunStack.Create;
 begin
   inherited;
   FLocal := TrunLocal.Create;
+  FReturn := TrunReturn.Create;
+
+  Local.Push;
+  Return.Push;
 end;
 
 destructor TrunStack.Destroy;
 begin
+  Local.Pop;
+  Return.Pop;
+
   FreeAndNil(FLocal);
+  FreeAndNil(FReturn);
   inherited;
 end;
 
@@ -1523,6 +1596,11 @@ begin
   inherited Create;
 end;
 
+destructor TopOperator.Destroy;
+begin
+  inherited Destroy;
+end;
+
 function TopOperators.FindByTitle(const vTitle: string): TopOperator;
 var
   i: Integer;
@@ -1601,13 +1679,25 @@ begin
   inherited Create;
 end;
 
-{ TsrdStatementItem }
+{ TsrdClause }
 
-function TsrdStatementItem.Execute(vStack: TrunStack): Boolean;
+constructor TsrdClause.Create(AOperator: TopOperator; AObject: TsoObject);
 begin
-  if anObject = nil then
+  inherited Create;
+  FanOperator := AOperator;
+  FanObject := AObject;
+end;
+
+destructor TsrdClause.Destroy;
+begin
+  inherited Destroy;
+end;
+
+function TsrdClause.Execute(vStack: TrunStack): Boolean;
+begin
+  if FanObject = nil then
     RaiseError('Object not set!');
-  Result := anObject.Execute(vStack, anOperator);
+  Result := FanObject.Execute(vStack, anOperator);
 end;
 
 { TsrdClass }
@@ -1953,9 +2043,9 @@ end;
 
 { TsrdStatement }
 
-function TsrdStatement.GetItem(Index: Integer): TsrdStatementItem;
+function TsrdStatement.GetItem(Index: Integer): TsrdClause;
 begin
-  Result := inherited Items[Index] as TsrdStatementItem;
+  Result := inherited Items[Index] as TsrdClause;
 end;
 
 procedure TsrdStatement.SetDebug(AValue: TsrdDebug);
@@ -1964,16 +2054,14 @@ begin
   FDebug :=AValue;
 end;
 
-function TsrdStatement.Add(AObject: TsrdStatementItem): Integer;
+function TsrdStatement.Add(AObject: TsrdClause): Integer;
 begin
   Result := inherited Add(AObject);
 end;
 
-function TsrdStatement.Add(AOperator: TopOperator; AObject: TsoObject): TsrdStatementItem;
+function TsrdStatement.Add(AOperator: TopOperator; AObject: TsoObject): TsrdClause;
 begin
-  Result := TsrdStatementItem.Create;
-  Result.anOperator := AOperator;
-  Result.anObject := AObject;
+  Result := TsrdClause.Create(AOperator, AObject);
   AObject.Parent := Parent;
   Add(Result);
 end;
