@@ -18,9 +18,6 @@ unit sardClasses;
 
   Result := Integer + Float <-- it convert to float or not, hmmm not sure
 }
-{
-  I use prime prefix to classes mean: Custom or Abstract that classes inherited from it
-}
 
 interface
 
@@ -249,9 +246,9 @@ type
     procedure SetOperator(AOperator: TsardObject);
   end;
 
-  { TsardPrimeEngine }
+  { TsardCustomEngine }
 
-  TsardPrimeEngine = class(TsardObject)
+  TsardCustomEngine = class(TsardObject)
   private
   protected
     procedure Created; override;
@@ -286,9 +283,11 @@ function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
 begin
   Result := (Length(Text) - Index) >= length(S);
   if Result then
+  begin
     Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive
-  if Result then
-    Index := Index + Length(S);
+    if Result then
+      Index := Index + Length(S);
+  end;
 end;
 
 function StringRepeat(S: string; C: Integer): string;
@@ -389,9 +388,9 @@ begin
   Created;
 end;
 
-{ TsardPrimeEngine }
+{ TsardCustomEngine }
 
-procedure TsardPrimeEngine.Created;
+procedure TsardCustomEngine.Created;
 begin
   inherited Created;
 end;

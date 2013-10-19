@@ -12,64 +12,15 @@ unit sardScanners;
 {$ENDIF}
 {$H+}{$M+}
 
-(*
-  #Like pascal
-    It is case insensitive
-    Declareing after the name
-    Assigning ":=", compare "=", object child "."
-    Dot as Identifier separator "."
-    Not equal operator "<>"
-    Return value not end the execute of block
+(*TODO:
+  Arrays: If initial parse [] as an index and passit to executer or assigner, not initial,
+          it is be a list of statments then run it in runtime and save the results in the list in TsoArray
 
-    foo:{
-      bar: integer;
-      i: integer = 5; //Declare and Assign
-      method1:{
-        :=i * bar //return value
-      }
-    }
+  Scanner open: Open with <?sard link php or close it ?> then pass it to the compiler and runner,
+          but my problem i cant mix outputs into the program like php, it is illogical for me, sorry guys :(
 
-    foo.bar := 10;
-
-  -----------------------------------------------------
-
-  #Like C
-    Block { }, no more begin end
-    comments //single line and /* multiline */
-    Not "!"  or "|"
-
-  -----------------------------------------------------
-
-  #Like nothing
-    Returning value
-
-   foo:{
-     := 10;
-   }
-
-   or
-
-   foo:integer(p1:integer){
-     := 10;
-   }
-
-   Description: new comment but saved with the objects.
-   {* This object not usfule dont use it *};
-
-   With:
-     object.{     <-not sure
-   }
-
-  Escape char is outside the string there is no escape inside it. sorry for that.
-  "test " \" " and"
-  it equal to "test " and"
-
+  Preprocessor: When scan {?somthing it will passed to addon in engine to return the result to rescan it or replace it with this preprocessor
 *)
-
-{TODO:
-  how to scan, minus here?
-  x := -10;
-}
 
 {
   Scope
@@ -111,9 +62,8 @@ type
     flagStatement,
     flagBlock
   );
-  TsrdFlags = set of TsrdFlag;
 
-  TsrdStatementType = (stmNormal, stmAssign, stmDeclare);
+  TsrdFlags = set of TsrdFlag;
 
   TsrdActions = set of (
       paPopInterpreter, //Pop the current interpreter
@@ -205,7 +155,7 @@ type
     procedure AddIdentifier(AIdentifier: String; AType: TsrdType); virtual;
     procedure AddOperator(AOperator: TopOperator); virtual;
 
-    //IsInitial check if the next object will be the first one, usefule for Assign and Declare
+    //IsInitial: check if the next object will be the first one, usefule for Assign and Declare
     function IsInitial: Boolean; virtual;
     procedure SwitchController(vControllerClass: TsrdControllerClass);
     procedure Control(AControl: TsardControl); virtual;
@@ -219,7 +169,6 @@ type
   TsrdInterpreterStatement = class (TsrdInterpreter)
   protected
     Statement: TsrdStatement;
-    StatementType: TsrdStatementType;
     procedure InternalPost; override;
   public
     constructor Create(AParser: TsrdParser; AStatement: TsrdStatement);
@@ -285,7 +234,6 @@ type
 
   TsrdParser = class(TsardParser)
   protected
-    FData: TrunData;
     function GetCurrent: TsrdInterpreter;
     procedure Created; override;
     procedure ActionStack;
@@ -298,7 +246,7 @@ type
     Actions: TsrdActions;
     NextInterpreter: TsrdInterpreter;
     Controllers: TsrdControllers;
-    constructor Create(AData: TrunData; ABlock: TsrdBlock);
+    constructor Create(ABlock: TsrdBlock);
     destructor Destroy; override;
 
     property Current: TsrdInterpreter read GetCurrent;
@@ -308,7 +256,6 @@ type
     procedure Start; override;
     procedure Stop; override;
 
-    property Data: TrunData read FData;
   end;
 
   {------  Scanners Objects ------}
@@ -603,7 +550,7 @@ end;
 
 procedure TsrdControllerDefines.Control(AControl: TsardControl);
 begin
-  //inherited Control(AControl);
+  //inherited;
 end;
 
 { TsrdInstruction }
@@ -838,10 +785,11 @@ begin
     if (ScanCompare('*}', Text, Column)) then
     begin
       Buffer := Buffer + MidStr(Text, c, Column - c);
-      Lexical.Parser.SetToken(Buffer, tpComment);
-      Result := True;
-      Buffer := '';
       Inc(Column, 2);//2 chars
+
+      Lexical.Parser.SetToken(Buffer, tpComment);
+      Buffer := '';
+      Result := True;
       break;
     end;
     Inc(Column);
@@ -852,9 +800,7 @@ end;
 
 function TsrdComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := ScanCompare('{*', Text, Column);
-  if Result then
-    Inc(Column, 2);//2 chars
+  Result := ScanText('{*', Text, Column);
 end;
 
 { TsrdFeeder }
@@ -931,7 +877,6 @@ begin
   with Result do
   begin
     Name := Identifier;
-//    ID := Parser.Data.RegisterID(Name);
   end;
   InternalSetObject(Result);
   Identifier := '';
@@ -945,7 +890,6 @@ begin
   with Result do
   begin
     Name := Identifier;
-    //ID := Parser.Data.RegisterID(Name);
   end;
   InternalSetObject(Result);
   Identifier := '';
@@ -960,7 +904,6 @@ begin
   with Result do
   begin
     Name := AIdentifier;
-    //ID := Parser.Data.RegisterID(Name);
   end;
   InternalSetObject(Result);
   SetFlag(flagInstance);
@@ -981,7 +924,6 @@ begin
   Result := TsoStatement.Create;
   with Result do
   begin
-    //ID := Parser.Data.RegisterID(Name);
   end;
   InternalSetObject(Result);
   SetFlag(flagStatement);
@@ -1146,15 +1088,13 @@ end;
 
 procedure TsrdParser.Start;
 begin
-  if Data = nil then
-    RaiseError('You must define Data object');
 end;
 
 procedure TsrdParser.Stop;
 begin
 end;
 
-constructor TsrdParser.Create(AData: TrunData; ABlock: TsrdBlock);
+constructor TsrdParser.Create(ABlock: TsrdBlock);
 begin
   inherited Create;
   if ABlock = nil then
@@ -1162,7 +1102,6 @@ begin
   Controllers := TsrdControllers.Create;
   Controllers.Add(TsrdControllerNormal.Create(Self));
   Controllers.Add(TsrdControllerDefines.Create(Self));
-  FData := AData;
   Push(TsrdInterpreterBlock.Create(Self, ABlock));
 end;
 
@@ -1417,9 +1356,7 @@ end;
 
 function TsrdString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := ScanCompare(QuoteChar, Text, Column);
-  if Result then
-    Inc(Column, Length(QuoteChar));
+  Result := ScanText(QuoteChar, Text, Column);
 end;
 
 { TsrdBlockCommentScanner }
@@ -1429,37 +1366,30 @@ begin
   Result := False;
   while (Column <= Length(Text)) do
   begin
-    if (ScanCompare('*/', Text, Column)) then
-    begin
-      Inc(Column, 2);//2 chars
-      Result := True;
+    Result := (ScanText('*/', Text, Column));
+    if Result then
       break;
-    end;
     Inc(Column);
   end;
 end;
 
 function TsrdBlockComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := ScanCompare('/*', Text, Column);
-  if Result then
-    Inc(Column, 2);//2 chars
+  Result := ScanText('/*', Text, Column);
 end;
 
 { TsrdLineComment_Scanner }
 
 function TsrdLineComment_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 begin
-  while (Column <= Length(Text)) and not (Text[Column] in sEOL) do //TODO ignore quoted strings
+  while (Column <= Length(Text)) and not (Text[Column] in sEOL) do
     Inc(Column);
   Result := True;
 end;
 
 function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := ScanCompare('//', Text, Column);
-  if Result then
-    Inc(Column, 2);//2 chars
+  Result := ScanText('//', Text, Column);
 end;
 
 { TsrdWhitespace_Scanner }

@@ -32,6 +32,7 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure MenuItem4Click(Sender: TObject);
   private
+    procedure Build;
   public
     procedure Save;
     procedure Run;
@@ -53,8 +54,20 @@ end;
 
 procedure TForm1.Button2Click(Sender: TObject);
 begin
+  Build;
+end;
+
+procedure TForm1.Build;
+var
+  aRun: TsardRun;
+begin
   Save;
-  Build(InputEdit.Lines);
+  aRun := TsardRun.Create;
+  try
+    aRun.Compile(InputEdit.Lines);
+  finally
+    FreeAndNil(aRun);
+  end;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
@@ -74,7 +87,7 @@ begin
       if Key = VK_S then
         Save
       else if Key = VK_F9 then
-        Build(InputEdit.Lines);
+        Build
     end;
 end;
 
@@ -90,12 +103,18 @@ end;
 
 procedure TForm1.Run;
 var
-  s:string;
+  aRun: TsardRun;
 begin
   ResultEdit.Text := '';
   Save;
-  Execute(InputEdit.Lines,s);
-  ResultEdit.Text := s;
+  aRun := TsardRun.Create;
+  try
+    aRun.Compile(InputEdit.Lines);
+    aRun.Run;
+    ResultEdit.Text := aRun.Result;
+  finally
+    FreeAndNil(aRun);
+  end;
 end;
 
 end.

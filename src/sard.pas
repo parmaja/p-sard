@@ -16,29 +16,50 @@ interface
 
 uses
   Classes, SysUtils,
-  sardObjects, sardScanners;
+  sardClasses, sardObjects, sardScanners;
 
-function Build(Lines: TStrings): Boolean;
-function Execute(Lines: TStrings; out vResult: string): Boolean;
+type
+
+  { TsardRun }
+
+  TsardRun = class(TsardObject)
+  protected
+  public
+    Main: TsoMain;
+    Result: string;//Temp
+    constructor Create;
+    destructor Destroy; override;
+    procedure Compile(Lines: TStrings);
+    procedure Run;
+  end;
 
 implementation
 
-{ TmyFeeder }
+{ TsardRun }
 
-function Build(Lines: TStrings): Boolean;
+constructor TsardRun.Create;
+begin
+
+end;
+
+destructor TsardRun.Destroy;
+begin
+  FreeAndNil(Main);
+  inherited;
+end;
+
+procedure TsardRun.Compile(Lines: TStrings);
 var
   Lexical: TsrdLexical;
   Feeder: TsrdFeeder;
   Parser: TsrdParser;
-  Main: TsoMain;
-  Data: TrunData;
 begin
   WriteLn('-------------------------------');
-
+  FreeAndNil(Main);
   Main := TsoMain.Create;
-  Data:=TrunData.Create;
+
   { Compile }
-  Parser := TsrdParser.Create(Data, Main.Block);
+  Parser := TsrdParser.Create(Main.Block);
   Lexical := TsrdLexical.Create(Parser);
   Feeder := TsrdFeeder.Create(Lexical);
 
@@ -48,32 +69,13 @@ begin
   FreeAndNil(Parser);
   FreeAndNil(Lexical);
   FreeAndNil(Feeder);
-  FreeAndNil(Main);
-  FreeAndNil(Data);
 
-  Result := True;
 end;
 
-
-function Execute(Lines: TStrings; out vResult: string): Boolean;
+procedure TsardRun.Run;
 var
-  Lexical: TsrdLexical;
-  Feeder: TsrdFeeder;
-  Parser: TsrdParser;
   Stack: TrunStack;
-  Data: TrunData;
-  Main: TsoMain;
 begin
-  WriteLn('-------------------------------');
-
-  Main := TsoMain.Create;
-  Data := TrunData.Create;
-  { Compile }
-  Parser := TsrdParser.Create(Data, Main.Block);
-  Lexical := TsrdLexical.Create(Parser);
-  Feeder := TsrdFeeder.Create(Lexical);
-
-  Feeder.Scan(Lines);
   WriteLn('');
   WriteLn('-------------------------------');
   { Run }
@@ -85,21 +87,13 @@ begin
   Main.Execute(Stack, nil);
   if Stack.Current.Result.AnObject <> nil then
   begin
-    vResult := Stack.Current.Result.AnObject.AsString;
+    Result := Stack.Current.Result.AnObject.AsString;
     WriteLn('=== Result:  ' + Stack.Current.Result.AnObject.AsString + '  ===');
   end;
   Stack.Pop;
 //  Stack.Local.Pop;
-
   { End }
   FreeAndNil(Stack);
-  FreeAndNil(Main);
-  FreeAndNil(Data);
-  FreeAndNil(Parser);
-  FreeAndNil(Lexical);
-  FreeAndNil(Feeder);
-
-  Result := True;
 end;
 
 end.
