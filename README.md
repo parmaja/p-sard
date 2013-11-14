@@ -173,10 +173,58 @@ maybe statment not a blocks
 
 condition statment ? true statment : false statment;
 
+Scope 
+./
+
 // -With-
 object.{     <-not sure
 };
 ```
+
+###Thinking loud###
+
+Array
+
+    a := []
+
+    a := ["x", "y", "z"]
+
+    mayebe manage property as array inside the object like
+
+    a:{
+      num=10;
+      str="test";
+    }
+
+    s := a['num']; <- not sure if is good
+
+New object
+
+    You not need to create object if u declared it based on another object like that
+
+    AnyObject:{
+      num = 0;
+    }
+
+    AnotherObject:AnyObject; <-this is new object from the first one <-naah not goood
+
+    New sign is ~
+    You can create object based on any other object, but it will not copy the values(not sure).
+
+    obj = ~AnyObject; //it is mean obj=new AnyObject
+
+    obj = ~~AnyObject; // new and copy the values
+
+    you can use "with" with it
+
+    AnyObject: {
+      num = 0;
+    }
+
+    (~AnyObject).{
+      num = 10; <- theis a member of the object you can use it
+    }
+
 
 ###Compile###
 
