@@ -172,6 +172,8 @@ f.b;
 There is no 'if' so we need this, still have no idea how i can do it by scanner
 ```javascript
 (x=10)?{ true bock }:{ false block }
+i am thinking about
+?(x=10){ true bock }:{ false block }
 
 maybe statment not a blocks
 
