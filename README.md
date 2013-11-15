@@ -26,6 +26,7 @@ __Like pascal__
   * Not equal: "<>" or "!="
 
   * Return value not end the execute of block
+
 ```javascript
 foo:{
   bar: integer;
@@ -36,6 +37,7 @@ foo:{
 }
 foo.bar := 10;
 ```
+
 __Like C__
 
   * Blocks: { }, no more "begin" and "end"
@@ -92,6 +94,7 @@ x := {    //Block it any where
 := x; //Return result to the main object
 ```
 First init of the variable define the type
+
 ```javascript
 s:='Foo';
 s:=s+' Bar';
@@ -105,6 +108,7 @@ i := 10.0;
 i := i + 5.5;
 //variable i now have 15.5
 ```
+
 Next f is a function or let us say it is an object we can run it.
 ```javascript
 f:{
