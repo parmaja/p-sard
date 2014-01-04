@@ -1,7 +1,7 @@
 SARD script language
 ====================
 
-It is a script language not programming language.
+It is an object script language not a programming language.
 
 The idea behind it, it is not use any of reserved word only signs, only objects there is no "void", "function" or "procedure"
 
