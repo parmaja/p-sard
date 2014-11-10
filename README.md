@@ -1,13 +1,11 @@
 SARD script language
 ====================
 
-It is an object script language not a programming language.
+It is an object script language not a programming language, but you can use it as programming language.
 
-The idea behind it, it is not use any of reserved word only signs, only objects there is no "void", "function" or "procedure"
+The idea behind it, it is not use any of reserved words, only signs, only objects there is no "void", "var", "let" "function" or "procedure" or even "if", "else" or "while".
 
-When i finish it it will be clear than i can explain it.
-
-It is: File parsed, result executed in interpreter (possibly multiple times)
+When finished it it will be clear than we can explain it.
 
 ####Compare####
 
@@ -189,11 +187,13 @@ object.{     <-not sure
 
 ###Thinking loud###
 
-Array
+Array:s
 
-    a := []
+    a := [];
 
-    a := ["x", "y", "z"]
+    a := ["x", "y", "z"];
+    
+    a :[10];
 
     mayebe manage property as array inside the object like
 
