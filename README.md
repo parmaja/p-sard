@@ -185,6 +185,11 @@ object.{     <-not sure
 };
 ```
 
+####Rules####
+
+There is no special functions objects for compiler/parser.
+No special name/char/case for classes.
+
 ###Thinking loud###
 
 Array:s
