@@ -116,7 +116,7 @@ type
     function IsEmpty: Boolean;
     procedure SetOperator(AOperator: TopOperator);
     procedure SetIdentifier(AIdentifier: string);
-    function SetNumber(AIdentifier: string): TsoNumber;
+    function SetNumber(AIdentifier: string): TsoBaseNumber;
     function SetString(AIdentifier: string): TsoString;
     function SetComment(AIdentifier: string): TsoComment;
     function SetInstance(AIdentifier: string): TsoInstance;
@@ -836,7 +836,7 @@ begin
   SetFlag(flagIdentifier);
 end;
 
-function TsrdInstruction.SetNumber(AIdentifier: string): TsoNumber;
+function TsrdInstruction.SetNumber(AIdentifier: string): TsoBaseNumber;
 begin
   if Identifier <> '' then
     RaiseError('Identifier is already set');

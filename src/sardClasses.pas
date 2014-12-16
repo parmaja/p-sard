@@ -127,7 +127,7 @@ type
     function IsEmpty: Boolean;
     procedure Push(vObject: TObject);
     procedure Pop;
-    function Pull: TObject; //Pop but do not delete delete the ibject
+    function Pull: TObject; //Pop but do not delete the object
     function Peek: TObject;
     property Current: TObject read GetCurrent;
     property Parent: TObject read GetParent;
@@ -179,9 +179,10 @@ type
 
     function DetectScanner(const Text: string; var Column: Integer): TsardScanner;
     procedure SwitchScanner(NextScanner: TsardScanner);
+
+    function FindClass(const ScannerClass: TsardScannerClass): TsardScanner;
     //This find the class and switch to it
     procedure SelectScanner(ScannerClass: TsardScannerClass);
-    function FindClass(const ScannerClass: TsardScannerClass): TsardScanner;
     procedure ScanLine(const Text: string; const ALine: Integer);
     function AddScanner(ScannerClass: TsardScannerClass): TsardScanner;
     property Items[Index: Integer]: TsardScanner read GetItem; default;
@@ -443,7 +444,7 @@ end;
 
 function TsardStack.Peek: TObject;
 begin
-  if FCurrentItem = nil then
+  if FCurrentItem = nil then //TODO maybe return nil<--
     RaiseError('Stack is empty');
   Result := FCurrentItem.AnObject;
 end;

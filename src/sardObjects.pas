@@ -54,8 +54,7 @@ unit sardObjects;
               Also we can make muliple shadow of one object when creating link to it, i mean creating another object based on first one
               Also it is made for dynamic scoping, we can access the value in it instead of local variable
 
-  TrunEngine: Load file and compile it, also have debugger actions and log to console of to any plugin that provide that interface
-              Engine cache also compile files to use it again and it check the timestamp before recompile it
+  TrunEngine: Load file and compile it, also have debugger actions and log to console of to any plugin that provide that interface              Engine cache also compile files to use it again and it check the timestamp before recompile it
 
   TsrdAddons: It have any kind of addon, parsing, preprocessor, or debugger
 
@@ -393,7 +392,7 @@ type
 
 {-------- Const Objects --------}
 
-  { TsrdNone }
+  { TsoNone }
 
   TsoNone = class(TsoConstObject) //None it is not Null, it is an initial value we sart it
   public
@@ -401,15 +400,15 @@ type
     //Convert to 0 or ''
   end;
 
-  { TsrdNumber }
+  { TsoBaseNumber }
 
-  TsoNumber = class abstract(TsoConstObject)
+  TsoBaseNumber = class abstract(TsoConstObject)
   public
   end;
 
   { TsoInteger }
 
-  TsoInteger = class(TsoNumber)
+  TsoInteger = class(TsoBaseNumber)
   protected
     procedure Created; override;
   public
@@ -425,7 +424,7 @@ type
 
   { TsoFloat }
 
-  TsoFloat = class(TsoNumber)
+  TsoFloat = class(TsoBaseNumber)
   public
     Value: Float;
     constructor Create(AValue: Float); overload;
@@ -455,7 +454,7 @@ type
 
   { TsoBoolean }
 
-  TsoBoolean = class(TsoNumber)
+  TsoBoolean = class(TsoBaseNumber)
   public
     Value: Boolean;
     constructor Create(AValue: Boolean); overload;
@@ -469,7 +468,7 @@ type
 {
   TODO:
 
-  TsoArray = class(TsoNumber)
+  TsoArray = class(TsoBaseNumber)
   public
     Value: TsoObjects;
     constructor Create(AValue: Boolean); overload;
@@ -953,7 +952,7 @@ var
 begin
   v := RegisterVariable(vStack, [vtLocal]);
   if v = nil then
-    RaiseError('Can not register a varibale: ' + Name) ;
+    RaiseError('Can not register a variable: ' + Name) ;
   if v.Value.anObject = nil then
     RaiseError(v.Name + ' variable have no value yet:' + Name);//TODO make it as empty
   Done := v.Value.anObject.Execute(vStack, AOperator);
@@ -984,6 +983,7 @@ end;
 
 procedure TsoCustomStatement.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
 begin
+  //todo check if need inherited
   vStack.Return.Push;
 end;
 
@@ -1895,14 +1895,14 @@ begin
     '+': Value := Value + AObject.AsString;
     '-':
       begin
-        if AObject is TsoNumber then
+        if AObject is TsoBaseNumber then
           Value := LeftStr(Value, Length(Value) - AObject.AsInteger)
         else
           Result := False;
       end;
     '*':
       begin
-        if AObject is TsoNumber then
+        if AObject is TsoBaseNumber then
           Value := StringRepeat(Value, AObject.AsInteger)
         else
           Result := False;
@@ -2131,7 +2131,7 @@ end;
 
 procedure TsrdStatement.Execute(vStack: TrunStack);
 begin
-  vStack.Return.Push; //Each staement have own result
+  vStack.Return.Push; //Each statement have own result
   Call(vStack);
   if vStack.Return.Current.Reference <> nil then
     vStack.Return.Current.Reference.anObject := vStack.Return.Current.Result.Extract;  //it is responsible of assgin to parent result or to a variable
