@@ -1072,7 +1072,7 @@ end;
 
 constructor TrunLocal.Create;
 begin
-
+  inherited;
 end;
 
 destructor TrunLocal.Destroy;
@@ -1646,12 +1646,12 @@ end;
 
 function TopOperator.DoExecute(vStack: TrunStack; vObject: TsoObject): Boolean;
 begin
-  Result := False;
+   Result := False;
 end;
 
 function TopOperator.Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
 begin
-  Result := False;
+  Result := False; //TODO what!!!
 end;
 
 constructor TopOperator.Create;

@@ -114,6 +114,7 @@ type
     function CheckOperator(vRaise: Boolean = False): Boolean;
 
     function IsEmpty: Boolean;
+    procedure SetFlag(AFlag: TsrdFlag);
     procedure SetOperator(AOperator: TopOperator);
     procedure SetIdentifier(AIdentifier: string);
     function SetNumber(AIdentifier: string): TsoBaseNumber;
@@ -125,7 +126,6 @@ type
     function SetAssign: TsoAssign;
     function SetDeclare: TsoDeclare;
     procedure SetObject(AObject: TsoObject);
-    procedure SetFlag(AFlag: TsrdFlag);
   end;
 
   { TsrdController }
@@ -344,7 +344,7 @@ type
 
   { TopOperatorScanner }
 
-  TopOperator_Scanner = class(TsardScanner)
+  TsrdOperator_Scanner = class(TsardScanner)
   protected
     function Scan(const Text: string; var Column: Integer): Boolean;  override;
     function Accept(const Text: string; var Column: Integer): Boolean;  override;
@@ -1202,7 +1202,7 @@ begin
   AddScanner(TsrdSQString_Scanner);
   AddScanner(TsrdDQString_Scanner);
   AddScanner(TsrdControl_Scanner);
-  AddScanner(TopOperator_Scanner); //Register it after comment because comment take /*
+  AddScanner(TsrdOperator_Scanner); //Register it after comment because comment take /*
   AddScanner(TsrdIdentifier_Scanner);//Last one
 end;
 
@@ -1267,7 +1267,7 @@ end;
 
 { TopOperatorScanner }
 
-function TopOperator_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
+function TsrdOperator_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
 var
   lOperator: TopOperator;
 begin
@@ -1284,7 +1284,7 @@ begin
   Result := True;
 end;
 
-function TopOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TsrdOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := Lexical.IsOperator(Text[Column]);
 end;
