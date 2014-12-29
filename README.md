@@ -1,5 +1,9 @@
-SARD script language
+[Abandonded] SARD script language
 ====================
+
+###abandonded###
+This project now abandonded because i ported to D language, here https://github.com/parmaja/sard
+I will keep this repo for history issues.
 
 It is an object script language not a programming language, but you can use it as programming language.
 
