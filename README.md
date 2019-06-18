@@ -1,5 +1,5 @@
-[Abandonded] SARD script language
-====================
+Pascal SARD script language
+===========================
 
 ###abandonded###
 This project now abandonded because i ported to D language, here https://github.com/parmaja/sard

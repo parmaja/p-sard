@@ -7,397 +7,140 @@ unit sardScanners;
  * @author    Zaher Dirkey <zaher at parmaja dot com>
  *}
 
-{**
-  Unit: Scanner, scan the source code and generate runtime objects
-  TsrdFeeder: Load the source lines and feed it to the Lexical, line by line
-  TsrdLexical: divied the source code (line) and pass it to small scanners, scanner tell it when it finished
-  TsrdScanner: Take this part of source code and convert it to control, operator or indentifier
-  TsrdParser: Generate the runtime objects, it use the current Interpreter
-*}
-
-
 {$IFDEF FPC}
-{$mode objfpc}
+{$mode delphi}
 {$ENDIF}
 {$H+}{$M+}
-
-(*TODO:
-  Arrays: If initial parse [] as an index and passit to executer or assigner, not initial,
-          it is be a list of statments then run it in runtime and save the results in the list in TsoArray
-
-  Scanner open: Open with <?sard link php or close it ?> then pass it to the compiler and runner,
-          but my problem i cant mix outputs into the program like php, it is illogical for me, sorry guys :(
-
-  Preprocessor: When scan {?somthing it will passed to addon in engine to return the result to rescan it or replace it with this preprocessor
-
-  What about private, public or protected, the default must be protected
-    x:(p1, p2){ block } //protected
-    x:-(){} //private
-    x:+(){} //public
-
-  We need to add multi blocks to the identifier like this
-    x(10,10){ ... } { ... }
-    or with : as seperator
-    x(10,10){ ... }:{ ... }
-  it is good to make the "if" object with "else" as the second block.
-
-*)
-
-{
-  Scope
-  Block
-  Statment
-  Instruction, Preface, clause,
-  Expression
-}
 
 interface
 
 uses
-  Classes, SysUtils,
-  sardClasses, sardObjects;
+  mnUtils,
+  sardClasses, sardObjects, sardLexers, sardOperators;
 
 const
   sEOL = [#0, #13, #10];
-  sWhitespace = sEOL + [' ', #9];
 
-  sNumberOpenChars = ['0'..'9'];
-  sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a'..'f'];
+  sEscape = '\';
 
-  sColorOpenChars = ['#'];
-  sColorChars = sColorOpenChars + ['0'..'9', 'a'..'f'];
+  //sColorOpenChars = ['#'];
+  //sColorChars = sColorOpenChars + ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
 
+type
+  { TWhitespace_Tokenizer }
+
+  TWhitespace_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    function Accept(Text: string; Column: Integer): Boolean; override;
+  end;
+
+  { TIdentifier_Tokenizer }
+
+  TIdentifier_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    function Accept(Text: string; Column: Integer): Boolean; override;
+  end;
+
+  { TNumber_Tokenizer }
+
+  TNumber_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    function Accept(Text: string; Column: Integer): Boolean; override;
+  end;
+
+  { TControl_Tokenizer }
+
+  TControl_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    function Accept(Text: string; Column: Integer): Boolean; override;
+  end;
+
+  { TOperator_Tokenizer }
+
+  TOperator_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    function Accept(Text: string; Column: Integer): Boolean; override;
+  end;
+
+  { TLineComment_Tokenizer }
+
+  TLineComment_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    function Accept(Text: string; Column: Integer): Boolean; override;
+  end;
+
+  { TBlockComment_Tokenizer }
+
+  TBlockComment_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    function Accept(Text: string; Column: Integer): Boolean; override;
+  end;
+
+  //Comment object {* *}
+
+  { TComment_Tokenizer }
+
+  TComment_Tokenizer = class(TBufferedMultiLine_Tokenizer)
+  public
+    constructor Create; override;
+    procedure SetToken(Text: string); override;
+  end;
+
+  {* Single Quote String *}
+
+  { TSQString_Tokenizer }
+
+  TSQString_Tokenizer = class(TString_Tokenizer)
+  public
+    constructor Create; override;
+  end;
+
+  {* Double Quote String *}
+
+  { DQString_Tokenizer }
+
+  TDQString_Tokenizer = class(TString_Tokenizer)
+  public
+    constructor Create; override;
+  end;
+
+  { TEscape_Tokenizer }
+
+  TEscape_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    function Accept(Text: string; Column: Integer): Boolean; override;
+  public
+  end;
+
+const
+  sWhitespace = sEOL + [' ', #8];
+  sNumberOpenChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
+  sSymbolChars = ['"', '''', '\'];
   sIdentifierSeparator = '.';
 
 type
-  TsrdFlag = (
-    flagNone,
-    flagInstance,
-    flagDeclare,
-    flagAssign,
-    flagIdentifier,
-    flagConst,
-    flagParam,
-    flagOperator,
-    flagComment,
-    flagStatement,
-    flagBlock
-  );
 
-  TsrdFlags = set of TsrdFlag;
+  { TCodeLexer }
 
-  TsrdActions = set of (
-      paPopInterpreter, //Pop the current interpreter
-      paBypass  //resend the control char to the next interpreter
-    );
-
-  TsrdParser = class;
-  TsrdInterpreter = class;
-
-  //Instruction or clause!?
-
-  { TsrdInstruction }
-
-  TsrdInstruction = class(TsardObject)
-  protected
-    procedure InternalSetObject(AObject: TsoObject);
+  TCodeLexer = class(TLexer)
   public
-    Flag: TsrdFlag;
-    Identifier: string;
-    anOperator: TopOperator;
-    anObject: TsoObject;
-    //Return true if Identifier is not empty and object is nil
-    function CheckIdentifier(vRaise: Boolean = False): Boolean;
-    //Return true if Object is not nil and Identifier is empty
-    function CheckObject(vRaise: Boolean = False): Boolean;
-    //Return true if Operator is not nil
-    function CheckOperator(vRaise: Boolean = False): Boolean;
-
-    function IsEmpty: Boolean;
-    procedure SetFlag(AFlag: TsrdFlag);
-    procedure SetOperator(AOperator: TopOperator);
-    procedure SetIdentifier(AIdentifier: string);
-    function SetNumber(AIdentifier: string): TsoBaseNumber;
-    function SetString(AIdentifier: string): TsoString;
-    function SetComment(AIdentifier: string): TsoComment;
-    function SetInstance(AIdentifier: string): TsoInstance;
-    function SetInstance: TsoInstance;
-    function SetStatment: TsoStatement;//Statement object not srdStatement
-    function SetAssign: TsoAssign;
-    function SetDeclare: TsoDeclare;
-    procedure SetObject(AObject: TsoObject);
-  end;
-
-  { TsrdController }
-
-  TsrdController = class(TsardObject)
-  protected
-    Parser: TsrdParser;
-  public
-    constructor Create(AParser: TsrdParser);
-    procedure Control(AControl: TsardControl); virtual; abstract;
-  end;
-
-  TsrdControllerClass = class of TsrdController;
-
-  { TsrdControllers }
-
-  TsrdControllers = class(specialize GsardObjects<TsrdController>)
-  private
-  protected
-  public
-    function FindClass(vControllerClass: TsrdControllerClass): TsrdController;
-  end;
-
-  { TsrdInterpreter }
-
-  TsrdInterpreter = class(TsardObject)
-  private
-    FFlags: TsrdFlags;
-  protected
-    Instruction: TsrdInstruction;
-    Controller: TsrdController;
-
-    Parser: TsrdParser;
-    procedure InternalPost; virtual;
-    function GetControllerClass: TsrdControllerClass; virtual;
-  public
-    constructor Create(AParser: TsrdParser);
-    destructor Destroy; override;
-    procedure SetFlag(AFlag: TsrdFlag);
-    //Push to the Parser immediately
-    procedure Push(vItem: TsrdInterpreter);
-    //No pop, but when finish Parser will pop it
-    procedure Action(vActions: TsrdActions = []; vNextInterpreter: TsrdInterpreter = nil); virtual;
-    procedure Reset; virtual;
-    procedure Prepare; virtual;
-    procedure Post; virtual;
-    procedure Next; virtual;
-    procedure AddIdentifier(AIdentifier: String; AType: TsrdType); virtual;
-    procedure AddOperator(AOperator: TopOperator); virtual;
-
-    //IsInitial: check if the next object will be the first one, usefule for Assign and Declare
-    function IsInitial: Boolean; virtual;
-    procedure SwitchController(vControllerClass: TsrdControllerClass);
-    procedure Control(AControl: TsardControl); virtual;
-    property Flags: TsrdFlags read FFlags;
-  end;
-
-  TsrdInterpreterClass = class of TsrdInterpreter;
-
-  { TsrdInterpreterStatement }
-
-  TsrdInterpreterStatement = class (TsrdInterpreter)
-  protected
-    Statement: TsrdStatement;
-    procedure InternalPost; override;
-  public
-    constructor Create(AParser: TsrdParser; AStatement: TsrdStatement);
-    procedure Next; override;
-    procedure Prepare; override;
-    function IsInitial: Boolean; override;
-  end;
-
-  { TsrdInterpreterBlock }
-
-  TsrdInterpreterBlock = class (TsrdInterpreterStatement)
-  protected
-    Block: TsrdBlock;
-  public
-    constructor Create(AParser: TsrdParser; ABlock: TsrdBlock);
-    procedure Prepare; override;
-  end;
-
-  { TsrdInterpreterDeclare }
-
-  TsrdInterpreterDeclare = class(TsrdInterpreterStatement)
-  protected
-  public
-    procedure Control(AControl: TsardControl); override;
-  end;
-
-  { TsrdInterpreterDefine }
-
-  TsrdInterpreterDefine = class (TsrdInterpreter)
-  type
-    TState = (stName, stType);
-  protected
-    State: TState;
-    Param: Boolean;
-    Declare: TsoDeclare;
-    procedure InternalPost; override;
-    function GetControllerClass: TsrdControllerClass; override;
-  public
-    constructor Create(AParser: TsrdParser; ADeclare: TsoDeclare);
-    procedure Control(AControl: TsardControl); override;
-    procedure Prepare; override;
-    procedure Next; override;
-    procedure Reset; override;
-    function IsInitial: Boolean; override;
-  end;
-
-  { TsrdControllerNormal }
-
-  TsrdControllerNormal = class(TsrdController)
-  public
-    procedure Control(AControl: TsardControl); override;
-  end;
-
-  { TsrdControllerDeclareParams }
-
-  TsrdControllerDefines = class(TsrdControllerNormal)
-  protected
-  public
-    procedure Control(AControl: TsardControl); override;
-  end;
-
-  { TsrdParser }
-
-  TsrdParser = class(TsardParser)
-  protected
-    function GetCurrent: TsrdInterpreter;
-    procedure Created; override;
-    procedure ActionStack;
-    procedure DoSetToken(AToken: String; AType: TsrdType); override;
-    procedure DoSetOperator(AOperator: TsardObject); override;
-    procedure DoSetControl(AControl: TsardControl); override;
-    procedure AfterPush; override;
-    procedure BeforePop; override;
-  public
-    Actions: TsrdActions;
-    NextInterpreter: TsrdInterpreter;
-    Controllers: TsrdControllers;
-    constructor Create(ABlock: TsrdBlock);
-    destructor Destroy; override;
-
-    property Current: TsrdInterpreter read GetCurrent;
-    procedure Push(vItem: TsrdInterpreter);
-    function Push(vItemClass: TsrdInterpreterClass): TsrdInterpreter;
-
-    procedure Start; override;
-    procedure Stop; override;
-
-  end;
-
-  {------  Scanners Objects ------}
-
-  { TsrdFeeder }
-
-  TsrdFeeder = class(TsardFeeder)
-  protected
-    procedure DoStart; override;
-    procedure DoStop; override;
-  end;
-
-  { TsrdLexical }
-
-  TsrdLexical = class(TsardLexical)
-  private
-    FControls: TctlControls;
-    FEnv: TsrdEnvironment;
-  protected
-    procedure Created; override;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
-    function IsControl(vChar: AnsiChar): Boolean; override;
-    function IsOperator(vChar: AnsiChar): Boolean; override;
-    function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
-    function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; override;
-
-    property Controls: TctlControls read FControls;
-    property Env: TsrdEnvironment read FEnv write FEnv;
-  end;
-
-  { TsrdWhitespaceScanner }
-
-  TsrdWhitespace_Scanner = class(TsardScanner)
-  protected
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean;  override;
-  end;
-
-  { TsrdIdentifierScanner }
-
-  TsrdIdentifier_Scanner = class(TsardScanner)
-  protected
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean;  override;
-  end;
-
-  { TsrdNumberScanner }
-
-  TsrdNumber_Scanner = class(TsardScanner)
-  protected
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean;  override;
-  end;
-
-  { TsrdControl_Scanner }
-
-  TsrdControl_Scanner = class(TsardScanner)
-  protected
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean;  override;
-  end;
-
-  { TopOperatorScanner }
-
-  TsrdOperator_Scanner = class(TsardScanner)
-  protected
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean;  override;
-  end;
-
-  { TsrdLineCommentScanner }
-
-  TsrdLineComment_Scanner = class(TsardScanner)
-  protected
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean; override;
-  end;
-
-  { TsrdBlockCommentScanner }
-
-  TsrdBlockComment_Scanner = class(TsardScanner)
-  protected
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean; override;
-  end;
-
-  { TsrdComment_Scanner }
-  { it is stored with compiled objects}
-
-  TsrdComment_Scanner = class(TsardScanner)
-  protected
-    Buffer: string;
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean; override;
-  end;
-
-  { TsrdSQStringScanner }
-
-  TsrdString_Scanner = class abstract(TsardScanner)
-  protected
-    QuoteChar: Char;
-    Buffer: string;//<- not sure it is good idea
-    function Scan(const Text: string; var Column: Integer): Boolean;  override;
-    function Accept(const Text: string; var Column: Integer): Boolean; override;
-  end;
-
-  { TsrdSQString_Scanner }
-
-  TsrdSQString_Scanner = class(TsrdString_Scanner)
-  protected
-    procedure Created; override;
-  end;
-
-  { TsrdDQString_Scanner }
-
-  TsrdDQString_Scanner = class(TsrdString_Scanner)
-  protected
-    procedure Created; override;
+    constructor Create; override;
+    function IsEOL(vChar: Char): Boolean; override;
+    function IsWhiteSpace(vChar: char; vOpen: Boolean =true): Boolean; override;
+    function IsControl(vChar: Char): Boolean; override;
+    function IsOperator(vChar: Char): Boolean; override;
+    function IsNumber(vChar: Char; vOpen: Boolean =true): Boolean; override;
+    function IsSymbol(vChar: Char): Boolean; override;
+    function IsIdentifier(vChar: Char; vOpen: Boolean =true): Boolean;
   end;
 
 implementation
@@ -405,783 +148,209 @@ implementation
 uses
   StrUtils;
 
-{ TsrdInterpreterDeclare }
+{ TEscape_Tokenizer }
 
-procedure TsrdInterpreterDeclare.Control(AControl: TsardControl);
-begin
-  case AControl of
-    ctlEnd, ctlNext:
-      begin
-        Post;
-        Action([paPopInterpreter, paBypass]);
-      end;
-    else
-      inherited;
-  end;
-end;
-
-{ TsrdInterpreterDefine }
-
-procedure TsrdInterpreterDefine.InternalPost;
-begin
-  if Instruction.Identifier = '' then
-    RaiseError('Identifier not set');//TODO maybe check if he post const or another things
-  if Param then
-  begin
-    if State = stName then
-      Declare.Defines.Add(Instruction.Identifier, '')
-    else
-    begin
-      if Declare.Defines.Last.Result <> '' then
-        RaiseError('Result type already set');
-      Declare.Defines.Last.Result := Instruction.Identifier;
-    end;
-  end
-  else
-  begin
-    Declare.ResultType := Instruction.Identifier;
-  end;
-end;
-
-function TsrdInterpreterDefine.GetControllerClass: TsrdControllerClass;
-begin
-  Result := TsrdControllerDefines;
-end;
-
-constructor TsrdInterpreterDefine.Create(AParser: TsrdParser; ADeclare: TsoDeclare);
-begin
-  inherited Create(AParser);
-  Declare := ADeclare;
-end;
-
-procedure TsrdInterpreterDefine.Control(AControl: TsardControl);
+procedure TEscape_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
 var
-  aSection: TsoSection;
+  pos: Integer;
 begin
-{
-  x:int  (p1:int; p2:string);
-   ^typd (------Params-----)^
-   Declare  ^Declare
-  We end with ; or : or )
-}
-  with Parser.Current do
-    case AControl of
-      ctlOpenBlock:
-      begin
-        //Need to close it and
-        Post;
-        aSection := TsoSection.Create;
-        aSection.Parent := Declare;
-        Declare.CallObject := aSection;
-        //We will pass the control to the next interpreter
-        Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, aSection.Block));
-      end;
-      ctlDeclare:
-        begin
-          if Param then
-          begin
-            Post;
-            State := stType;
-          end
-          else
-          begin
-            Post;
-            Action([paPopInterpreter]);
-          end;
-        end;
-      ctlAssign:
-        begin
-          Post;
-          Declare.ExecuteObject := TsoAssign.Create(Declare, Declare.Name);
-          Declare.CallObject := TsoVariable.Create(Declare, Declare.Name);
-
-          Action([paPopInterpreter]); //Finish it, mean there is no body/statment for the declare
-        end;
-      ctlEnd:
-      begin
-        if Param then
-        begin
-          Post;
-          State := stName;
-        end
-        else
-        begin
-          Post;
-          Action([paPopInterpreter]);
-        end;
-      end;
-      ctlNext:
-        begin
-          Post;
-          State := stName;
-        end;
-      ctlOpenParams:
-        begin
-          Post;
-          if Declare.Defines.Count > 0 then
-            RaiseError('You already define params! we expected open block.');
-          Param := True;
-        end;
-      ctlCloseParams:
-        begin
-          Post;
-          //Pop; //Finish it
-          Param := False;
-          //Action([paPopInterpreter], TsrdInterpreterBlock.Create(Parser, Declare.Block)); //return to the statment
-        end;
-      else
-        inherited;
-    end
-end;
-
-procedure TsrdInterpreterDefine.Prepare;
-begin
-  inherited Prepare;
-end;
-
-procedure TsrdInterpreterDefine.Next;
-begin
-  inherited Next;
-end;
-
-procedure TsrdInterpreterDefine.Reset;
-begin
-  State := stName;
-  inherited;
-end;
-
-function TsrdInterpreterDefine.IsInitial: Boolean;
-begin
-  Result := True;//It is always true, hmmm?
-end;
-
-{ TsrdControllerDefines }
-
-procedure TsrdControllerDefines.Control(AControl: TsardControl);
-begin
-  //inherited;
-end;
-
-{ TsrdInstruction }
-
-procedure TsrdInstruction.InternalSetObject(AObject: TsoObject);
-begin
-  if (anObject <> nil) and (AObject <> nil) then
-    RaiseError('Object is already set');
-  anObject := AObject;
-end;
-
-function TsrdInstruction.CheckIdentifier(vRaise: Boolean): Boolean;
-begin
-  Result := Identifier <> '';
-  if vRaise and not Result then
-    RaiseError('Identifier is not set!');
-  Result := Result and (anObject = nil);
-  if vRaise and not Result then
-    RaiseError('Object is already set!');
-end;
-
-function TsrdInstruction.CheckObject(vRaise: Boolean): Boolean;
-begin
-  Result := anObject <> nil;
-  if vRaise and not Result then
-    RaiseError('Object is not set!');
-  Result := Result and (Identifier = '');
-  if vRaise and not Result then
-    RaiseError('Identifier is already set!');
-end;
-
-function TsrdInstruction.CheckOperator(vRaise: Boolean): Boolean;
-begin
-  Result := anOperator <> nil;
-  if vRaise and not Result then
-    RaiseError('Operator is not set!');
-end;
-
-function TsrdInstruction.IsEmpty: Boolean;
-begin
-  Result := not ((Identifier <> '') or (anObject <> nil) or (anOperator <> nil));
-end;
-
-{ TsrdControllerNormal }
-
-procedure TsrdControllerNormal.Control(AControl: TsardControl);
-var
-  aDeclare: TsoDeclare;
-begin
-  with Parser.Current do
-  case AControl of
-    ctlAssign:
-      begin
-        if IsInitial then
-        begin
-          Instruction.SetAssign;
-          Post;
-        end
-        else
-          RaiseError('You can not use assignment here!');
-      end;
-    ctlDeclare:
-      begin
-        if IsInitial then
-        begin
-          aDeclare := Instruction.SetDeclare;
-          Post;
-          //Now we push a define interpreter, finished with : or or ; or { <- this need thinking alot of it
-          Push(TsrdInterpreterDefine.Create(Parser, aDeclare));
-        end
-        else
-          RaiseError('You can not use assignment here!');
-      end;
-
-    ctlOpenBlock:
-      begin
-        with TsoSection.Create do
-         begin
-           Instruction.SetObject(This);
-           Push(TsrdInterpreterBlock.Create(Parser, Block));
-         end;
-      end;
-    ctlCloseBlock:
-      begin
-        Post;
-        if Parser.Count = 1 then
-          RaiseError('Maybe you closed not opened Curly');
-        Action([paPopInterpreter]);
-      end;
-
-    ctlOpenParams:
-      begin
-        //Params of function or object like: Sin(10)
-        if Instruction.CheckIdentifier then
-        begin
-          with Instruction.SetInstance do
-            Push(TsrdInterpreterBlock.Create(Parser, Block));
-        end
-        else //No it is just sub statment like: 10+(5*5)
-        with Instruction.SetStatment do
-        begin
-          Push(TsrdInterpreterStatement.Create(Parser, Statement));
-        end;
-      end;
-    ctlCloseParams:
-      begin
-        Post;
-        if Parser.Count = 1 then
-          RaiseError('Maybe you closed not opened Bracket');
-        Action([paPopInterpreter]);
-      end;
-    ctlStart:
-      begin
-      end;
-    ctlStop:
-      begin
-        Post;
-      end;
-    ctlEnd:
-      begin
-        Post;
-        Next;
-      end;
-    ctlNext:
-      begin
-        Post;
-        Next;
-      end;
-    else
-      RaiseError('Not implemented yet, sorry :(');
-  end;
-end;
-
-{ TsrdControllers }
-
-function TsrdControllers.FindClass(vControllerClass: TsrdControllerClass): TsrdController;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if vControllerClass = Items[i].ClassType then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
-{ TsrdController }
-
-constructor TsrdController.Create(AParser: TsrdParser);
-begin
-  inherited Create;
-  Parser := AParser;
-end;
-
-{ TsrdSQString_Scanner }
-
-procedure TsrdSQString_Scanner.Created;
-begin
-  inherited Created;
-  QuoteChar := '''';
-end;
-
-{ TsrdInterpreterBlock }
-
-procedure TsrdInterpreterBlock.Prepare;
-begin
-  inherited;
-  if Statement = nil then
-  begin
-    if Block = nil then
-      RaiseError('Maybe you need to set a block, or it single statment block');
-    Statement := Block.Add;
-  end;
-end;
-
-constructor TsrdInterpreterBlock.Create(AParser: TsrdParser; ABlock: TsrdBlock);
-begin
-  inherited Create(AParser, nil);
-  Block := ABlock;
-end;
-
-{ TsrdInterpreterStatement }
-
-procedure TsrdInterpreterStatement.InternalPost;
-begin
-  inherited;
-  Statement.Add(Instruction.anOperator, Instruction.anObject);
-end;
-
-constructor TsrdInterpreterStatement.Create(AParser: TsrdParser; AStatement: TsrdStatement);
-begin
-  inherited Create(AParser);
-  Statement := AStatement;
-end;
-
-procedure TsrdInterpreterStatement.Next;
-begin
-  inherited;
-  Statement := nil;
-end;
-
-procedure TsrdInterpreterStatement.Prepare;
-begin
-  inherited;
-  if Instruction.Identifier <> '' then
-  begin
-    if Instruction.anObject <> nil then
-      RaiseError('Object is already set!');
-    Instruction.SetInstance;
-  end;
-end;
-
-function TsrdInterpreterStatement.IsInitial: Boolean;
-begin
-  Result := (Statement = nil) or (Statement.Count = 0);
-end;
-
-{ TsrdComment_Scanner }
-
-function TsrdComment_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
-var
-  c: Integer;
-begin
-  c := Column;
-  Result := False;
-  while (Column <= Length(Text)) do
-  begin
-    if (ScanCompare('*}', Text, Column)) then
-    begin
-      Buffer := Buffer + MidStr(Text, c, Column - c);
-      Inc(Column, 2);//2 chars
-
-      Lexical.Parser.SetToken(Buffer, tpComment);
-      Buffer := '';
-      Result := True;
-      break;
-    end;
+  pos := Column;
+  Inc(Column); //not need first char, it is not pass from isIdentifier
+  //print("Hello "\n"World"); //but add " to the world
+  while ((Column < length(text)) and (Lexer.isIdentifier(Text[Column], False))) do
     Inc(Column);
-  end;
-  if not Result then
-    Buffer := Buffer + MidStr(Text, c, Column - c);
+  Lexer.Parser.SetToken(Token(ctlToken, typeEscape, SubStr(Text, pos, Column)));
+  Resume := False;
 end;
 
-function TsrdComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TEscape_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
-  Result := ScanText('{*', Text, Column);
+  Result := Text[column] = sEscape;
 end;
 
-{ TsrdFeeder }
+{ TDQString_Tokenizer }
 
-procedure TsrdFeeder.DoStart;
-begin
-  inherited;
-  Lexical.Parser.SetControl(ctlStart);
-end;
-
-procedure TsrdFeeder.DoStop;
+constructor TDQString_Tokenizer.Create;
 begin
   inherited;
-  Lexical.Parser.SetControl(ctlStop);
+  OpenSymbol := '"';
+  CloseSymbol := '"';
 end;
 
-{ TsrdInstruction. }
+{ TSQString_Tokenizer }
 
-procedure TsrdInstruction.SetIdentifier(AIdentifier: string);
-begin
-  if Identifier <> '' then
-    RaiseError('Identifier is already set');
-  Identifier := AIdentifier;
-  SetFlag(flagIdentifier);
-end;
-
-function TsrdInstruction.SetNumber(AIdentifier: string): TsoBaseNumber;
-begin
-  if Identifier <> '' then
-    RaiseError('Identifier is already set');
-  //TODO need to check anObject too
-  if (pos('.', AIdentifier) > 0) or ((pos('E', AIdentifier) > 0)) then
-    Result := TsoFloat.Create(StrToFloat(AIdentifier))
-  else
-    Result := TsoInteger.Create(StrToInt64(AIdentifier));
-  InternalSetObject(Result);
-  SetFlag(flagConst);
-end;
-
-function TsrdInstruction.SetString(AIdentifier: string): TsoString;
-begin
-  if Identifier <> '' then
-    RaiseError('Identifier is already set');
-  //TODO need to check anObject too
-  Result := TsoString.Create;
-  with Result do
-  begin
-    Value := AIdentifier;
-  end;
-  InternalSetObject(Result);
-  SetFlag(flagConst);
-end;
-
-function TsrdInstruction.SetComment(AIdentifier: string): TsoComment;
-begin
-  //We need to check if it the first expr in the statment
-  if Identifier <> '' then
-    RaiseError('Identifier is already set');
-  //TODO need to check anObject too
-  Result := TsoComment.Create;
-  with Result do
-  begin
-    Value := AIdentifier;
-  end;
-  InternalSetObject(Result);
-  SetFlag(flagComment);
-end;
-
-function TsrdInstruction.SetDeclare: TsoDeclare;
-begin
-  if Identifier = '' then
-    RaiseError('Identifier is not set');
-  Result := TsoDeclare.Create;
-  with Result do
-  begin
-    Name := Identifier;
-  end;
-  InternalSetObject(Result);
-  Identifier := '';
-  SetFlag(flagDeclare);
-end;
-
-function TsrdInstruction.SetAssign: TsoAssign;
-begin
-  //Do not check the Identifier if empty, becuase it is can be empty to assign to result of block
-  Result := TsoAssign.Create;
-  with Result do
-  begin
-    Name := Identifier;
-  end;
-  InternalSetObject(Result);
-  Identifier := '';
-  SetFlag(flagAssign);
-end;
-
-function TsrdInstruction.SetInstance(AIdentifier: string):TsoInstance;
-begin
-  if AIdentifier = '' then
-    RaiseError('Identifier not set');
-  Result := TsoInstance.Create;
-  with Result do
-  begin
-    Name := AIdentifier;
-  end;
-  InternalSetObject(Result);
-  SetFlag(flagInstance);
-end;
-
-function TsrdInstruction.SetInstance: TsoInstance;
-begin
-  if Identifier = '' then
-    RaiseError('Identifier is not set');
-  Result := SetInstance(Identifier);
-  Identifier := '';
-end;
-
-function TsrdInstruction.SetStatment: TsoStatement;
-begin
-  if Identifier <> '' then
-    RaiseError('Identifier is already set');
-  Result := TsoStatement.Create;
-  with Result do
-  begin
-  end;
-  InternalSetObject(Result);
-  SetFlag(flagStatement);
-end;
-
-procedure TsrdInstruction.SetOperator(AOperator: TopOperator);
-begin
-  if anOperator <> nil then
-    RaiseError('Operator is already set');
-  anOperator := AOperator;
-end;
-
-procedure TsrdInstruction.SetObject(AObject: TsoObject);
-begin
-  if Identifier <> '' then
-    RaiseError('Identifier is already set');
-  InternalSetObject(AObject);
-end;
-
-procedure TsrdInstruction.SetFlag(AFlag: TsrdFlag);
-begin
-  Flag := AFlag;
-end;
-
-{ TsrdInterpreter }
-
-procedure TsrdInterpreter.SetFlag(AFlag: TsrdFlag);
-begin
-  FFlags := FFlags + [AFlag];
-end;
-
-procedure TsrdInterpreter.Prepare;
-begin
-end;
-
-procedure TsrdInterpreter.Push(vItem: TsrdInterpreter);
-begin
-  Parser.Push(vItem);
-end;
-
-procedure TsrdInterpreter.Action(vActions: TsrdActions; vNextInterpreter: TsrdInterpreter);
-begin
-  Parser.Actions := vActions;
-  Parser.NextInterpreter := vNextInterpreter;
-end;
-
-procedure TsrdInterpreter.Reset;
-begin
-  FreeAndNil(Instruction);
-  Instruction := TsrdInstruction.Create;
-end;
-
-procedure TsrdInterpreter.Post;
-begin
-  if (not Instruction.IsEmpty) then
-  begin
-    Prepare;
-    InternalPost;
-    Reset;
-  end;
-end;
-
-procedure TsrdInterpreter.Next;
-begin
-  FFlags := [];
-end;
-
-procedure TsrdInterpreter.AddIdentifier(AIdentifier: String; AType: TsrdType);
-begin
-  case AType of
-    tpNumber: Instruction.SetNumber(AIdentifier);
-    tpString: Instruction.SetString(AIdentifier);
-    tpComment: Instruction.SetComment(AIdentifier);
-    else
-       Instruction.SetIdentifier(AIdentifier);
-  end
-end;
-
-procedure TsrdInterpreter.AddOperator(AOperator: TopOperator);
-begin
-  Post;
-  Instruction.SetOperator(AOperator);
-end;
-
-function TsrdInterpreter.IsInitial: Boolean;
-begin
-  Result := False;
-end;
-
-procedure TsrdInterpreter.SwitchController(vControllerClass: TsrdControllerClass);
-begin
-  if vControllerClass = nil then
-    RaiseError('ControllerClass must have a value!');
-  Controller := Parser.Controllers.FindClass(vControllerClass);
-  if Controller = nil then
-    RaiseError('Can not find this class!');
-end;
-
-procedure TsrdInterpreter.Control(AControl: TsardControl);
-begin
-  Controller.Control(AControl);
-end;
-
-procedure TsrdInterpreter.InternalPost;
-begin
-end;
-
-function TsrdInterpreter.GetControllerClass: TsrdControllerClass;
-begin
-  Result := TsrdControllerNormal;
-end;
-
-constructor TsrdInterpreter.Create(AParser: TsrdParser);
-begin
-  inherited Create;
-  Parser := AParser;
-  SwitchController(GetControllerClass);
-  Reset;
-end;
-
-destructor TsrdInterpreter.Destroy;
+constructor TSQString_Tokenizer.Create;
 begin
   inherited;
+  OpenSymbol := '''';
+  CloseSymbol := '''';
 end;
 
-function TsrdParser.GetCurrent: TsrdInterpreter;
-begin
-  Result := (inherited GetCurrent) as TsrdInterpreter;
-end;
+{ TComment_Tokenizer }
 
-procedure TsrdParser.Created;
+constructor TComment_Tokenizer.Create;
 begin
-  inherited Created;
-end;
-
-procedure TsrdParser.ActionStack;
-begin
-  if paPopInterpreter in Actions then
-  begin
-    Actions := Actions - [paPopInterpreter];
-    Pop;
-  end;
-  if NextInterpreter <> nil then
-  begin
-    Push(NextInterpreter);
-    NextInterpreter := nil;
-  end;
-end;
-
-procedure TsrdParser.Push(vItem: TsrdInterpreter);
-begin
-  inherited Push(vItem);
-end;
-
-function TsrdParser.Push(vItemClass: TsrdInterpreterClass): TsrdInterpreter;
-begin
-  Result := vItemClass.Create(Self);
-  Push(Result);
-end;
-
-{ TsrdParser }
-
-procedure TsrdParser.Start;
-begin
-end;
-
-procedure TsrdParser.Stop;
-begin
-end;
-
-constructor TsrdParser.Create(ABlock: TsrdBlock);
-begin
-  inherited Create;
-  if ABlock = nil then
-    RaiseError('You must set a block');
-  Controllers := TsrdControllers.Create;
-  Controllers.Add(TsrdControllerNormal.Create(Self));
-  Controllers.Add(TsrdControllerDefines.Create(Self));
-  Push(TsrdInterpreterBlock.Create(Self, ABlock));
-end;
-
-destructor TsrdParser.Destroy;
-begin
-  FreeAndNil(Controllers);
   inherited;
+  OpenSymbol := '{*';
+  CloseSymbol := '*}';
 end;
 
-procedure TsrdParser.DoSetToken(AToken: String; AType: TsrdType);
+procedure TComment_Tokenizer.SetToken(Text: string);
 begin
-  Current.AddIdentifier(AToken, AType);
-  ActionStack;
-  Actions := [];
+  Lexer.Parser.SetToken(Token(ctlToken, typeComment, text));
 end;
 
-procedure TsrdParser.DoSetControl(AControl: TsardControl);
+{ TBlockComment_Tokenizer }
+
+procedure TBlockComment_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
 begin
-  Current.Control(AControl);
-  ActionStack;
-  if paBypass in Actions then
-    Current.Control(AControl);
-  Actions := [];
+  while (Column < length(Text)) do
+  begin
+      if (ScanText('*/', Text, Column)) then
+      begin
+          Resume := False;
+          exit;
+      end;
+      Inc(column);
+  end;
+  Inc(column);;//Eat the second chat //not sure
+  Resume := True;
 end;
 
-procedure TsrdParser.AfterPush;
+function TBlockComment_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
-  inherited AfterPush;
-  WriteLn('Push: '+Current.ClassName);
+  Result := ScanText('/*', Text, Column);
 end;
 
-procedure TsrdParser.BeforePop;
+{ TLineComment_Tokenizer }
+
+procedure TLineComment_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
 begin
-  WriteLn('Pop: '+Current.ClassName);
-  inherited BeforePop;
+  Inc(Column);
+  while ((Column <= Length(Text)) and (not Lexer.IsEOL(Text[Column]))) do
+    inc(Column);
+  inc(Column);//Eat the EOF char
+  Resume := False;
 end;
 
-procedure TsrdParser.DoSetOperator(AOperator: TsardObject);
+function TLineComment_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
-  Current.AddOperator(AOperator as TopOperator);
-  ActionStack;
-  Actions := [];
+  Result := scanText('//', Text, Column);
 end;
 
-{ TsrdControlScanner }
+{ TOperator_Tokenizer }
 
-function TsrdControl_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
+procedure TOperator_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
 var
-  aControl: TctlControl;
+  AOperator: TSardOperator;
 begin
-  aControl := (Lexical as TsrdLexical).Controls.Scan(Text, Column);
-  if aControl <> nil then
-    Column := Column + Length(aControl.Name)
+  AOperator := Lexer.Operators.scan(Text, Column);
+  if (AOperator <> nil) then
+    column := column + length(AOperator.name)
+  else
+    RaiseError('Unkown operator started with ' + Text[column]);
+  Lexer.Parser.setOperator(AOperator);
+  Resume := false;
+end;
+
+function TOperator_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+begin
+  Result := Lexer.isOperator(Text[Column]);
+end;
+
+{ TControl_Tokenizer }
+
+procedure TControl_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
+var
+  AControl: TSardControl;
+begin
+  Inc(Column);
+  AControl := Lexer.Controls.Scan(Text, Column);
+  if AControl <> nil then
+    Column := Column + Length(AControl.Name)
   else
     RaiseError('Unkown control started with ' + Text[Column]);
-
-  Lexical.Parser.SetControl(aControl.Code);
-  Result := True;
+  Lexer.Parser.SetControl(AControl);
+  Resume := false;
 end;
 
-function TsrdControl_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
+function TControl_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
-  Result := Lexical.IsControl(Text[Column]);
+  Result := Lexer.isControl(Text[Column]);
 end;
 
-{ TsrdFeeder }
+{ TNumber_Tokenizer }
 
-procedure TsrdLexical.Created;
+procedure TNumber_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
+var
+  pos: integer;
 begin
+  pos := Column;
+  Inc(Column);
+  while ((Column <= Length(Text)) and (Lexer.IsNumber(Text[Column]))) do
+    inc(Column);
+  Lexer.Parser.SetToken(Token(ctlToken, typeNumber, SubStr(Text, pos, column)));
+  Resume := false;
+end;
+
+function TNumber_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+begin
+  Result := Lexer.IsNumber(Text[Column], True);
+end;
+
+{ TIdentifier_tokenizer }
+
+procedure TIdentifier_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
+var
+  pos: integer;
+begin
+  pos := Column;
+  Inc(Column);
+  while ((Column <= Length(Text)) and (Lexer.IsIdentifier(Text[Column], False))) do
+    inc(Column);
+  Lexer.Parser.SetToken(Token(ctlToken, typeIdentifier, SubStr(Text, pos, Column)));
+  Resume := false;
+end;
+
+function TIdentifier_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+begin
+  Result := Lexer.IsIdentifier(Text[Column], True);
+end;
+
+{ TWhitespace_Tokenizer }
+
+procedure TWhitespace_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
+var
+  pos: integer;
+begin
+  pos := Column;
+  Inc(Column);
+  while ((Column <= Length(Text)) and (Lexer.IsWhiteSpace(Text[Column]))) do
+    inc(Column);
+  Lexer.Parser.SetWhiteSpaces(SubStr(text, pos, column));
+  Resume := false;
+end;
+
+function TWhitespace_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+begin
+  Result := Lexer.isWhiteSpace(Text[Column]);
+end;
+
+{ TCodeLexer }
+
+constructor TCodeLexer.Create;
+begin
+  inherited;
   with Controls do
   begin
+    Add('', ctlNone);////TODO i feel it is so bad
+    Add('', ctlToken);
+    Add('', ctlOperator);
+    Add('', ctlStart);
+    Add('', ctlStop);
+    Add('', ctlDeclare);
+    Add('', ctlAssign);
+
     Add('(', ctlOpenParams);
     Add('[', ctlOpenArray);
     Add('{', ctlOpenBlock);
@@ -1194,202 +363,78 @@ begin
     Add(':=', ctlAssign);
   end;
 
-  AddScanner(TsrdWhitespace_Scanner);
-  AddScanner(TsrdBlockComment_Scanner);
-  AddScanner(TsrdComment_Scanner);
-  AddScanner(TsrdLineComment_Scanner);
-  AddScanner(TsrdNumber_Scanner);
-  AddScanner(TsrdSQString_Scanner);
-  AddScanner(TsrdDQString_Scanner);
-  AddScanner(TsrdControl_Scanner);
-  AddScanner(TsrdOperator_Scanner); //Register it after comment because comment take /*
-  AddScanner(TsrdIdentifier_Scanner);//Last one
+  with Operators do
+  begin
+    Add(TOpPlus.Create);
+    Add(TOpSub.Create);
+    Add(TOpMultiply.Create);
+    Add(TOpDivide.Create);
+
+    Add(TOpEqual.Create);
+    Add(TOpNotEqual.Create);
+    Add(TOpAnd.Create);
+    Add(TOpOr.Create);
+    Add(TOpNot.Create);
+
+    Add(TOpGreater.Create);
+    Add(TOpLesser.Create);
+
+    Add(TOpPower.Create);
+  end;
+
+  with (Self) do
+  begin
+      Add(TWhitespace_Tokenizer.Create);
+      Add(TBlockComment_Tokenizer.Create);
+      Add(TComment_Tokenizer.Create);
+      Add(TLineComment_Tokenizer.Create);
+      Add(TNumber_Tokenizer.Create);
+      Add(TSQString_Tokenizer.Create);
+      Add(TDQString_Tokenizer.Create);
+      Add(TEscape_Tokenizer.Create);
+      Add(TControl_Tokenizer.Create);
+      Add(TOperator_Tokenizer.Create); //Register it after comment because comment take /*
+      Add(TIdentifier_Tokenizer.Create);//Sould be last one
+  end;
+
 end;
 
-constructor TsrdLexical.Create;
+function TCodeLexer.IsEOL(vChar: Char): Boolean;
 begin
-  inherited;
-  FControls := TctlControls.Create;
+  Result := CharInSet(vChar, sEOL);
 end;
 
-destructor TsrdLexical.Destroy;
+function TCodeLexer.IsWhiteSpace(vChar: char; vOpen: Boolean): Boolean;
 begin
-  FreeAndNil(FControls);
-  inherited Destroy;
+  Result := CharInSet(vChar, sWhitespace);
 end;
 
-function TsrdLexical.IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean): Boolean;
-begin
-  Result := vChar in sWhitespace;
-end;
-
-function TsrdLexical.IsControl(vChar: AnsiChar): Boolean;
+function TCodeLexer.IsControl(vChar: Char): Boolean;
 begin
   Result := Controls.IsOpenBy(vChar);
 end;
 
-function TsrdLexical.IsOperator(vChar: AnsiChar): Boolean;
+function TCodeLexer.IsOperator(vChar: Char): Boolean;
 begin
-  Result := Env.Operators.IsOpenBy(vChar);
+  Result := Operators.IsOpenBy(vChar);
 end;
 
-function TsrdLexical.IsNumber(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TCodeLexer.IsNumber(vChar: Char; vOpen: Boolean): Boolean;
 begin
-  if vOpen then
-    Result := vChar in sNumberOpenChars
+  if (vOpen) then
+    Result := CharInSet(vChar, sNumberOpenChars)
   else
-    Result := vChar in sNumberChars;
+    Result := CharInSet(vChar, sNumberChars);
 end;
 
-function TsrdLexical.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
+function TCodeLexer.IsSymbol(vChar: Char): Boolean;
 begin
-  Result := inherited IsIdentifier(vChar, vOpen);
+  Result := CharInSet(vChar, sSymbolChars);
 end;
 
-{ TsrdNumberScanner }
-
-function TsrdNumber_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
-var
-  l, c: Integer;
+function TCodeLexer.IsIdentifier(vChar: Char; vOpen: Boolean): Boolean;
 begin
-  c := Column;
-  l := Length(Text);
-  while (Column <= l) and (Lexical.IsNumber(Text[Column], False)) do
-    Inc(Column);
-  Lexical.Parser.SetToken(MidStr(Text, c, Column - c), tpNumber);
-  Result := True;
-end;
-
-function TsrdNumber_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := Lexical.IsNumber(Text[Column], True);//need to improve to accept unicode chars
-end;
-
-{ TopOperatorScanner }
-
-function TsrdOperator_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
-var
-  lOperator: TopOperator;
-begin
-  lOperator := (Lexical as TsrdLexical).Env.Operators.Scan(Text, Column);
-  if lOperator <> nil then
-    Column := Column + Length(lOperator.Name)
-  else
-    RaiseError('Unkown operator started with ' + Text[Column]);
-
-  if (lOperator.Control <> ctlNone) and ((Lexical.Parser as TsrdParser).Current.IsInitial) then //<- very stupid idea
-    Lexical.Parser.SetControl(lOperator.Control)
-  else
-    Lexical.Parser.SetOperator(lOperator);
-  Result := True;
-end;
-
-function TsrdOperator_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := Lexical.IsOperator(Text[Column]);
-end;
-
-{ TsrdIdentifierScanner }
-
-function TsrdIdentifier_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
-var
-  c: Integer;
-begin
-  c := Column;
-  while (Column <= Length(Text)) and (Lexical.IsIdentifier(Text[Column], False)) do
-    Inc(Column);
-  Lexical.Parser.SetToken(MidStr(Text, c, Column - c), tpIdentifier);
-  Result := True;
-end;
-
-function TsrdIdentifier_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := Lexical.IsIdentifier(Text[Column], True);
-end;
-
-{ TsrdDQStringScanner }
-
-procedure TsrdDQString_Scanner.Created;
-begin
-  inherited Created;
-  QuoteChar := '"';
-end;
-
-{ TsrdSQStringScanner }
-
-function TsrdString_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
-var
-  c: Integer;
-begin
-  c := Column;
-  Result := False;
-  while (Column <= Length(Text)) do
-  begin
-    if (Text[Column] = QuoteChar) then  //TODO Escape, not now
-    begin
-      Buffer := Buffer + MidStr(Text, c, Column - c);
-      Lexical.Parser.SetToken(Buffer, tpString);
-      Result := True;
-      Buffer := '';
-      Inc(Column);
-      break;
-    end;
-    Inc(Column);
-  end;
-  if not Result then
-    Buffer := Buffer + MidStr(Text, c, Column - c);
-end;
-
-function TsrdString_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := ScanText(QuoteChar, Text, Column);
-end;
-
-{ TsrdBlockCommentScanner }
-
-function TsrdBlockComment_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := False;
-  while (Column <= Length(Text)) do
-  begin
-    Result := (ScanText('*/', Text, Column));
-    if Result then
-      break;
-    Inc(Column);
-  end;
-end;
-
-function TsrdBlockComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := ScanText('/*', Text, Column);
-end;
-
-{ TsrdLineComment_Scanner }
-
-function TsrdLineComment_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
-begin
-  while (Column <= Length(Text)) and not (Text[Column] in sEOL) do
-    Inc(Column);
-  Result := True;
-end;
-
-function TsrdLineComment_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := ScanText('//', Text, Column);
-end;
-
-{ TsrdWhitespace_Scanner }
-
-function TsrdWhitespace_Scanner.Scan(const Text: string; var Column: Integer): Boolean;
-begin
-  while (Column <= Length(Text)) and (Text[Column] in sWhitespace) do
-    Inc(Column);
-  Result := True;
-end;
-
-function TsrdWhitespace_Scanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := Text[Column] in sWhitespace;
+  Result := inherited isIdentifier(vChar, vOpen); //we do not need to override it, but it is nice to see it here
 end;
 
 end.

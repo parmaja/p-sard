@@ -30,10 +30,9 @@ unit sardObjects;
 *}
 
 {$IFDEF FPC}
-{$mode objfpc}
+{$mode delphi}
 {$ENDIF}
 {$H+}{$M+}
-{$INTERFACES CORBA}
 
 {
   Prefix guid:
@@ -66,1612 +65,349 @@ interface
 
 uses
   Classes, SysUtils,
-  sardClasses;
+  sardClasses, sardLexers;
 
 const
   sSardVersion = '0.01';
   iSardVersion = 001;
 
 type
+  TNode = class;
+  TDefines = class;
+  TRunData = class;
+  TRunEnv = class;
 
-  TsrdObjectType = (otUnkown, otInteger, otFloat, otBoolean, otString, otComment, otBlock, otObject, otClass, otVariable);
-  TsrdCompare = (cmpLess, cmpEqual, cmpGreater);
-
-
-  TrunVarKind = (vtLocal, vtParam);//Ok there is more in the future
-  TrunVarKinds = set of TrunVarKind;
-
-  TsrdDebug = class(TsardObject)
-  public
-    Line: Integer;
-    Column: Integer;
-    FileName: string;
-    //BreakPoint: Boolean; //not sure, do not laugh
+  TDebugInfo = class(TSardObject)
   end;
 
-  TsoObject = class;
-  TsoObjectClass = class of TsoObject;
+  { TClause }
 
-  TopOperator = class;
-  TmodModifier = class;
-  TrunResult = class;
-  TrunStack = class;
-  TsrdEnvironment = class;
-
-  TrunVariable = class;
-  TrunVariables = class;
-  TrunShadow = class;
-
-  TsoBlock = class;
-  TsrdDefines = class;
-  TsoNamedObject = class;
-
-  { TsrdDefine } //or prototype
-
-  TsrdDefine = class(TsardObject)
-  public
-    Name: string;
-    Result: string;
-    constructor Create(vName: string; vResult: string);
-  end;
-
-  { TsrdDefines }
-
-  TsrdDefines = class(specialize GsardNamedObjects<TsrdDefine>)
+  TClause = class(TSardObject)
   private
+    FAnOperator: TSardOperator;
+    FAnObject: TNode;
+  protected
   public
-    procedure Add(vName: string; vResult: string);
-    function Last: TsrdDefine;
-  end;
-
-  { TsrdObjectList }
-
-  TsrdObjectList = class(TsardObjectList)
-  private
-    FParent: TsoObject;
-  public
-    constructor Create(AParent: TsoObject);
-    property Parent: TsoObject read FParent;
-  end;
-
-  { TsrdClause }
-
-  TsrdClause = class(TsardObject)
-  private
-    FanOperator: TopOperator;
-    FanObject: TsoObject;
-  public
-    constructor Create(AOperator: TopOperator; AObject: TsoObject);
+    constructor Create(AOperator: TSardOperator; AObject: TNode);
     destructor Destroy; override;
-    function Execute(vStack: TrunStack): Boolean;
-    property anOperator: TopOperator read FanOperator;
-    property anObject: TsoObject read FanObject;
+
+    function Execute(Data: TRunData; Env: TRunEnv): Boolean;
+
+    property AnOperator: TSardOperator read FAnOperator;
+    property AnObject: TNode read FAnObject;
   end;
 
-  { TsrdStatement }
+  { TStatement }
 
-  TsrdStatement = class(TsrdObjectList)
+  TStatement = class(TSardObjects<TClause>)
   private
-    FDebug: TsrdDebug;
-    function GetItem(Index: Integer): TsrdClause;
-    procedure SetDebug(AValue: TsrdDebug);
-  protected
+    FDebugInfo: TDebugInfo;
+    FParent: TNode;
   public
-    function Add(AObject: TsrdClause): Integer;
-    function Add(AOperator:TopOperator; AObject: TsoObject): TsrdClause;
-    procedure Execute(vStack: TrunStack);
-    procedure Call(vStack: TrunStack);
-    property Items[Index: Integer]: TsrdClause read GetItem; default;
-    property Debug: TsrdDebug read FDebug write SetDebug; //<-- Nil until we compile it with Debug Info
+    constructor Create(AParent: TNode);
+    procedure Add(AOperator: TSardOperator; AObject: TNode);
+    procedure Execute(Data: TRunData; Env: TRunEnv);
+    property Parent: TNode read FParent;
+    property DebugInfo: TDebugInfo read FDebugInfo; //<-- Null until we compiled it with Debug Info
   end;
 
-  { TsrdBlock }
+  { TStatements }
 
-  TsrdBlock = class(TsrdObjectList)
+  TStatements = class(TSardObjects<TStatement>)
   private
-    function GetStatement: TsrdStatement;
-    function GetItem(Index: Integer): TsrdStatement;
-  protected
+    FParent: TNode;
   public
-    function Add(AStatement: TsrdStatement): Integer;
-    function Add: TsrdStatement;
-    procedure Check; //Check if empty then create first statement
-    function Execute(vStack: TrunStack): Boolean;
-    property Items[Index: Integer]: TsrdStatement read GetItem; default;
-    property Statement: TsrdStatement read GetStatement;
+    constructor Create(AParent: TNode); virtual;
+    function Add: TStatement;
+    procedure Propose;
+    function Execute(Data: TRunData; Env: TRunEnv): Boolean;
+    property Parent: TNode read FParent;
   end;
 
-  { TsrdBlockStack }
+  { TNode }
 
-  TsrdBlockStack = class(TsardStack)
-  private
-    function GetCurrent: TsrdBlock;
-  public
-    procedure Push(vItem: TsrdBlock);
-    property Current: TsrdBlock read GetCurrent;
-  end;
-
-  TsoDeclare = class;
-
-  TsrdDeclares = class(specialize GsardNamedObjects<TsoDeclare>)
-  private
-  public
-    constructor Create;//Just a references
-  end;
-
-  { TsoObject }
-
-  TsoObject = class abstract(TsardObject)
-  private
-    FParent: TsoObject;
-  protected
-    FObjectType: TsrdObjectType;
-
-    function GetAsString: String;
-    function GetAsFloat: Float;
-    function GetAsInteger: int;
-    function GetAsBoolean: Boolean;
-
-    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; virtual;
-    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
-    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); virtual;
-    procedure ExecuteParams(vStack: TrunStack; vDefines: TsrdDefines; vParameters: TsrdBlock); virtual;
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); virtual; abstract;
-    procedure DoSetParent(AParent: TsoObject); virtual;
-    procedure SetParent(AParent: TsoObject);
-  public
-    constructor Create; virtual;
-    function This: TsoObject; //return the same object, stupid but save some code :P
-    function Execute(vStack: TrunStack; AOperator: TopOperator; vDefines: TsrdDefines = nil; vParameters: TsrdBlock = nil): Boolean; overload;
-    procedure Assign(FromObject: TsoObject); virtual;
-    function Clone(WithValue: Boolean = True): TsoObject; virtual;
-
-    property Parent: TsoObject read FParent write SetParent;
-
-    function AddDeclare(ExecuteObject, CallObject: TsoNamedObject): Integer;
-    function AddDeclare(vDeclare: TsoDeclare): Integer; virtual;
-    function FindDeclare(vName: string): TsoDeclare; virtual;
-
-    property ObjectType: TsrdObjectType read FObjectType;
-
-    function ToBoolean(out outValue: Boolean): Boolean; virtual;
-    function ToString(out outValue: string): Boolean; virtual; reintroduce;
-    function ToFloat(out outValue: Float): Boolean; virtual;
-    function ToInteger(out outValue: int): Boolean; virtual;
-
-    property AsInteger: Int read GetAsInteger;
-    property AsFloat: Float read GetAsFloat;
-    property AsString: string read GetAsString;
-    property AsBoolean: Boolean read GetAsBoolean;
-  end;
-
-  { TsoObjects }
-
-  TsrdObjects = class(specialize GsardObjects<TsoObject>)
-  private
-  public
-  end;
-
-  { TsoNamedObject }
-
-  TsoNamedObject = class(TsoObject)
+  TNode = class abstract(TSardNamedObject)
   private
     FID: Integer;
-    FName: string;
-    procedure SetID(AValue: Integer);
-    procedure SetName(AValue: string);
-  public
-    constructor Create(vParent:TsoObject; vName: string); overload;
-    function RegisterVariable(vStack: TrunStack; vKind: TrunVarKinds): TrunVariable; virtual;
-    property Name: string read FName write SetName;
-    property ID: Integer read FID write SetID;
-  end;
-
-  {-------- Objects --------}
-
-  { TsoConstObject }
-
-  TsoConstObject = class abstract(TsoObject)
+    FParent: TNode;
+    FRefCount: Integer;
+    function GetAsBool: Bool;
+    function GetAsInteger: Integer;
+    function GetAsNumber: Number;
+    function GetAsText: Text;
+    procedure SetParent(AValue: TNode);
   protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override; final;
+    procedure SetName(AValue: string); override;
   public
-  end;
+    function ToBool(out outValue: Boolean): Boolean;
+    function ToText(out outValue: Text): Boolean;
+    function ToNumber(out outValue: Number): Boolean;
+    function ToInteger(out outValue: Integer): Boolean;
 
-  { TsoBlock }
+    property AsBool: Bool read GetAsBool;
+    property AsText: Text read GetAsText;
+    property AsNumber: Number read GetAsNumber;
+    property AsInteger: Integer read GetAsInteger;
 
-  TsoBlock = class abstract(TsoNamedObject)
+    procedure Assign(AFromObject: TNode); virtual;
+    function Clone(WithValues: Boolean = True): TNode;
   protected
-    FBlock: TsrdBlock;
-    procedure Created; override;
-    procedure ExecuteParams(vStack: TrunStack; vDefines: TsrdDefines; vParameters: TsrdBlock); override;
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; virtual;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); virtual; abstract;
+    procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
   public
-    constructor Create; override;
-    destructor Destroy; override;
-    procedure Call(vStack: TrunStack); virtual;//vBlock here is params
-    property Block: TsrdBlock read FBlock;
+    constructor Create;
+    function Operate(AObject: TNode; AOperator: TSardOperator): Boolean;
+    function Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
+    property Parent: TNode read FParent write SetParent;
+    property ID: Integer read FID;
   end;
 
-  { TsoSection }
-  (* Used by { } *)
-
-  TsoSection = class(TsoBlock) //Result of was droped until using := assign in the first of statment
-  private
-    FDeclares: TsrdDeclares;
-  protected
-    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
-    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
-  public
-    constructor Create; override;
-    destructor Destroy; override;
-    function FindDeclare(vName: string): TsoDeclare; override;
-    function AddDeclare(vDeclare: TsoDeclare): Integer; overload; override;
-    property Declares: TsrdDeclares read FDeclares; //It is cache of object listed inside statments, it is for fast find the object
-  end;
-
-  { TsoCustomStatement }
-
-  TsoCustomStatement = class(TsoObject)
-  private
-  protected
-    FStatement: TsrdStatement;
-    procedure BeforeExecute(vStack: TrunStack; AOperator: TopOperator); override;
-    procedure AfterExecute(vStack: TrunStack; AOperator: TopOperator); override;
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-    property Statement: TsrdStatement read FStatement;
-  end;
-
-  { TsoStatement }
-
-  TsoStatement = class(TsoCustomStatement)
-  private
-  protected
-  public
-    constructor Create; override;
-    destructor Destroy; override;
-  end;
-
-  {*  Variables objects *}
-
-  { TsoInstance }
-
-  { it is a variable value like x in this "10 + x + 5" }
-
-  TsoInstance = class(TsoBlock)
-  private
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-    procedure Created; override;
-  end;
-
-  { TsoVariable }
-
-  TsoVariable = class(TsoNamedObject)
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-    ResultType: TsoObjectClass;
-  end;
-
-  { TsoAssign }
-
-  { It is assign a variable value, x:=10 + y}
-
-  TsoAssign = class(TsoNamedObject)
-  private
-  protected
-    procedure DoSetParent(AValue: TsoObject); override;
-    procedure Created; override;
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-  end;
-
-  { TsoDeclare }
-
-  TsoDeclare = class(TsoNamedObject)
-  private
-    FDefines: TsrdDefines;
-  protected
-    procedure Created; override;
-    procedure DoSetParent(AValue: TsoObject); override;
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-    //ExecuteObject will execute in a context of statement if it is not null,
-    ExecuteObject: TsoNamedObject;//You create it but Declare will free it
-    //ExecuteObject will execute by call, when called from outside,
-    CallObject: TsoNamedObject;//You create it but Declare will free it
-    ResultType: string;
-    constructor Create; override;
-    destructor Destroy; override;
-    //This outside execute it will force to execute the section
-    procedure Call(vStack: TrunStack; AOperator: TopOperator; AParameters: TsrdBlock; var Done: Boolean); overload;
-    property Defines: TsrdDefines read FDefines; //TODO maybe move it to namedobject?
-  end;
-
-{-------- Const Objects --------}
-
-  { TsoNone }
-
-  TsoNone = class(TsoConstObject) //None it is not Null, it is an initial value we sart it
-  public
-    //Do operator
-    //Convert to 0 or ''
-  end;
-
-  { TsoBaseNumber }
-
-  TsoBaseNumber = class abstract(TsoConstObject)
-  public
-  end;
-
-  { TsoInteger }
-
-  TsoInteger = class(TsoBaseNumber)
-  protected
-    procedure Created; override;
-  public
-    Value: int;
-    constructor Create(AValue: int); overload;
-    procedure Assign(FromObject: TsoObject); override;
-    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; override;
-    function ToString(out outValue: string): Boolean; override;
-    function ToFloat(out outValue: Float): Boolean; override;
-    function ToInteger(out outValue: int): Boolean; override;
-    function ToBoolean(out outValue: Boolean): Boolean; override;
-  end;
-
-  { TsoFloat }
-
-  TsoFloat = class(TsoBaseNumber)
-  public
-    Value: Float;
-    constructor Create(AValue: Float); overload;
-    procedure Created; override;
-    procedure Assign(FromObject: TsoObject); override;
-    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; override;
-    function ToString(out outValue: string): Boolean; override;
-    function ToFloat(out outValue: Float): Boolean; override;
-    function ToInteger(out outValue: int): Boolean; override;
-    function ToBoolean(out outValue: Boolean): Boolean; override;
-  end;
-
-  { TsoString }
-
-  TsoString = class(TsoConstObject)
-  public
-    Value: string;
-    constructor Create(AValue: string); overload;
-    procedure Created; override;
-    procedure Assign(FromObject: TsoObject); override;
-    function Operate(AObject: TsoObject; AOperator: TopOperator): Boolean; override;
-    function ToString(out outValue: string): Boolean; override;
-    function ToFloat(out outValue: Float): Boolean; override;
-    function ToInteger(out outValue: int): Boolean; override;
-    function ToBoolean(out outValue: Boolean): Boolean; override;
-  end;
-
-  { TsoBoolean }
-
-  TsoBoolean = class(TsoBaseNumber)
-  public
-    Value: Boolean;
-    constructor Create(AValue: Boolean); overload;
-    procedure Created; override;
-    function ToString(out outValue: string): Boolean; override;
-    function ToFloat(out outValue: Float): Boolean; override;
-    function ToInteger(out outValue: int): Boolean; override;
-    function ToBoolean(out outValue: Boolean): Boolean; override;
-  end;
-
-{
-  TODO:
-
-  TsoArray = class(TsoBaseNumber)
-  public
-    Value: TsoObjects;
-    constructor Create(AValue: Boolean); overload;
-    procedure Created; override;
-    function ToString(out outValue: string): Boolean; override;
-    function ToFloat(out outValue: Float): Boolean; override;
-    function ToInteger(out outValue: int): Boolean; override;
-    function ToBoolean(out outValue: Boolean): Boolean; override;
+  {TRefObject = class(TSardObject)
   end;}
 
-  //TsoDateTime =
-  //TsoColor
+  { TDefine }
 
-  { TsoComment }
-
-  TsoComment = class(TsoObject)
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
+  TDefine = class(TSardNamedObject)
+  private
+    FDefType: string;
   public
-    Value: string;
-    constructor Create(AValue: string); overload;
+    constructor Create(ADefName: string; ADefType: string);
+    property DefType:string read FDefType write FDefType;
+  end;
+
+  { TDefineItems }
+
+  TDefineItems = class(TSardNamedObjects<TDefine>)
+  public
+    procedure Add(ADefName: string; ADefType: string);
+  end;
+
+  { TDefines }
+
+  TDefines = class(TSardObject)
+  private
+    FParameters: TDefineItems;
+    FBlock: TDefineItems;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Execute(Data: TRunData; Env: TRunEnv; Arguments: TStatements = nil);
+    property Parameters: TDefineItems read FParameters;
+    property Block: TDefineItems read FBlock;
+  end;
+
+{*
+  Variables
+*}
+
+  TRunVarKind = (rkLocal, rkArgument);
+  TRunVarKinds = set of TRunVarKind;
+
+  { TSardRunValue }
+
+  { TRunValue }
+
+  TRunValue = class(TSardNamedObject)
+  private
+    FValue: TNode; //RefObject maybe IObject_Node
+    FRunKind: TRunVarKinds;
+    procedure SetValue(AValue: TNode);
+  public
+    constructor Create; overload;
+    constructor Create(AName: string; ARunKind: TRunVarKinds); overload;
+    procedure Clear;
+    property RunKind: TRunVarKinds read FRunKind;
+    property Value: TNode read FValue write SetValue;
+  end;
+
+  { TRunVariables }
+
+  TRunVariables = class(TSardNamedObjects<TRunValue>)
+  public
+    function Register(AName: string; ARunKind: TRunVarKinds): TRunValue;
+  end;
+
+  { TRunResult }
+
+  TRunResult = class(TSardObject)
+  private
+  public
+    Result: TRunValue;
+    constructor Create;
+  end;
+
+  { TRunResults }
+
+  TRunResults = class(TSardStack<TRunResult>)
+  public
+    procedure Push; overload;
+  end;
+
+  { TDeclare_Node }
+
+  TDeclare_Node = class(TNode)
+  private
+    FDefines: TDefines;
+  public
+    //executeObject will execute in a context of statement if it is not null,
+    ExecuteObject: TNode;
+    ResultType: string;
     procedure Created; override;
+    destructor Destroy; override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    property Defines: TDefines read FDefines;
+  end;
+{
+  *   Declare object to take it ref into variable
+  *   used by Declare_Node
+  //Is that a Scope!!!, idk!
+}
+
+  { TRunData }
+
+  TRunData = class(TSardObjects<TRunData>)
+  private
+    FAnObject: TDeclare_Node;
+    FName: string;
+    FParent: TRunData;
+  public
+    constructor Create(AParent: TRunData);
+
+    function Find(const AName: string): TRunData;
+    function FindObject(AObject: TNode): TRunData;
+    function Declare(AObject: TDeclare_Node): TRunData;
+    function FindDeclare(AName: string): TRunData;
+
+    function Execute(Env: TRunEnv; AOperator: TSardOperator; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
+
+    property Name: string read FName;
+    property AnObject: TDeclare_Node read FAnObject;
+    property Parent: TRunData read FParent;
   end;
 
 {
-  TsoPreprocessor = class(TsoObject)
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-    Value: string;
-    constructor Create(AValue: string); overload;
-    procedure Created; override;
-  end;
+  *  Local is stack of flow control
+  *  Not a scope
+  *
 }
 
-{-------- Controls  --------}
+  { TRunStackItem }
 
-  { TctlControl }
-
-  TctlControl = class(TsardObject)
-  protected
+  TRunStackItem = class(TSardObject)
   public
-    Name: string;
-    Code: TsardControl;
-    Level: Integer;
-    Description: string;
-    constructor Create; virtual;
-  end;
-
-  TctlControlClass = class of TctlControl;
-
-  { TctlControls }
-
-  TctlControls = class(specialize GsardNamedObjects<TctlControl>)
-  private
-  protected
-  public
-    function Add(AControlClass: TctlControlClass): Integer; overload;
-    function Add(AName: string; ACode: TsardControl): TctlControl; overload;
-    function Scan(const vText: string; vIndex: Integer): TctlControl;
-    function IsOpenBy(const C: Char): Boolean;
-  end;
-
-{-------- Operators --------}
-
-  { TopOperator }
-
-  TopOperator = class(TsardObject)
-  protected
-    function DoExecute(vStack: TrunStack; vObject: TsoObject): Boolean; virtual;
-  public
-    Name: string;
-    Title: string;
-    Level: Integer;
-    Description: string;
-    Control: TsardControl;// Fall back to control if is initial, only used for for = to fall back as :=
-    function Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
-    constructor Create; virtual;
-    destructor Destroy; override;
-  end;
-
-  TopOperatorClass = class of TopOperator;
-
-  { TopOperators }
-
-  TopOperators = class(specialize GsardNamedObjects<TopOperator>)
-  private
-  protected
-  public
-    function FindByTitle(const vTitle: string): TopOperator;
-    function Add(AOperatorClass: TopOperatorClass): Integer; overload;
-    function IsOpenBy(const C: Char): Boolean;
-    function Scan(const vText: string; vIndex: Integer): TopOperator;
-  end;
-
-
-  TmodModifier = class(TsardObject) //TODO
-  end;
-
-  { TopPlus }
-
-  TopPlus = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopMinus }
-
-  TopMinus = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopMultiply }
-
-  TopMultiply = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopDivide }
-
-  TopDivide = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopPower }
-
-  TopPower = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopLesser }
-
-  TopLesser = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopGreater }
-
-  TopGreater = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopEqual }
-
-  TopEqual = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopNotEqual }
-
-  TopNot = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  TopNotEqual = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopAnd }
-
-  TopAnd = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-  { TopOr }
-
-  TopOr = class(TopOperator)
-  public
-    constructor Create; override;
-  end;
-
-{-------- Run Time Engine --------}
-
-  { TrunShadow }
-
-  TrunShadow = class(specialize GsardNamedObjects<TrunShadow>)
-  private
-    FLink: TsoObject;
-    FParent: TrunShadow;
-    FName: string;
-    procedure SetLink(AValue: TsoObject);
-  protected
-  public
-    constructor Create(vParent: TrunShadow);
-    destructor Destroy; override;
-    property Parent: TrunShadow read FParent;
-    property Name: string read FName write FName;
-    property Link: TsoObject read FLink write SetLink;
-  end;
-
-  { TrunVariable }
-
-  TrunVariable = class(TsardObject)
-  private
-    FKind: TrunVarKinds;
-    FValue: TrunResult;
-    FName: string;
-    procedure SetName(AValue: string);
-    procedure SetValue(AValue: TrunResult);
-  public
+    Variables: TRunVariables;
     constructor Create;
     destructor Destroy; override;
-    property Name: string read FName write SetName;
-    property Kind: TrunVarKinds read FKind write FKind;
-    property Value: TrunResult read FValue write SetValue;
   end;
 
-  { TrunVariables }
+  { TRunStack }
 
-  TrunVariables = class(specialize GsardNamedObjects<TrunVariable>)
-  private
+  TRunStack = Class(TSardStack<TRunStackItem>)
   public
-    function Register(vName: string; vKind: TrunVarKinds): TrunVariable;
-    function SetValue(vName: string; vValue: TsoObject): TrunVariable;
+    procedure Push; overload;
   end;
 
-  { TrunResult }
+  { TRunEnv }
 
-  TrunResult = class(TsardObject)
+  TRunEnv = class(TSardObject)
   private
-    FanObject: TsoObject;
-    procedure SetObject(AValue: TsoObject);
-  public
-    destructor Destroy; override;
-    function HasValue: Boolean;
-    procedure Assign(AResult: TrunResult); virtual;
-    function Extract: TsoObject;
-    property anObject: TsoObject read FanObject write SetObject;
-  end;
-
-  { TrunLocal }
-
-  TrunLocalItem = class(TsardObject)
-  private
-    FVariables: TrunVariables;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    property Variables: TrunVariables read FVariables;
-  end;
-
-  { TrunLocals }
-
-  TrunLocal = class(TsardStack)
-  private
-    function GetCurrent: TrunLocalItem;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure Push(vObject: TrunLocalItem);
-    function Push: TrunLocalItem; overload;
-    function Pull: TrunLocalItem;
-    property Current: TrunLocalItem read GetCurrent;
-  end;
-
-  { TrunReturnItem }
-
-  TrunReturnItem = class(TsardObject)
-  private
-    FResult: TrunResult;
-    FReference: TrunResult; //nil but if it exist we use it to assign it after statment executed
-    procedure SetReference(AValue: TrunResult);
-  public
-    constructor Create;
-    destructor Destroy; override;
-    //ReleaseResult return the Result and set FResult to nil witout free it, you need to free the Result by your self
-    function ReleaseResult: TrunResult;
-    property Result: TrunResult read FResult;
-    property Reference: TrunResult read FReference write SetReference;
-  end;
-
-  { TrunReturn }
-
-  TrunReturn = class(TsardStack)
-  private
-    function GetCurrent: TrunReturnItem;
-    function GetParent: TrunReturnItem;
-  public
-    procedure Push(vObject: TrunReturnItem);
-    function Push: TrunReturnItem; overload;
-    function Pull: TrunReturnItem;
-    property Current: TrunReturnItem read GetCurrent;
-    property Parent: TrunReturnItem read GetParent;
-  end;
-
-  { TrunStack }
-
-  TrunStack = class(TsardObject)
-  private
-    FEnv: TsrdEnvironment;
-    FLocal: TrunLocal;
-    FReturn:TrunReturn;
-    FShadow: TrunShadow;
+    FResults: TRunResults;
+    FRoot: TRunData;
+    FStack: TRunStack;
   public
     constructor Create;
     destructor Destroy; override;
 
-    function TouchMe(AObject: TsoObject): TrunShadow;
-
-    property Local: TrunLocal read FLocal;
-    property Return: TrunReturn read FReturn;
-    property Shadow: TrunShadow read FShadow;
-
-    property Env: TsrdEnvironment read FEnv write FEnv; //External Environment
+    property Results: TRunResults read FResults;
+    property Stack: TRunStack read FStack;
+    property Root: TRunData read FRoot;
   end;
-
-  {----------------------------------}
-
-  { TsoLog_Proc }
-
-  TsoLog_Proc = class(TsoNamedObject)
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-  end;
-
-  { TsoVersion_Const }
-
-  TsoVersion_Const = class(TsoNamedObject)
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-  end;
-
-  { TsoTime_Const }
-
-  TsoTime_Const = class(TsoBlock)
-  protected
-    procedure DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean); override;
-  public
-  end;
-
-  { TsoMain }
-
-  TsoMain = class(TsoSection)
-  public
-    LogProc: TsoLog_Proc; //for test
-    VersionConst: TsoVersion_Const;
-    constructor Create; override;
-    destructor Destroy; override;
-    procedure Run(vStack: TrunStack);
-  end;
-
-  { TsrdEnvironment }
-
-  TsrdEnvironment = class(TsardObject)
-  private
-    FOperators: TopOperators;
-  protected
-    procedure Created; override;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    property Operators: TopOperators read FOperators;
-  end;
-
-  { TsrdEngine }
-
-  TsrdEngine = class(TsardCustomEngine)
-  private
-  protected
-    procedure Created; override;
-  public
-    constructor Create;
-  end;
-
-function sardEngine: TsrdEngine;
 
 implementation
 
-var
-  FsardEngine: TsrdEngine = nil;
+{ TRunStack }
 
-function sardEngine: TsrdEngine;
+procedure TRunStack.Push;
 begin
-  if FsardEngine = nil then
-    FsardEngine := TsrdEngine.Create;
-  Result := FsardEngine;
+  inherited Push(TRunStackItem.Create);
 end;
 
-{ TrunShadow }
+{ TRunResults }
 
-procedure TrunShadow.SetLink(AValue: TsoObject);
+procedure TRunResults.Push;
 begin
-  if FLink =AValue then Exit;
-  FLink :=AValue;
+  inherited Push(TRunResult.Create);
 end;
 
-constructor TrunShadow.Create(vParent: TrunShadow);
+{ TRunEnv }
+
+constructor TRunEnv.Create;
 begin
   inherited Create;
-  FParent := vParent;
+  FResults := TRunResults.Create;
+  FRoot := TRunData.Create(nil);
+  FStack := TRunStack.Create;
 end;
 
-destructor TrunShadow.Destroy;
+destructor TRunEnv.Destroy;
 begin
+  FreeAndNil(FResults);
+  FreeAndNil(FRoot);
+  FreeAndNil(FStack);
   inherited;
 end;
 
-{ TsrdEnvironment }
+{ TRunStackItem }
 
-procedure TsrdEnvironment.Created;
-begin
-  inherited Created;
-  with Operators do
-  begin
-    Add(TopPlus);
-    Add(TopMinus);
-    Add(TopMultiply);
-    Add(TopDivide);
-
-    Add(TopEqual);
-    Add(TopNotEqual);
-    Add(TopAnd);
-    Add(TopOr);
-    Add(TopNot);
-
-    Add(TopGreater);
-    Add(TopLesser);
-
-    Add(TopPower);
-  end;
-end;
-
-constructor TsrdEnvironment.Create;
-begin
-  inherited Create;
-  FOperators := TopOperators.Create;
-end;
-
-destructor TsrdEnvironment.Destroy;
-begin
-  FreeAndNil(FOperators);
-  inherited Destroy;
-end;
-
-{ TrunStack }
-
-constructor TrunStack.Create;
+constructor TRunStackItem.Create;
 begin
   inherited;
-  FLocal := TrunLocal.Create;
-  FReturn := TrunReturn.Create;
-  FShadow := TrunShadow.Create(nil);
-
-  Local.Push;
-  Return.Push;
+  Variables := TRunVariables.Create;
 end;
 
-destructor TrunStack.Destroy;
+destructor TRunStackItem.Destroy;
 begin
-  Local.Pop;
-  Return.Pop;
-
-  FreeAndNil(FLocal);
-  FreeAndNil(FReturn);
-  FreeAndNil(FShadow);
+  FreeAndNil(Variables);
   inherited;
 end;
 
-function TrunStack.TouchMe(AObject: TsoObject): TrunShadow;
-begin
-//idk :-(
-end;
+{ TDeclare_Node }
 
-{ TsoVariable }
-
-procedure TsoVariable.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-var
-  v: TrunVariable;
-begin
-  v := RegisterVariable(vStack, [vtLocal]);
-  if v = nil then
-    RaiseError('Can not register a variable: ' + Name) ;
-  if v.Value.anObject = nil then
-    RaiseError(v.Name + ' variable have no value yet:' + Name);//TODO make it as empty
-  Done := v.Value.anObject.Execute(vStack, AOperator);
-end;
-
-{ TsrdDefine }
-
-constructor TsrdDefine.Create(vName: string; vResult: string);
-begin
-  inherited Create;
-  Name := vName;
-  Result := vResult;
-end;
-
-{ TsrdDefines }
-
-procedure TsrdDefines.Add(vName: string; vResult: string);
-begin
-  inherited Add(TsrdDefine.Create(vName, vResult));
-end;
-
-function TsrdDefines.Last: TsrdDefine;
-begin
-  Result := (inherited Last) as TsrdDefine;
-end;
-
-{ TsoCustomStatement }
-
-procedure TsoCustomStatement.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-  //todo check if need inherited
-  vStack.Return.Push;
-end;
-
-procedure TsoCustomStatement.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-var
-  T: TrunReturnItem;
+procedure TDeclare_Node.Created;
 begin
   inherited;
-  T := vStack.Return.Pull;
-  if T.Result.anObject <> nil then
-    T.Result.anObject.Execute(vStack, AOperator);
-  FreeAndNil(T);
+  FDefines := TDefines.Create;
 end;
 
-procedure TsoCustomStatement.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
+destructor TDeclare_Node.Destroy;
 begin
-  FStatement.Call(vStack);
-  Done := True;
-end;
-
-constructor TsrdDeclares.Create;
-begin
-  inherited Create(False);
-end;
-
-{ TsoTime_Const }
-
-procedure TsoTime_Const.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-  inherited;;
-  vStack.Return.Current.Result.anObject := TsoString.Create(TimeToStr(Time));
-end;
-
-{ TsoVersion_Const }
-
-procedure TsoVersion_Const.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-  vStack.Return.Current.Result.anObject := TsoString.Create(sSardVersion);
-end;
-
-{ TsoLog_Proc }
-
-procedure TsoLog_Proc.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-end;
-
-{ TsoStatement }
-
-constructor TsoStatement.Create;
-begin
-  inherited Create;
-  FStatement := TsrdStatement.Create(Parent);
-end;
-
-destructor TsoStatement.Destroy;
-begin
-  FreeAndNil(FStatement);
-  inherited Destroy;
-end;
-
-{ TsoComment }
-
-procedure TsoComment.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-  Done := True;
-end;
-
-constructor TsoComment.Create(AValue: string);
-begin
-  Create;
-  Value := AValue;
-end;
-
-procedure TsoComment.Created;
-begin
-  inherited Created;
-  FObjectType := otComment;
-end;
-
-{ TrunLocal }
-
-function TrunLocal.GetCurrent: TrunLocalItem;
-begin
-  Result := (inherited GetCurrent) as TrunLocalItem;
-end;
-
-constructor TrunLocal.Create;
-begin
+  FreeAndNil(FDefines);
   inherited;
 end;
 
-destructor TrunLocal.Destroy;
+procedure TDeclare_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
 begin
-  inherited Destroy;
+  Data.Declare(Self);
 end;
 
-procedure TrunLocal.Push(vObject: TrunLocalItem);
-begin
-  inherited Push(vObject);
-end;
+{ TRunData }
 
-function TrunLocal.Push: TrunLocalItem;
-begin
-  Result := TrunLocalItem.Create;
-  Push(Result);
-end;
-
-function TrunLocal.Pull: TrunLocalItem;
-begin
-  Result := (inherited Pull) as TrunLocalItem;
-end;
-
-{ TctlControl }
-
-constructor TctlControl.Create;
-begin
-  inherited Create;
-end;
-
-{ TctlControls }
-
-function TctlControls.Add(AControlClass: TctlControlClass): Integer;
-begin
-  Result := Add(AControlClass.Create);
-end;
-
-function TctlControls.Add(AName: string; ACode: TsardControl): TctlControl;
-begin
-  Result := TctlControl.Create;
-  Result.Name := AName;
-  Result.Code := ACode;
-  Add(Result);
-end;
-
-function TctlControls.Scan(const vText: string; vIndex: Integer): TctlControl;
-var
-  i: Integer;
-  max: Integer;
-begin
-  Result := nil;
-  max := 0;
-  for i := 0 to Count -1 do
-  begin
-    if ScanCompare(Items[i].Name, vText, vIndex) then
-    begin
-      if max < length(Items[i].Name) then
-      begin
-        max := length(Items[i].Name);
-        Result := Items[i];
-      end;
-    end;
-  end;
-end;
-
-function TctlControls.IsOpenBy(const C: Char): Boolean;
-var
-  i: Integer;
-begin
-  Result := False;
-  for i := 0 to Count-1 do
-  begin
-    if Items[i].Name[1] = LowerCase(C) then
-    begin
-      Result := True;
-      break;
-    end;
-  end;
-end;
-
-{ TsrdObjectList }
-
-constructor TsrdObjectList.Create(AParent: TsoObject);
+constructor TRunData.Create(AParent: TRunData);
 begin
   inherited Create;
   FParent := AParent;
 end;
 
-procedure TsoObject.SetParent(AParent: TsoObject);
-begin
-  if FParent <> nil then
-    RaiseError('Already have a parent');
-  FParent :=AParent;
-  DoSetParent(FParent);
-end;
-
-{ TsoSection }
-
-procedure TsoSection.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-  inherited;
-  vStack.Local.Push;
-end;
-
-procedure TsoSection.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-  inherited;
-  vStack.Local.Pop;
-end;
-
-constructor TsoSection.Create;
-begin
-  inherited;
-  FDeclares := TsrdDeclares.Create;
-end;
-
-destructor TsoSection.Destroy;
-begin
-  FreeAndNil(FDeclares);
-  inherited Destroy;
-end;
-
-function TsoSection.AddDeclare(vDeclare: TsoDeclare): Integer;
-begin
-  Result := Declares.Add(vDeclare);
-end;
-
-function TsoSection.FindDeclare(vName: string): TsoDeclare;
-begin
-  Result := Declares.Find(vName);
-  if Result = nil then
-    Result := inherited FindDeclare(vName);
-end;
-
-{ TsoNamedObject }
-
-procedure TsoNamedObject.SetName(AValue: string);
-begin
-  if AValue <> FName then
-  begin
-    FName := AValue;
-  end;
-end;
-
-constructor TsoNamedObject.Create(vParent: TsoObject; vName: string);
-begin
-  Create;
-  Name := vName;
-  Parent := vParent;
-end;
-
-function TsoNamedObject.RegisterVariable(vStack: TrunStack; vKind: TrunVarKinds): TrunVariable;
-begin
-  Result := vStack.Local.Current.Variables.Register(Name, vKind);
-end;
-
-procedure TsoNamedObject.SetID(AValue: Integer);
-begin
-  if FID =AValue then Exit;
-  FID :=AValue;
-end;
-
-{ TrunResult }
-
-procedure TrunResult.SetObject(AValue: TsoObject);
-begin
-  if FanObject <> AValue then
-  begin
-    if FanObject <> nil then
-      FreeAndNil(FanObject);
-    FanObject := AValue;
-  end;
-end;
-
-destructor TrunResult.Destroy;
-begin
-  FreeAndNil(FanObject);
-  inherited Destroy;
-end;
-
-function TrunResult.HasValue: Boolean;
-begin
-  Result := anObject <> nil;
-end;
-
-procedure TrunResult.Assign(AResult: TrunResult);
-begin
-  if AResult.anObject = nil then
-    anObject := nil
-  else
-    anObject := AResult.anObject.Clone;
-end;
-
-function TrunResult.Extract: TsoObject;
-begin
-  Result := FanObject;
-  FanObject := nil;
-end;
-
-{ TrunLocalItem }
-
-constructor TrunLocalItem.Create;
-begin
-  inherited Create;
-  FVariables := TrunVariables.Create;
-end;
-
-destructor TrunLocalItem.Destroy;
-begin
-  FreeAndNil(FVariables);
-  inherited Destroy;
-end;
-
-{ TsoConstObject }
-
-procedure TsoConstObject.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-  if (vStack.Return.Current.Result.anObject = nil) and (AOperator = nil) then
-  begin
-    vStack.Return.Current.Result.anObject := Clone;
-    Done := True;
-  end
-  else
-  begin
-    if vStack.Return.Current.Result.anObject = nil then
-      vStack.Return.Current.Result.anObject := Clone(False);
-    Done := vStack.Return.Current.Result.anObject.Operate(Self, AOperator);
-  end;
-end;
-
-{ TrunReturnItem }
-
-procedure TrunReturnItem.SetReference(AValue: TrunResult);
-begin
-  if FReference =AValue then Exit;
-  if FReference <> nil then
-    RaiseError('Already set a reference');
-  FReference :=AValue;
-end;
-
-constructor TrunReturnItem.Create;
-begin
-  inherited;
-  FResult := TrunResult.Create;
-end;
-
-destructor TrunReturnItem.Destroy;
-begin
-  FreeAndNil(FResult);
-  inherited Destroy;
-end;
-
-function TrunReturnItem.ReleaseResult: TrunResult;
-begin
-  Result := FResult;
-  FResult := nil;
-end;
-
-{ TrunStack }
-
-function TrunReturn.GetCurrent: TrunReturnItem;
-begin
-  Result := (inherited GetCurrent) as TrunReturnItem;
-end;
-
-function TrunReturn.GetParent: TrunReturnItem;
-begin
-  Result := (inherited GetParent) as TrunReturnItem;
-end;
-
-procedure TrunReturn.Push(vObject: TrunReturnItem);
-begin
-  inherited Push(vObject);
-end;
-
-function TrunReturn.Push: TrunReturnItem;
-begin
-  Result := TrunReturnItem.Create;
-  Push(Result);
-end;
-
-function TrunReturn.Pull: TrunReturnItem;
-begin
-  Result := (inherited Pull) as TrunReturnItem;
-end;
-
-{ TsoBlock }
-
-procedure TsoBlock.Created;
-begin
-  inherited Created;
-  FObjectType := otBlock;
-end;
-
-procedure TsoBlock.ExecuteParams(vStack: TrunStack; vDefines: TsrdDefines; vParameters: TsrdBlock);
-var
-  i: Integer;
-  v: TrunVariable;
-begin
-  inherited;
-  if vParameters <> nil then //TODO we need to check if it is a block?
-  begin
-    for i := 0 to vParameters.Count -1 do
-    begin
-      vStack.Return.Push;
-      vParameters[i].Call(vStack);
-      if i < vDefines.Count then
-      begin
-        v := vStack.Local.Current.Variables.Register(vDefines[i].Name, [vtLocal, vtParam]);//must find it locally//bug//todo
-        v.Value := vStack.Return.Current.ReleaseResult;
-      end;
-      vStack.Return.Pop;
-    end;
-  end;
-end;
-
-procedure TsoBlock.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-var
-  T: TrunReturnItem;
-begin
-  vStack.Return.Push; //<--here we can push a variable result or create temp result to drop it
-  Call(vStack);
-  T := vStack.Return.Pull;
-  //I dont know what if ther is an object there what we do???
-  if T.Result.anObject <> nil then
-    T.Result.anObject.Execute(vStack, AOperator);
-  FreeAndNil(T);
-  Done := True;
-end;
-
-constructor TsoBlock.Create;
-begin
-  inherited Create;
-  FBlock := TsrdBlock.Create(Self);
-end;
-
-destructor TsoBlock.Destroy;
-begin
-  FreeAndNil(FBlock);
-  inherited Destroy;
-end;
-
-procedure TsoBlock.Call(vStack: TrunStack);
-begin
-  Block.Execute(vStack);
-end;
-
-{ TsardVariables }
-
-function TrunVariables.Register(vName: string; vKind: TrunVarKinds): TrunVariable;
-begin
-  Result := Find(vName);
-  if Result = nil then
-  begin
-    Result := TrunVariable.Create;
-    Result.Name := vName;
-    Result.Kind := vKind;
-    Add(Result);
-  end;
-end;
-
-function TrunVariables.SetValue(vName: string; vValue: TsoObject): TrunVariable;
-begin
-  Result := Find(vName);
-  if Result <> nil then
-    Result.Value.anObject := vValue;
-end;
-
-{ TrunVariable }
-
-procedure TrunVariable.SetName(AValue: string);
-begin
-  if FName =AValue then Exit;
-  FName :=AValue;
-end;
-
-procedure TrunVariable.SetValue(AValue: TrunResult);
-begin
-  if FValue =AValue then Exit;
-  FreeAndNil(FValue);
-  FValue :=AValue;
-end;
-
-constructor TrunVariable.Create;
-begin
-  inherited Create;
-  Value := TrunResult.Create;
-end;
-
-destructor TrunVariable.Destroy;
-begin
-  FreeAndNil(FValue);
-  inherited Destroy;
-end;
-
-{ TsrdBlockStack }
-
-function TsrdBlockStack.GetCurrent: TsrdBlock;
-begin
-  Result := (inherited GetCurrent) as TsrdBlock;
-end;
-
-procedure TsrdBlockStack.Push(vItem: TsrdBlock);
-begin
-  inherited Push(vItem);
-end;
-
-{ TopNot }
-
-constructor TopNot.Create;
-begin
-  inherited Create;
-  Name := '!'; //or '~'
-  Title := 'Not';
-  Level := 100;
-end;
-
-{ TopOr }
-
-constructor TopOr.Create;
-begin
-  inherited Create;
-  Name := '|';
-  Title := 'Or';
-  Level := 51;
-end;
-
-{ TopAnd }
-
-constructor TopAnd.Create;
-begin
-  inherited Create;
-  Name := '&';
-  Title := 'And';
-  Level := 51;
-end;
-
-{ TopNotEqual }
-
-constructor TopNotEqual.Create;
-begin
-  inherited Create;
-  Name := '<>';
-  Title := 'NotEqual';
-  Level := 51;
-end;
-
-{ TopEqual }
-
-constructor TopEqual.Create;
-begin
-  inherited Create;
-  Name := '=';
-  Title := 'Equal';
-  Level := 51;
-  Control := ctlAssign;
-end;
-
-{ TopGreater }
-
-constructor TopGreater.Create;
-begin
-  inherited Create;
-  Name := '>';
-  Title := 'Greater';
-  Level := 51;
-end;
-
-{ TopLesser }
-
-constructor TopLesser.Create;
-begin
-  inherited Create;
-  Name := '<';
-  Title := 'Lesser';
-  Level := 51;
-end;
-
-{ TopPower }
-
-constructor TopPower.Create;
-begin
-  inherited Create;
-  Name := '^';
-  Title := 'Power';
-  Level := 52;
-end;
-
-procedure TsoAssign.DoSetParent(AValue: TsoObject);
-{var
-  aDeclare: TsoDeclare;}
-begin
-  inherited;
-  {aDeclare := TsoDeclare.Create;
-  aDeclare.Name := Name;
-  aDeclare.AnObject := TsoVariable.Create(Name);
-  aDeclare.Parent := Self;
-  AValue.AddDeclare(aDeclare);}
-end;
-
-procedure TsoAssign.Created;
-begin
-  inherited Created;
-  FObjectType := otVariable;
-end;
-
-procedure TsoAssign.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-var
-  v: TrunVariable;
-  aDeclare: TsoDeclare;
-begin
-  { if not name it assign to parent result }
-  Done := True;
-  if Name = '' then
-    vStack.Return.Current.Reference := vStack.Return.Parent.Result
-  else
-  begin
-    aDeclare := FindDeclare(Name);//TODO: maybe we can cashe it
-    if aDeclare <> nil then
-    begin
-      if aDeclare.CallObject <> nil then
-      begin
-        v := aDeclare.CallObject.RegisterVariable(vStack, [vtLocal]);//parent becuase we are in the statment
-        if v = nil then
-          RaiseError('Variable not found!');
-        vStack.Return.Current.Reference := v.Value;
-      end;
-    end
-    else
-    begin //Ok let is declare it locally
-      v := RegisterVariable(vStack, [vtLocal]);//parent becuase we are in the statment
-      if v = nil then
-        RaiseError('Variable not found!');
-      vStack.Return.Current.Reference := v.Value;
-    end;
-  end;
-end;
-
-{ TopDivide }
-
-constructor TopDivide.Create;
-begin
-  inherited Create;
-  Name := '/';
-  Title := 'Divition';
-  Level := 51;
-end;
-
-{ TopMultiply }
-
-constructor TopMultiply.Create;
-begin
-  inherited Create;
-  Name := '*';
-  Title := 'Multiply';
-  Level := 51;
-end;
-
-{ TopMinus }
-
-constructor TopMinus.Create;
-begin
-  inherited Create;
-  Name := '-';
-  Title := 'Minus';
-  Level := 50;
-  Description := 'Sub object to another object';
-end;
-
-{ TopOperator }
-
-function TopOperator.DoExecute(vStack: TrunStack; vObject: TsoObject): Boolean;
-begin
-   Result := False;
-end;
-
-function TopOperator.Execute(vStack: TrunStack; vObject: TsoObject): Boolean;
-begin
-  Result := False; //TODO what!!!
-end;
-
-constructor TopOperator.Create;
-begin
-  inherited Create;
-end;
-
-destructor TopOperator.Destroy;
-begin
-  inherited Destroy;
-end;
-
-function TopOperators.FindByTitle(const vTitle: string): TopOperator;
+function TRunData.Find(const AName: string): TRunData;
 var
   i: Integer;
 begin
   Result := nil;
   for i := 0 to Count - 1 do
   begin
-    if vTitle = Items[i].Title then
+    if SameText(Items[i].Name, AName) then
     begin
       Result := Items[i];
       break;
@@ -1679,650 +415,364 @@ begin
   end;
 end;
 
-function TopOperators.Add(AOperatorClass: TopOperatorClass): Integer;
-begin
-  Result := Add(AOperatorClass.Create);
-end;
-
-function TopOperators.IsOpenBy(const C: Char): Boolean;
+function TRunData.FindObject(AObject: TNode): TRunData;
 var
   i: Integer;
 begin
-  Result := False;
-  for i := 0 to Count-1 do
+  Result := nil;
+  for i := 0 to Count - 1 do
   begin
-    if Items[i].Name[1] = LowerCase(C) then
+    if Items[i].AnObject = AObject then
     begin
-      Result := True;
+      Result := Items[i];
       break;
     end;
   end;
 end;
 
-function TopOperators.Scan(const vText: string; vIndex: Integer): TopOperator;
+function TRunData.Declare(AObject: TDeclare_Node): TRunData;
+begin
+  if AObject = nil then
+    RaiseError('Can not register null in data');
+  Result := FindObject(AObject);
+  if Result = nil then
+  begin
+    Result := TRunData.Create(Self);
+    Result.FName := AnObject.Name;
+    Result.FAnObject := AnObject;
+  end;
+  Add(Result);//TODO BUG maybe into if
+end;
+
+function TRunData.FindDeclare(AName: string): TRunData;
+begin
+  Result := Find(AName);
+  if (Result <> nil) and (Parent <> nil) then
+  Result := Parent.FindDeclare(AName);
+
+end;
+
+function TRunData.Execute(Env: TRunEnv; AOperator: TSardOperator; Arguments: TStatements; Blocks: TStatements): Boolean;
+begin
+  if AnObject = nil then
+    RaiseError('Object of declaration is not set!')
+  else if AnObject.ExecuteObject = nil then
+  begin
+    RaiseError('ExecuteObject of declaration is not set!');
+    Result := AnObject.ExecuteObject.Execute(Self, Env, AOperator, AnObject.Defines, Arguments, Blocks);
+  end;
+end;
+
+{ TRunResult }
+
+constructor TRunResult.Create;
+begin
+  inherited Create;
+  Result := TRunValue.Create;
+end;
+
+{ TRunValue }
+
+procedure TRunValue.SetValue(AValue: TNode);
+begin
+  if FValue =AValue then Exit;
+  FValue :=AValue;
+end;
+
+constructor TRunValue.Create;
+begin
+  inherited Create;
+end;
+
+constructor TRunValue.Create(AName: string; ARunKind: TRunVarKinds);
+begin
+  inherited Create;
+  Name := AName;
+  FRunKind := ARunKind;
+end;
+
+procedure TRunValue.Clear;
+begin
+  Value := nil;
+end;
+
+{ TRunVariables }
+
+function TRunVariables.Register(AName: string; ARunKind: TRunVarKinds): TRunValue;
+begin
+  Result := Find(AName);
+  if Result = nil then
+  begin
+    Result := TRunValue.Create(AName, ARunKind);
+    inherited Add(Result);
+  end;
+end;
+
+{ TDefines }
+
+constructor TDefines.Create;
+begin
+  inherited Create;
+  FParameters := TDefineItems.Create;
+  FBlock := TDefineItems.Create;
+end;
+
+destructor TDefines.Destroy;
+begin
+  FreeAndNil(FParameters);
+  FreeAndNil(FBlock);
+  inherited Destroy;
+end;
+
+{ TDefineItems }
+
+procedure TDefineItems.Add(ADefName: string; ADefType: string);
+begin
+  inherited Add(TDefine.Create(ADefName, ADefType));
+end;
+
+{ TDefine }
+
+constructor TDefine.Create(ADefName: string; ADefType: string);
+begin
+  inherited Create;
+  Name := ADefName;
+  FDefType := ADefType;
+end;
+
+procedure TDefines.Execute(Data: TRunData; Env: TRunEnv; Arguments: TStatements);
 var
   i: Integer;
-  max: Integer;
+  p: TDefine;
+  v: TRunValue;
 begin
-  Result := nil;
-  max := 0;
-  for i := 0 to Count -1 do
-  begin
-    if ScanCompare(Items[i].Name, vText, vIndex) then
+  if Arguments <> nil then
+  begin //TODO we need to check if it is a block?
+    i := 0;
+    while i < Parameters.Count do
     begin
-      if max < length(Items[i].Name) then
+      Env.Results.Push;
+      Arguments[i].Execute(Data, Env);
+      if i < Arguments.Count then
       begin
-        max := length(Items[i].Name);
-        Result := Items[i];
+        p := Parameters[i];
+        v := Env.Stack.Current.Variables.Register(p.name, [rkLocal, rkArgument]); //TODO but must find it locally
+        v.Value := Env.Results.Current.Result.Value;
       end;
+      Env.Results.Pop;
+      Inc(i);
     end;
   end;
 end;
 
-{ TopPlus }
+{ TStatements }
 
-constructor TopPlus.Create;
+constructor TStatements.Create(AParent: TNode);
 begin
   inherited Create;
-  Name := '+';
-  Title := 'Plus';
-  Level := 50;
-  Description := 'Add object to another object';
+  FParent := AParent;
 end;
 
-{ TsrdEngine }
-
-procedure TsrdEngine.Created;
+function TStatements.Add: TStatement;
 begin
-  inherited;
+  Result := TStatement.Create(Parent);
+  inherited Add(Result);
 end;
 
-constructor TsrdEngine.Create;
+procedure TStatements.Propose;
 begin
-  inherited Create;
-end;
-
-{ TsrdClause }
-
-constructor TsrdClause.Create(AOperator: TopOperator; AObject: TsoObject);
-begin
-  inherited Create;
-  FanOperator := AOperator;
-  FanObject := AObject;
-end;
-
-destructor TsrdClause.Destroy;
-begin
-  inherited Destroy;
-end;
-
-function TsrdClause.Execute(vStack: TrunStack): Boolean;
-begin
-  if FanObject = nil then
-    RaiseError('Object not set!');
-  Result := FanObject.Execute(vStack, anOperator);
-end;
-
-{ TsrdClass }
-
-procedure TsoDeclare.Created;
-begin
-  inherited Created;
-  FObjectType := otClass;
-end;
-
-procedure TsoDeclare.DoSetParent(AValue: TsoObject);
-begin
-  AValue.AddDeclare(Self);
-end;
-
-procedure TsoDeclare.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-begin
-  if ExecuteObject <> nil then
-    Done := ExecuteObject.Execute(vStack, AOperator)
-  else
-    Done := True;
-end;
-
-constructor TsoDeclare.Create;
-begin
-  inherited;
-  FDefines := TsrdDefines.Create;
-end;
-
-destructor TsoDeclare.Destroy;
-begin
-  FreeAndNil(ExecuteObject);
-  FreeAndNil(CallObject);
-  FreeAndNil(FDefines);
-  inherited Destroy;
-end;
-
-procedure TsoDeclare.Call(vStack: TrunStack; AOperator: TopOperator; AParameters: TsrdBlock; var Done: Boolean);
-begin
-  Done := CallObject.Execute(vStack, AOperator, Defines, AParameters);
-end;
-
-{ TsrdInstance }
-
-procedure TsoInstance.Created;
-begin
-  inherited Created;
-  FObjectType := otObject;
-end;
-
-procedure TsoInstance.DoExecute(vStack: TrunStack; AOperator: TopOperator; var Done: Boolean);
-var
-  p: TsoDeclare;
-  v: TrunVariable;
-begin
-  p := FindDeclare(Name);
-  if (p <> nil) then //maybe we must check Define.count, cuz it refere to it class
-    p.Call(vStack, AOperator, Block, Done)
-  else
-  begin
-    v := vStack.Local.Current.Variables.Find(Name);
-    if v = nil then
-      RaiseError('Can not find a variable: '+Name);
-    Done := v.Value.anObject.Execute(vStack, AOperator);
-  end;
-end;
-
-{ TsrdBoolean }
-
-constructor TsoBoolean.Create(AValue: Boolean);
-begin
-  Create;
-  Value := AValue;
-end;
-
-procedure TsoBoolean.Created;
-begin
-  inherited Created;
-  FObjectType := otBoolean;
-end;
-
-function TsoBoolean.ToString(out outValue: string): Boolean;
-begin
-  Result :=inherited ToString(outValue);
-end;
-
-function TsoBoolean.ToFloat(out outValue: Float): Boolean;
-begin
-  Result :=inherited ToFloat(outValue);
-end;
-
-function TsoBoolean.ToInteger(out outValue: int): Boolean;
-begin
-  Result :=inherited ToInteger(outValue);
-end;
-
-function TsoBoolean.ToBoolean(out outValue: Boolean): Boolean;
-begin
-  outValue := Value;
-  Result := True;
-end;
-
-{ TsrdString }
-
-procedure TsoString.Created;
-begin
-  inherited Created;
-  FObjectType := otString;
-end;
-
-constructor TsoString.Create(AValue: string);
-begin
-  Create;
-  Value := AValue;
-end;
-
-procedure TsoString.Assign(FromObject: TsoObject);
-begin
-  if FromObject <> nil then
-  begin
-    if FromObject is TsoString then
-      Value := (FromObject as TsoString).Value
-    else
-      Value := FromObject.AsString;
-  end;
-end;
-
-function TsoString.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
-begin
-  Result := True;
-  case AOperator.Name of
-    '+': Value := Value + AObject.AsString;
-    '-':
-      begin
-        if AObject is TsoBaseNumber then
-          Value := LeftStr(Value, Length(Value) - AObject.AsInteger)
-        else
-          Result := False;
-      end;
-    '*':
-      begin
-        if AObject is TsoBaseNumber then
-          Value := StringRepeat(Value, AObject.AsInteger)
-        else
-          Result := False;
-      end;
-//    '/': Value := Value / AObject.AsString;
-    else
-      Result := False;
-  end;
-end;
-
-function TsoString.ToString(out outValue: string): Boolean;
-begin
-  outValue := Value;
-  Result := True;
-end;
-
-function TsoString.ToFloat(out outValue: Float): Boolean;
-begin
-  outValue := StrToFloat(Value);
-  Result := True;
-end;
-
-function TsoString.ToInteger(out outValue: int): Boolean;
-begin
-  outValue := StrToInt64(Value);
-  Result := True;
-end;
-
-function TsoString.ToBoolean(out outValue: Boolean): Boolean;
-begin
-  if not TryStrToBool(Value, outValue) then
-    outValue := AsInteger <> 0;
-  Result := True;
-end;
-
-{ TsrdFloat }
-
-constructor TsoFloat.Create(AValue: Float);
-begin
-  inherited Create;
-  Value := AValue;
-end;
-
-procedure TsoFloat.Created;
-begin
-  inherited Created;
-  FObjectType := otFloat;
-end;
-
-procedure TsoFloat.Assign(FromObject: TsoObject);
-begin
-  if FromObject <> nil then
-  begin
-    if FromObject is TsoFloat then
-      Value := (FromObject as TsoFloat).Value
-    else
-      Value := FromObject.AsFloat;
-  end;
-end;
-
-function TsoFloat.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
-begin
-  Result := True;
-  case AOperator.Name of
-    '+': Value := Value + AObject.AsFloat;
-    '-': Value := Value - AObject.AsFloat;
-    '*': Value := Value * AObject.AsFloat;
-    '/': Value := Value / AObject.AsFloat;
-    else
-      Result := False;
-  end;
-end;
-
-function TsoFloat.ToString(out outValue: string): Boolean;
-begin
-  outValue := FloatToStr(Value);
-  Result := True;
-end;
-
-function TsoFloat.ToFloat(out outValue: Float): Boolean;
-begin
-  outValue := Value;
-  Result := True;
-end;
-
-function TsoFloat.ToInteger(out outValue: int): Boolean;
-begin
-  outValue := round(Value);
-  Result := True;
-end;
-
-function TsoFloat.ToBoolean(out outValue: Boolean): Boolean;
-begin
-  outValue := Value <> 0;
-  Result := True;
-end;
-
-{ TsrdInteger }
-
-procedure TsoInteger.Created;
-begin
-  inherited Created;
-  FObjectType := otInteger;
-end;
-
-constructor TsoInteger.Create(AValue: int);
-begin
-  inherited Create;
-  Value := AValue;
-end;
-
-procedure TsoInteger.Assign(FromObject: TsoObject);
-begin
-  if FromObject <> nil then
-  begin
-    if FromObject is TsoInteger then
-      Value := (FromObject as TsoInteger).Value
-    else
-      Value := FromObject.AsInteger;
-  end;
-end;
-
-function TsoInteger.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
-begin
-  Result := True;
-  case AOperator.Name of
-    '+': Value := Value + AObject.AsInteger;
-    '-': Value := Value - AObject.AsInteger;
-    '*': Value := Value * AObject.AsInteger;
-    '/': Value := Value div AObject.AsInteger;
-    else
-      Result := False;
-  end;
-end;
-
-function TsoInteger.ToString(out outValue: string): Boolean;
-begin
-  Result := True;
-  outValue := IntToStr(Value);
-end;
-
-function TsoInteger.ToFloat(out outValue: Float): Boolean;
-begin
-  Result := True;
-  outValue := Value;
-end;
-
-function TsoInteger.ToInteger(out outValue: int): Boolean;
-begin
-  Result := True;
-  outValue := Value;
-end;
-
-function TsoInteger.ToBoolean(out outValue: Boolean): Boolean;
-begin
-  outValue := Value <> 0;
-  Result := True;
-end;
-
-{ TsoBlock }
-
-function TsrdBlock.GetStatement: TsrdStatement;
-begin
-  //Check;//TODO: not sure
-  Result := Last as TsrdStatement;
-end;
-
-function TsrdBlock.GetItem(Index: Integer): TsrdStatement;
-begin
-  Result := inherited Items[Index] as TsrdStatement;
-end;
-
-function TsrdBlock.Add(AStatement: TsrdStatement): Integer;
-begin
-  Result := inherited Add(AStatement);
-end;
-
-function TsrdBlock.Add: TsrdStatement;
-begin
-  Result := TsrdStatement.Create(Parent);
-  Add(Result);
-end;
-
-procedure TsrdBlock.Check;
-begin
-  if Count = 0  then
+  if Count = 0 then
     Add;
 end;
 
-function TsrdBlock.Execute(vStack: TrunStack): Boolean;
+function TStatements.Execute(Data: TRunData; Env: TRunEnv): Boolean;
 var
-  i: Integer;
+  itm: TClause;
 begin
-  Result := Count > 0;
-  for i := 0 to Count -1 do
+  if Count = 0 then
+    Result := False
+  else
   begin
-    Items[i].Execute(vStack);
-    //if the current statment assigned to parent or variable result "Reference" here have this object, or we will throw the result
+    for itm in Self do
+    begin
+      //* each statment have a result
+      Env.Results.Push;
+      itm.Execute(Data, Env);
+      Env.Results.Pop;
+      //* if the current statement assigned to parent or variable result "Reference" here have this object, or we will throw the result
+    end;
+    Result := True;
   end;
 end;
 
-{ TsrdStatement }
+{ TStatement }
 
-function TsrdStatement.GetItem(Index: Integer): TsrdClause;
+procedure TStatement.Add(AOperator: TSardOperator; AObject: TNode);
 begin
-  Result := inherited Items[Index] as TsrdClause;
+  if (AObject.Parent <> nil) then
+    RaiseError('You can not add object to another parent!');
+  AObject.FParent := Parent;
+  inherited Add(TClause.Create(AOperator, AObject));
 end;
 
-procedure TsrdStatement.SetDebug(AValue: TsrdDebug);
-begin
-  if FDebug =AValue then Exit;
-  FDebug :=AValue;
-end;
-
-function TsrdStatement.Add(AObject: TsrdClause): Integer;
-begin
-  Result := inherited Add(AObject);
-end;
-
-function TsrdStatement.Add(AOperator: TopOperator; AObject: TsoObject): TsrdClause;
-begin
-  Result := TsrdClause.Create(AOperator, AObject);
-  AObject.Parent := Parent;
-  Add(Result);
-end;
-
-procedure TsrdStatement.Execute(vStack: TrunStack);
-begin
-  vStack.Return.Push; //Each statement have own result
-  Call(vStack);
-  if vStack.Return.Current.Reference <> nil then
-    vStack.Return.Current.Reference.anObject := vStack.Return.Current.Result.Extract;  //it is responsible of assgin to parent result or to a variable
-  vStack.Return.Pop;
-end;
-
-procedure TsrdStatement.Call(vStack: TrunStack);
+procedure TStatement.Execute(Data: TRunData; Env: TRunEnv);
 var
-  i: Integer;
+  itm: TClause;
 begin
-  for i := 0 to Count -1 do
-    Items[i].Execute(vStack);
+  //https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+  //:= "Result is " + 10 + 10 ;
+  for itm in Self do
+  begin
+    itm.Execute(Data, Env);
+  end;
 end;
 
-constructor TsoMain.Create;
+constructor TStatement.Create(AParent: TNode);
 begin
   inherited Create;
-  LogProc := TsoLog_Proc.Create;
-  LogProc.Parent := Self;
-  VersionConst := TsoVersion_Const.Create;
-  VersionConst.Parent := Self;
-  VersionConst.Name := 'Version';
-  AddDeclare(nil, VersionConst);
+  FParent := AParent;
 end;
 
-destructor TsoMain.Destroy;
+{ TNode }
+
+function TNode.GetAsBool: Bool;
 begin
-  FreeAndNil(LogProc);
-  FreeAndNil(VersionConst);
-  inherited Destroy;
+  if not ToBool(Result) then
+    Result := false;
 end;
 
-procedure TsoMain.Run(vStack: TrunStack);
+function TNode.GetAsInteger: Integer;
 begin
-  Execute(vStack, nil);
+  if not ToInteger(Result) then
+    Result := 0;
 end;
 
-{ TsoObject }
-
-constructor TsoObject.Create;
+function TNode.GetAsNumber: Number;
 begin
-  inherited Create;
+  if not ToNumber(Result) then
+    Result := 0;
 end;
 
-function TsoObject.This: TsoObject;
+function TNode.GetAsText: Text;
 begin
-  Result := Self;
-end;
-
-function TsoObject.Operate(AObject: TsoObject; AOperator: TopOperator): Boolean;
-begin
-  Result := False;
-end;
-
-procedure TsoObject.BeforeExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-end;
-
-procedure TsoObject.AfterExecute(vStack: TrunStack; AOperator: TopOperator);
-begin
-
-end;
-
-procedure TsoObject.ExecuteParams(vStack: TrunStack; vDefines: TsrdDefines; vParameters: TsrdBlock);
-begin
-end;
-
-procedure TsoObject.DoSetParent(AParent: TsoObject);
-begin
-end;
-
-function TsoObject.Execute(vStack: TrunStack; AOperator: TopOperator; vDefines: TsrdDefines; vParameters: TsrdBlock): Boolean;
-var
-  s: string;
-begin
-  vStack.TouchMe(Self);
-  Result := False;
-  BeforeExecute(vStack, AOperator);
-  ExecuteParams(vStack, vDefines, vParameters);
-  DoExecute(vStack, AOperator, Result);
-  AfterExecute(vStack, AOperator);
-
-  s := StringOfChar('-', vStack.Return.CurrentItem.Level)+'->';
-  s := s + 'Execute: ' + ClassName+ ' Level=' + IntToStr(vStack.Return.CurrentItem.Level);
-  if AOperator <> nil then
-    s := s +'{'+ AOperator.Name+'}';
-  if vStack.Return.Current.Result.anObject <> nil then
-    s := s + ' Value: '+ vStack.Return.Current.Result.anObject.AsString;
-  WriteLn(s);
-end;
-
-procedure TsoObject.Assign(FromObject: TsoObject);
-begin
-  //Nothing to do
-end;
-
-function TsoObject.Clone(WithValue: Boolean): TsoObject;
-begin
-  Result := TsoObjectClass(ClassType).Create;
-  if WithValue then
-    Result.Assign(Self);
-end;
-
-function TsoObject.AddDeclare(ExecuteObject, CallObject: TsoNamedObject): Integer;
-var
-  aDeclare: TsoDeclare;
-begin
-  aDeclare := TsoDeclare.Create;
-  if ExecuteObject <> nil then
-    aDeclare.Name := ExecuteObject.Name
-  else if CallObject <> nil then
-    aDeclare.Name := CallObject.Name;
-  aDeclare.ExecuteObject := ExecuteObject;
-  aDeclare.CallObject := CallObject;
-  Result := AddDeclare(aDeclare);
-end;
-
-function TsoObject.AddDeclare(vDeclare: TsoDeclare): Integer;
-begin
-  if Parent = nil then
-    Result := -1
-  else
-    Result := Parent.AddDeclare(vDeclare);
-end;
-
-function TsoObject.FindDeclare(vName: string): TsoDeclare;
-begin
-  if Parent <> nil then
-    Result := Parent.FindDeclare(vName)
-  else
-    Result := nil;
-end;
-
-function TsoObject.GetAsString: String;
-var
-  o: string;
-begin
-  if ToString(o) then
-    Result := o
-  else
+  if not ToText(Result) then
     Result := '';
 end;
 
-function TsoObject.GetAsFloat: Float;
-var
-  o: Float;
+procedure TNode.SetParent(AValue: TNode);
 begin
-  if ToFloat(o) then
-    Result := o
+  if (FParent <> nil) then
+    RaiseError('Already have a parent');
+  FParent := AValue;
+end;
+
+procedure TNode.SetName(AValue: string);
+begin
+  if Name <> '' then
+    RaiseError('Already Named!');
+  inherited;
+end;
+
+{constructor TNode.Create(AParent: TNode; AName: string);
+begin
+  inherited Create;
+  Name := AName;
+  FParent := AParent;
+end;}
+
+function TNode.Operate(AObject: TNode; AOperator: TSardOperator): Boolean;
+begin
+  if AOperator = nil then
+    Result := false
   else
-    Result := 0;
+    Result := AObject.Operate(AObject, AOperator);
 end;
 
-function TsoObject.GetAsInteger: int;
-var
-  o: int;
+function TNode.Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; Defines: TDefines; Arguments: TStatements; Blocks: TStatements): Boolean;
 begin
-  if ToInteger(o) then
-    Result := o
-  else
-    Result := 0;
+  Result := false;
+  BeforeExecute(Data, Env, AOperator);
+  if (Defines <> nil) then
+      Defines.Execute(Data, Env, Arguments);
+  DoExecute(Data, Env, AOperator, Result);
+  AfterExecute(Data, Env, AOperator);
 end;
 
-function TsoObject.GetAsBoolean: Boolean;
-var
-  o: Boolean;
-begin
-  if ToBoolean(o) then
-    Result := o
-  else
-    Result := False;
-end;
-
-function TsoObject.ToBoolean(out outValue: Boolean): Boolean;
+function TNode.ToBool(out outValue: Boolean): Boolean;
 begin
   Result := False;
 end;
 
-function TsoObject.ToString(out outValue: string): Boolean;
+function TNode.ToText(out outValue: Text): Boolean;
 begin
   Result := False;
 end;
 
-function TsoObject.ToFloat(out outValue: Float): Boolean;
+function TNode.ToNumber(out outValue: Number): Boolean;
 begin
   Result := False;
 end;
 
-function TsoObject.ToInteger(out outValue: int): Boolean;
+function TNode.ToInteger(out outValue: Integer): Boolean;
 begin
   Result := False;
+end;
+
+procedure TNode.Assign(AFromObject: TNode);
+begin
+  //Nothing
+end;
+
+function TNode.Clone(WithValues: Boolean): TNode;
+begin
+  //TODO, here we want to check if subclass have a default ctor
+  Result := TNode(Self.ClassType).Create;
+  Result.FParent := Parent;
+  if WithValues then
+    Result.Assign(Self);
+end;
+
+function TNode.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+begin
+  Result := False;
+end;
+
+procedure TNode.BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+begin
+  if Data = nil then
+    RaiseError('Data is needed!');
+end;
+
+procedure TNode.AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+begin
+
+end;
+
+constructor TNode.Create;
+begin
+  inherited Create;
+end;
+
+{ TClause }
+
+constructor TClause.Create(AOperator: TSardOperator; AObject: TNode);
+begin
+  inherited Create;
+  FAnOperator:= AOperator;
+  FAnObject:= AObject;
+end;
+
+destructor TClause.Destroy;
+begin
+  FreeAndNil(FAnObject);
+  inherited;
+end;
+
+function TClause.Execute(Data: TRunData; Env: TRunEnv): Boolean;
+begin
+  if FAnObject = nil then
+    RaiseError('Object not set!');
+  Result := FAnObject.Execute(Data, Env, AnOperator);
 end;
 
 end.

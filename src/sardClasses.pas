@@ -8,255 +8,132 @@ unit sardClasses;
  *}
 
 {$IFDEF FPC}
-{$mode objfpc}
+{$mode delphi}
 {$ENDIF}
 {$H+}{$M+}
 
 interface
 
 uses
-  Classes, SysUtils, Contnrs;
+  Classes, SysUtils, Contnrs,
+  mnClasses, mnUtils;
 
 type
-  Float = type extended;
-  Int = type Int64;
+  Bool = Boolean;
+  Text = string;
+  //Integer = Integer;
+  Number = Double;
 
-type
-  EsardException = class(Exception)
+  ESardException = class(Exception)
   private
     FCode: Cardinal;
   public
     property Code: Cardinal read FCode write FCode;
   end;
 
-  EsardParserException = class(Exception)
+  { EsardParserException }
+
+  ESardParserException = class(Exception)
   private
     FLine: Integer;
     FColumn: Integer;
   public
-    constructor Create(const Msg: string; const Column, Line: Integer);
+    constructor Create(const Msg: string; const Line, Column : Integer);
     property Column: Integer read FColumn write FColumn;
     property Line: Integer read FLine write FLine;
   end;
 
-{* Base classes *}
+  { TSardObject }
 
-  { TsardObject }
-
-  TsardObject = class(TObject)
+  TSardObject = class(TmnObject)
   protected
-    procedure Created; virtual;
   public
-    procedure AfterConstruction; override;
   end;
 
-  { TsardObjectList }
+  { TSardObjects }
 
-  TsardObjectList = class(TObjectList)
+  TSardObjects<_Object_> = class(TmnObjectList<_Object_>)
   protected
-    procedure Created; virtual;
   public
-    procedure AfterConstruction; override;
   end;
 
-  { GsardObjects }
+  { TSardNamedObject }
 
-  generic GsardObjects<_Object_> = class(TsardObjectList)
+  TSardNamedObject = class(TSardObject)
+  private
+    FName: string;
   protected
-    function GetItem(Index: Integer): _Object_;
+    procedure SetName(AValue: string); virtual;
   public
-    function Add(AItem: _Object_): Integer;
-    property Items[Index: Integer]: _Object_ read GetItem; default;
+    property Name: string read FName write SetName;
   end;
 
-  { GsardNamedObjects }
+  { TsardNamedObjectList }
 
-  generic GsardNamedObjects<_Object_> = class(TsardObjectList)
+  TSardNamedObjects<_Object_: TSardNamedObject> = class(TmnNamedObjectList<_Object_>)
   protected
-    function GetItem(Index: Integer): _Object_;
   public
-    function Add(AItem: _Object_): Integer;
-    function Find(const vName: string): _Object_;
-    property Items[Index: Integer]: _Object_ read GetItem; default;
-  end;
-
-
-  TsardControl = (
-    ctlNone,
-    ctlStart, //Start parsing
-    ctlStop, //Start parsing
-    ctlDeclare, //Declare a class of object
-    ctlAssign, //Assign to object/variable used as :=
-//    ctlLet, //Same as assign in the initial but is equal operator if not in initial statment used to be =
-    ctlNext, //End Params, Comma
-    ctlEnd, //End Statement Semicolon
-    ctlOpenBlock, // {
-    ctlCloseBlock, // }
-    ctlOpenParams, // (
-    ctlCloseParams, // )
-    ctlOpenArray, // [
-    ctlCloseArray // ]
-  );
-
-  TsardLexical = class;
-  TsardFeeder = class;
-  TsardParser = class;
-  TsardStack = class;
-
-  TsardStackItem = class(TsardObject)
-  protected
-    AnObject: TObject;
-    Parent: TsardStackItem;
-  public
-    Owner: TsardStack;
-    Level: Integer;
+    function Scan(const vText: string; vIndex: Integer): _Object_;
+    function IsOpenBy(C: Char): Boolean;
   end;
 
   { TsardStack }
 
-  TsardStack = class(TsardObject)
+  TSardStack<_Object_> = class(TSardObject)
+  protected
+    Own: Boolean;
+    type
+
+      TSardStackItem = class(TSardObject)
+      protected
+        AnObject: _Object_;
+        Parent: TSardStackItem;
+      public
+        Owner: TSardStack<_Object_>;
+        Level: Integer;
+      end;
+
   private
     FCount: Integer;
-    FCurrentItem: TsardStackItem;
+    FCurrentItem: TSardStackItem;
   protected
-    function GetParent: TObject;
-    function GetCurrent: TObject;
+    function GetParent: _Object_;
+    function GetCurrent: _Object_;
     procedure AfterPush; virtual;
     procedure BeforePop; virtual;
   public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Clear;
     function IsEmpty: Boolean;
-    procedure Push(vObject: TObject);
+    procedure Push(vObject: _Object_); overload;
+    //function Push: _Object_; overload;
+    function Pull: _Object_; //Pop but do not delete the object
     procedure Pop;
-    function Pull: TObject; //Pop but do not delete the object
-    function Peek: TObject;
-    property Current: TObject read GetCurrent;
-    property Parent: TObject read GetParent;
-    property CurrentItem: TsardStackItem read FCurrentItem;
+    function Peek: _Object_;
+    property Current: _Object_ read GetCurrent;
+    property Parent: _Object_ read GetParent;
+    property CurrentItem: TSardStackItem read FCurrentItem;
     property Count: Integer read FCount;
   end;
 
-  TsardScannerClass = class of TsardScanner;
-
-  { TsardScanner }
-
-  TsardScanner = class(TsardObject)
-  private
-    FLexical: TsardLexical;
-  protected
-    //Return true if it done, next will auto detect it detect
-    function Scan(const Text: string; var Column: Integer): Boolean; virtual; abstract;
-    function Accept(const Text: string; var Column: Integer): Boolean; virtual;
-    //This function call when switched to it
-    procedure Switched; virtual;
-  public
-    Collected: string; //buffer
-    Scanner: TsardScanner;
-    constructor Create(vLexical: TsardLexical); virtual;
-    destructor Destroy; override;
-    property Lexical: TsardLexical read FLexical;
-  end;
-
-  { TsardLexical }
-
-  TsardLexical = class(TsardObjectList)
-  private
-    FLine: Integer;
-    FParser: TsardParser;
-    FScanner: TsardScanner;
-    function GetItem(Index: Integer): TsardScanner;
-    procedure SetParser(AValue: TsardParser);
-  public
-    constructor Create;
-    {
-      Open mean first char in it, like Numbers must start with number 0..9 but can contain a..z
-        or Identifier start a..z or _ but can contain numbers
-    }
-    function IsWhiteSpace(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
-    function IsControl(vChar: AnsiChar): Boolean; virtual; abstract;
-    function IsOperator(vChar: AnsiChar): Boolean; virtual; abstract;
-    function IsNumber(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual; abstract;
-    function IsIdentifier(vChar: AnsiChar; vOpen: Boolean = True): Boolean; virtual;
-
-    function DetectScanner(const Text: string; var Column: Integer): TsardScanner;
-    procedure SwitchScanner(NextScanner: TsardScanner);
-
-    function FindClass(const ScannerClass: TsardScannerClass): TsardScanner;
-    //This find the class and switch to it
-    procedure SelectScanner(ScannerClass: TsardScannerClass);
-    procedure ScanLine(const Text: string; const ALine: Integer);
-    function AddScanner(ScannerClass: TsardScannerClass): TsardScanner;
-    property Items[Index: Integer]: TsardScanner read GetItem; default;
-    property Scanner: TsardScanner read FScanner;
-    property Line: Integer read FLine;
-
-    property Parser: TsardParser read FParser write SetParser;
-  end;
-
-  { TsardFeeder }
-
-  TsardFeeder = class(TsardObject)
-  private
-    FActive: Boolean;
-    FVersion: string;
-    FCharset: string;
-    FLexical: TsardLexical; //TODO: use stack to wrap the code inside <?sard ... ?>,
-                            //the current one must detect ?> to stop scanning and pop
-                            //but the other lexcial will throw none code to output provider
-    procedure SetLexical(AValue: TsardLexical);
-  protected
-    procedure DoStart; virtual;
-    procedure DoStop; virtual;
-  public
-    constructor Create(vLexical: TsardLexical);
-    destructor Destroy; override;
-    procedure ScanLine(const Text: string; const Line: Integer);
-    procedure Scan(const Lines: TStrings);
-    //procedure Scan(const FileName: string); overload; //TODO
-    //procedure Scan(const Stream: TStream); overload; //TODO
-    //procedure Scan(const Stream: IStream); overload; //TODO
-    procedure Start;
-    procedure Stop;
-    property Active: Boolean read FActive write FActive;
-    property Version: string read FVersion write FVersion;
-    property Charset: string read FCharset write FCharset;
-    property Lexical: TsardLexical read FLexical write SetLexical;
-  end;
-
-  TsrdType = (tpNone, tpIdentifier, tpNumber, tpColor, tpString, tpComment);
-
-  { TsardParser }
-
-  TsardParser = class(TsardStack)
-  protected
-    procedure Start; virtual;
-    procedure Stop; virtual;
-    procedure DoSetControl(AControl: TsardControl); virtual; abstract;
-    procedure DoSetToken(AToken: String; AType: TsrdType); virtual; abstract;
-    procedure DoSetOperator(AOperator: TsardObject); virtual; abstract;
-  public
-    procedure SetControl(AControl: TsardControl);
-    procedure SetToken(AToken: String; AType: TsrdType);
-    procedure SetOperator(AOperator: TsardObject);
-  end;
-
-  { TsardCustomEngine }
-
-  TsardCustomEngine = class(TsardObject)
-  private
-  protected
-    procedure Created; override;
-  public
-  end;
-
 procedure RaiseError(AError: string);
+
 function ScanCompare(S: string; const Text: string; Index: Integer): Boolean;
 function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
 function StringRepeat(S: string; C: Integer): string;
+function FormatColLine(Column, Line: Integer): string;
 
 implementation
 
 uses
   StrUtils;
+
+function FormatColLine(Column, Line: Integer): string;
+begin
+   Result := 'Line Number ' + IntToStr(Line) + ', Column ' + IntToStr(Column);
+end;
+
 
 procedure RaiseError(AError: string);
 begin
@@ -291,127 +168,86 @@ begin
   end;
 end;
 
-{ GsardNamedObjects }
+{ TSardNamedObjects }
 
-function GsardNamedObjects.GetItem(Index: Integer): _Object_;
-begin
-  Result := _Object_(inherited Items[Index]);
-end;
-
-function GsardNamedObjects.Add(AItem: _Object_): Integer;
-begin
-  Result := inherited Add(AItem);
-end;
-
-function GsardNamedObjects.Find(const vName: string): _Object_;
+function TSardNamedObjects<_Object_>.Scan(const vText: string; vIndex: Integer): _Object_;
 var
   i: Integer;
+  max: Integer;
 begin
   Result := nil;
-  for i := 0 to Count - 1 do
+  max := 0;
+  for i := 0 to Count -1 do
   begin
-    if SameText(vName, Items[i].Name) then
+    if ScanCompare(Items[i].Name, vText, vIndex) then
     begin
-      Result := Items[i];
-      break;
+      if max < length(Items[i].Name) then
+      begin
+        max := length(Items[i].Name);
+        Result := Items[i];
+      end;
     end;
   end;
 end;
 
-{ GsardObjects }
-
-function GsardObjects.GetItem(Index: Integer): _Object_;
-begin
-  Result := _Object_(inherited Items[Index]);
-end;
-
-function GsardObjects.Add(AItem: _Object_): Integer;
-begin
-  Result := inherited Add(AItem);
-end;
-
-{ TsardParser }
-
-procedure TsardParser.Start;
-begin
-end;
-
-procedure TsardParser.Stop;
-begin
-end;
-
-procedure TsardParser.SetControl(AControl: TsardControl);
-begin
-  DoSetControl(AControl);
-end;
-
-procedure TsardParser.SetToken(AToken: String; AType: TsrdType);
-begin
-  DoSetToken(AToken, AType);
-end;
-
-procedure TsardParser.SetOperator(AOperator: TsardObject);
-begin
-  DoSetOperator(AOperator);
-end;
-
-{ TsardObjectList }
-
-procedure TsardObjectList.Created;
-begin
-end;
-
-procedure TsardObjectList.AfterConstruction;
-begin
-  inherited AfterConstruction;
-  Created;
-end;
-
-{ TsardObject }
-
-procedure TsardObject.Created;
-begin
-end;
-
-procedure TsardObject.AfterConstruction;
-begin
-  inherited AfterConstruction;
-  Created;
-end;
-
-{ TsardCustomEngine }
-
-procedure TsardCustomEngine.Created;
-begin
-  inherited Created;
-end;
-
-function TsardLexical.IsIdentifier(vChar: AnsiChar; vOpen: Boolean): Boolean;
-begin
-  Result := not IsWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar);
-  if vOpen then
-    Result := Result and not IsNumber(vChar, vOpen);
-end;
-
-{ TsardParser }
-
-procedure TsardStack.Pop;
+function TSardNamedObjects<_Object_>.IsOpenBy(C: Char): Boolean;
 var
-  aItem: TsardStackItem;
-  aObject: TObject;
+  item: TSardNamedObject;
+begin
+  C := LowerCase(C);
+  for item in Self do
+  begin
+    if (item.Name <> '') and (item.Name[1] = C) then
+    begin
+      Result := True;
+      exit;
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TSardNamedObject.SetName(AValue: string);
+begin
+  if FName =AValue then Exit;
+  FName :=AValue;
+end;
+
+{ EsardParserException }
+
+constructor ESardParserException.Create(const Msg: string; const Line, Column: Integer);
+begin
+  inherited Create(Msg + #13 + FormatColLine(Column, Line));
+  FLine := Line;
+  FColumn := Column;
+end;
+
+{ TSardStack }
+
+function TSardStack<_Object_>.Pull: _Object_;
+var
+  aItem: TSardStackItem;
 begin
   if FCurrentItem = nil then
-    raise EsardException.Create('Stack is empty');
+    RaiseError('Stack is empty');
   BeforePop;
-  aObject := FCurrentItem.AnObject;
+  Result := FCurrentItem.AnObject;
   aItem := FCurrentItem;
   FCurrentItem := aItem.Parent;
-  Dec(FCount);
   aItem.Free;
-  aObject.Free;
+  Dec(FCount);
+  BeforePop;
 end;
 
-function TsardStack.GetParent: TObject;
+procedure TSardStack<_Object_>.Pop;
+var
+  aObject: _Object_;
+begin
+  aObject := Pull;
+  if Own then
+    aObject.Free;
+end;
+
+function TSardStack<_Object_>.GetParent: _Object_;
 begin
   if FCurrentItem = nil then
     Result := nil
@@ -421,7 +257,7 @@ begin
     Result := FCurrentItem.Parent.AnObject;
 end;
 
-function TsardStack.GetCurrent: TObject;
+function TSardStack<_Object_>.GetCurrent: _Object_;
 begin
   if FCurrentItem = nil then
     Result := nil
@@ -429,47 +265,51 @@ begin
     Result := FCurrentItem.AnObject;
 end;
 
-procedure TsardStack.AfterPush;
+procedure TSardStack<_Object_>.AfterPush;
 begin
 end;
 
-procedure TsardStack.BeforePop;
+procedure TSardStack<_Object_>.BeforePop;
 begin
 end;
 
-function TsardStack.IsEmpty: Boolean;
+constructor TSardStack<_Object_>.Create;
+begin
+  inherited Create;
+end;
+
+destructor TSardStack<_Object_>.Destroy;
+begin
+  if Own then
+    Clear;
+  inherited Destroy;
+end;
+
+procedure TSardStack<_Object_>.Clear;
+begin
+  while CurrentItem <> nil do
+    Pop;
+end;
+
+function TSardStack<_Object_>.IsEmpty: Boolean;
 begin
   Result := FCurrentItem = nil;
 end;
 
-function TsardStack.Peek: TObject;
+function TSardStack<_Object_>.Peek: _Object_;
 begin
   if FCurrentItem = nil then //TODO maybe return nil<--
     RaiseError('Stack is empty');
   Result := FCurrentItem.AnObject;
 end;
 
-function TsardStack.Pull: TObject;
+procedure TSardStack<_Object_>.Push(vObject: _Object_);
 var
-  aItem: TsardStackItem;
-begin
-  if FCurrentItem = nil then
-    RaiseError('Stack is empty');
-  Result := FCurrentItem.AnObject;
-  aItem := FCurrentItem;
-  FCurrentItem := aItem.Parent;
-  aItem.Free;
-  Dec(FCount);
-  BeforePop;
-end;
-
-procedure TsardStack.Push(vObject: TObject);
-var
-  aItem: TsardStackItem;
+  aItem: TSardStackItem;
 begin
   if vObject = nil then
-    RaiseError('Can''t push nil');
-  aItem := TsardStackItem.Create;
+    RaiseError('Can''_Object_ push nil');
+  aItem := TSardStackItem.Create;
   aItem.AnObject := vObject;
   aItem.Parent := FCurrentItem;
   aItem.Owner := Self;
@@ -481,220 +321,12 @@ begin
   Inc(FCount);
   AfterPush;
 end;
-
-function FormatColLine(Column, Line: Integer): string;
+{
+function TSardStack<_Object_>.Push: _Object_;
 begin
-   Result := 'Line Number ' + IntToStr(Line) + ', Column ' + IntToStr(Column);
+  Result := _Object_.Create;
+  Push(Result);
 end;
-
-constructor EsardParserException.Create(const Msg: string; const Column, Line: Integer);
-begin
-  inherited Create(Msg + #13 +FormatColLine(Column, Line));
-  FLine := Line;
-  FColumn := Column;
-end;
-
-{ TsardScanner }
-
-function TsardScanner.Accept(const Text: string; var Column: Integer): Boolean;
-begin
-  Result := False;
-end;
-
-procedure TsardScanner.Switched;
-begin
-  //Maybe reset buffer or something
-end;
-
-constructor TsardScanner.Create(vLexical: TsardLexical);
-begin
-  inherited Create;
-  FLexical := vLexical;
-end;
-
-destructor TsardScanner.Destroy;
-begin
-  inherited Destroy;
-end;
-
-{ TsardLexical }
-
-function TsardLexical.GetItem(Index: Integer): TsardScanner;
-begin
-  Result := inherited Items[Index] as TsardScanner;
-end;
-
-procedure TsardLexical.SetParser(AValue: TsardParser);
-begin
-  if FParser = AValue then
-    Exit;
-  FParser := AValue;
-end;
-
-constructor TsardLexical.Create;
-begin
-  inherited Create;
-end;
-
-function TsardLexical.DetectScanner(const Text: string; var Column: Integer): TsardScanner;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if (Items[i] <> Result) and Items[i].Accept(Text, Column) then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-  if Result = nil then
-    RaiseError('Scanner not found:' + Text[Column]);
-  SwitchScanner(Result);
-end;
-
-function TsardLexical.FindClass(const ScannerClass: TsardScannerClass): TsardScanner;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if ScannerClass = Items[i].ClassType then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
-function TsardLexical.AddScanner(ScannerClass: TsardScannerClass): TsardScanner;
-begin
-  Result := ScannerClass.Create(Self);
-  inherited Add(Result);
-end;
-
-procedure TsardFeeder.Stop;
-begin
-  if not FActive then
-    RaiseError('File already closed');
-  Lexical.Parser.Stop;
-  DoStop;
-  FActive := False;
-end;
-
-
-procedure TsardFeeder.Start;
-begin
-  if FActive then
-    RaiseError('File already opened');
-  FActive := True;
-  DoStart;
-  Lexical.Parser.Start;
-end;
-
-procedure TsardFeeder.SetLexical(AValue: TsardLexical);
-begin
-  if FLexical =AValue then Exit;
-  if Active then
-    RaiseError('You can not set scanner when started!');
-  FLexical :=AValue;
-end;
-
-procedure TsardFeeder.DoStart;
-begin
-end;
-
-procedure TsardFeeder.DoStop;
-begin
-end;
-
-procedure TsardLexical.SwitchScanner(NextScanner: TsardScanner);
-begin
-  if FScanner <> NextScanner then
-  begin
-    FScanner := NextScanner;
-    if FScanner <> nil then
-      FScanner.Switched;
-  end;
-end;
-
-procedure TsardLexical.SelectScanner(ScannerClass: TsardScannerClass);
-var
-  aScanner: TsardScanner;
-begin
-  aScanner := FindClass(ScannerClass);
-  if aScanner = nil then
-    RaiseError('Scanner not found');
-  SwitchScanner(aScanner);
-end;
-
-constructor TsardFeeder.Create(vLexical: TsardLexical);
-begin
-  inherited Create;
-  FVersion := '1.0';
-  {$ifdef FPC}
-  FCharset := 'utf-8';
-  {$else}
-  FCharset := 'iso-8859-1';
-  {$endif}
-
-  FLexical := vLexical;
-end;
-
-destructor TsardFeeder.Destroy;
-begin
-  inherited Destroy;
-end;
-
-procedure TsardFeeder.ScanLine(const Text: string; const Line: Integer);
-begin
-  if not Active then
-    RaiseError('Feeder not started');
-  Lexical.ScanLine(Text, Line);
-end;
-
-procedure TsardLexical.ScanLine(const Text: string; const ALine: Integer);
-var
-  Column, OldColumn: Integer;
-  OldScanner: TsardScanner;
-  l: Integer;
-begin
-  FLine := ALine;
-  Column := 1; //start of pascal string is 1
-  l := Length(Text);
-  if Scanner = nil then
-    DetectScanner(Text, Column);
-  while (Column <= l) do
-  begin
-    OldColumn := Column;
-    OldScanner := FScanner;
-    try
-      if Scanner.Scan(Text, Column) then
-        DetectScanner(Text, Column);
-
-      if (OldColumn = Column) and (OldScanner = FScanner) then
-        RaiseError('Feeder in loop with: ' + FScanner.ClassName);
-    except
-      on E: EsardException do
-      begin
-        raise EsardParserException.Create(E.Message, Column, Line);
-      end;
-    end;
-  end;
-end;
-
-procedure TsardFeeder.Scan(const Lines: TStrings);
-var
-  i: Integer;
-begin
-  Start;
-  for i := 0 to Lines.Count -1 do
-  begin
-    ScanLine(Lines[i] + #13, i + 1);
-  end;
-  Stop;
-end;
+}
 
 end.
