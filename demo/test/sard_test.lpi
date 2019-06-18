@@ -43,7 +43,6 @@
       <Unit0>
         <Filename Value="sard_test.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="sard_test"/>
       </Unit0>
       <Unit1>
         <Filename Value="main.pas"/>
@@ -95,9 +94,7 @@
     <Other>
       <CompilerMessages>
         <IgnoredMessages idx5024="True"/>
-        <MsgFileName Value=""/>
       </CompilerMessages>
-      <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>
   <Debugging>

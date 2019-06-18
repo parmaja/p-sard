@@ -451,6 +451,7 @@ object Form1: TForm1
         ShortCut = 57379
       end>
     MouseActions = <>
+    MouseTextActions = <>
     MouseSelActions = <>
     Lines.Strings = (
       '10+10'
