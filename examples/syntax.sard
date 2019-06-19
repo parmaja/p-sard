@@ -11,7 +11,7 @@ foo: integer(p1, p2) {
 
 x := {
       y := 0;
-      x := CalcIt(x, y);
+      x := foo(x, y);
       := y + x+ 500 * %10; //this is a result return of the block
   }; //do not forget to add ; here
 
@@ -19,7 +19,6 @@ x := {
 
 f := 10.0;
 f := z + 5.5;
-
 
 {?name Preprocessor Commands:
       need to install addon to ur environment ?};

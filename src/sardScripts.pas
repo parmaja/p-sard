@@ -24,6 +24,7 @@ type
   TCodeScanner = class(TScanner)
   protected
     Block: TBlock_Node;
+    Parser: TCodeParser;
     procedure DoStart; override;
     procedure DoStop; override;
   public
@@ -77,29 +78,26 @@ implementation
 { TCodeScanner }
 
 procedure TCodeScanner.DoStart;
-var
-  Parser: TCodeParser;
 begin
   inherited DoStart;
   Parser := TCodeParser.Create(Lexer, Block.Statements);
 
   Lexer.Parser := Parser;
-  Lexer.Start();
-
-  FreeAndNil(Parser);
+  Lexer.Start;
 end;
 
 procedure TCodeScanner.DoStop;
 begin
-  Lexer.stop;
+  Lexer.Stop;
   Lexer.Parser := nil;
+  FreeAndNil(Parser);
   inherited;
 end;
 
 constructor TCodeScanner.Create(ABlock: TBlock_Node);
 begin
   inherited Create;
-  Block:= ABlock;
+  Block := ABlock;
   Add(TCodeLexer.Create);
 end;
 

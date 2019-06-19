@@ -168,7 +168,7 @@ end;
 
 constructor TOpNot.Create;
 begin
-  Name := 'not';
+  Name := '!';
   Title := 'not';
   Associative := asLeft;
   Description := 'Not';
@@ -218,7 +218,7 @@ end;
 
 constructor TOpOr.Create;
 begin
-  Name := 'Or';
+  Name := '|';
   Title := 'Or';
   Associative := asLeft;
   Description := '';
@@ -228,7 +228,7 @@ end;
 
 constructor TOpAnd.Create;
 begin
-  Name := 'And';
+  Name := '&';
   Title := 'And';
   Associative := asLeft;
   Description := '';

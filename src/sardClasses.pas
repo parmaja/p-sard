@@ -117,12 +117,16 @@ type
     property Count: Integer read FCount;
   end;
 
-procedure RaiseError(AError: string);
+procedure RaiseError(AError: string; Line: Integer = 0; Column: Integer = 0);
 
 function ScanCompare(S: string; const Text: string; Index: Integer): Boolean;
 function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
 function StringRepeat(S: string; C: Integer): string;
 function FormatColLine(Column, Line: Integer): string;
+//If index can less than str length
+function IndexInStr(Index: Integer; const Str: string): Boolean;
+//AToIndex not included
+function SliceText(const AText: String; const AFromIndex, AToIndex: Integer): String;
 
 implementation
 
@@ -131,15 +135,34 @@ uses
 
 function FormatColLine(Column, Line: Integer): string;
 begin
-   Result := 'Line Number ' + IntToStr(Line) + ', Column ' + IntToStr(Column);
+   Result := 'Line #' + IntToStr(Line) + ', Column #' + IntToStr(Column);
 end;
 
-
-procedure RaiseError(AError: string);
+function IndexInStr(Index: Integer; const Str: string): Boolean;
 begin
-  raise EsardException.Create(AError) at
+  Result := Index <= Length(Str);
+  //Result := Index < Length(Str); // in C,D
+end;
+
+function SliceText(const AText: String; const AFromIndex, AToIndex: Integer): String;
+begin
+  Result := Copy(AText, AFromIndex, AToIndex - AFromIndex);
+end;
+
+procedure RaiseError(AError: string; Line: Integer; Column: Integer);
+begin
+  if Line > 0 then
+  begin
+    raise ESardParserException.Create(AError, Line, Column) at
     get_caller_addr(get_frame),
     get_caller_frame(get_frame);
+  end
+  else
+  begin
+    raise EsardException.Create(AError) at
+    get_caller_addr(get_frame),
+    get_caller_frame(get_frame);
+  end;
 end;
 
 function ScanCompare(S: string; const Text: string; Index: Integer): Boolean;
@@ -149,12 +172,18 @@ end;
 
 function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
 begin
-  Result := (Length(Text) - Index) >= length(S);
-  if Result then
+  if S = '' then
+    Result := False
+  else
   begin
-    Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive
+    Result := (Length(Text) - (Index - 1)) >= length(S);
+    //Result := (Length(Text) - Index) >= length(S); //when convert to C, D
     if Result then
-      Index := Index + Length(S);
+    begin
+      Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive
+      if Result then
+        Index := Index + Length(S);
+    end;
   end;
 end;
 
@@ -181,9 +210,9 @@ begin
   begin
     if ScanCompare(Items[i].Name, vText, vIndex) then
     begin
-      if max < length(Items[i].Name) then
+      if max < Length(Items[i].Name) then
       begin
-        max := length(Items[i].Name);
+        max := Length(Items[i].Name);
         Result := Items[i];
       end;
     end;

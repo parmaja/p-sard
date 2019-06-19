@@ -1,0 +1,22 @@
+Foo:/*Declare it in current data*/{
+//Push Stack
+
+  x := 10;
+
+  fun1:{//Push Stack
+    := 10;
+  }//Pop Stack
+
+  fun2:{//Push Stack
+    := fun1;
+  }//Pop Stack
+
+  := fun2;
+}//Pop Stack
+
+{//Push Stack
+  := 10;
+}//Pop Stack
+
+Print(Foo);
+//Print(Foo.Bar);

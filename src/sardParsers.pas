@@ -192,6 +192,7 @@ type
     procedure SetWhiteSpaces(Whitespaces: string); virtual;
     procedure SetAction(AActions: TParserActions = []; ANextCollector: TCollector = nil); virtual;
   public
+    constructor Create;
     procedure Start; virtual;
     procedure Stop; virtual;
     function QueryInterface({$ifdef FPC}constref{$else}const{$endif} iid : TGuid; out Obj):HResult; {$ifdef WINDOWS}stdcall{$else}cdecl{$endif};
@@ -413,6 +414,11 @@ begin
   FNextCollector := ANextCollector;
 end;
 
+constructor TParser.Create;
+begin
+  inherited Create;
+end;
+
 function TParser.QueryInterface(constref iid: TGuid; out Obj): HResult; stdcall;
 begin
   if GetInterface(IID, Obj) then
@@ -441,10 +447,10 @@ begin
     case Control.Code of
       ctlAssign:
       begin
-        if (isInitial) then
+        if (IsInitial) then
         begin
-          instruction.setAssign();
-          Post();
+          Instruction.SetAssign();
+          Post;
         end
         else
           RaiseError('You can not use assignment here!');
@@ -452,9 +458,9 @@ begin
 
       ctlDeclare:
       begin
-        if (isInitial) then
+        if (IsInitial) then
         begin
-            aDeclare := instruction.SetDeclare;
+            aDeclare := Instruction.SetDeclare;
             Post;
             Parser.Push(TCollectorDefine.Create(Parser, aDeclare));
         end
@@ -472,7 +478,7 @@ begin
       begin
         Post;
         if (Parser.Count = 1) then
-            RaiseError('Maybe you closed not opened Curly');
+          RaiseError('Maybe you closed not opened Curly');
         Parser.SetAction([paPop]);
       end;
 
@@ -497,19 +503,21 @@ begin
           Parser.setAction([paPop]);
       end;
 
-      ctlStart:;
+      ctlStart:
+      begin
+      end;
 
       ctlStop:
-        Post();
+        Post;
       ctlEnd:
       begin
-        Post();
-        next();
+        Post;
+        Next;
       end;
       ctlNext:
       begin
-        Post();
-        next();
+        Post;
+        Next;
       end;
       else
         RaiseError('Not implemented yet :(');
@@ -893,12 +901,12 @@ begin
   if (Identifier <> '') then
       RaiseError('Identifier is already set to ' +  Identifier);
   //TODO need to check object too
-  if ((aIdentifier.indexOf('.') >= 0) or ((aIdentifier.indexOf('E') >= 0))) then
+  if ((aIdentifier.IndexOf('.') >= 0) or ((aIdentifier.indexOf('E') >= 0))) then
     Result := TReal_Node.Create(StrToFloat(AIdentifier))
   else
     Result := TInteger_Node.Create(StrToInt(AIdentifier));
 
-  InternalSetObject(result);
+  InternalSetObject(Result);
 end;
 
 function TInstruction.SetText(Text: string): TText_Node;
@@ -909,7 +917,7 @@ begin
   if (AnObject = nil) then
   begin
     Result := TText_Node.Create(text);
-    InternalSetObject(result);
+    InternalSetObject(Result);
   end
   else
   begin
@@ -933,14 +941,14 @@ end;
 
 procedure TInstruction.SetObject(AObject: TNode);
 begin
-  if (identifier <> '') then
+  if (Identifier <> '') then
     RaiseError('Identifier is already set');
   InternalSetObject(AObject);
 end;
 
 function TInstruction.SetInstance(AIdentifier: string): TInstance_Node;
 begin
-  if (identifier = '') then
+  if (Identifier = '') then
       RaiseError('Identifier is already set');
   Result := TInstance_Node.Create;
   Result.Name := AIdentifier;
@@ -978,7 +986,7 @@ begin
     RaiseError('Identifier is not set');
   Result := TDeclare_Node.Create;
   Result.Name := Identifier;
-  InternalSetObject(result);
+  InternalSetObject(Result);
   Identifier := '';
 end;
 

@@ -62,9 +62,14 @@ type
     procedure Init(AControl: TsardControlID; ATokenType: TSardTokenType; AValue: string);
   end;
 
+  TSardSymbolicObject = class abstract(TSardNamedObject)
+  public
+    IsSymbol: Boolean; //when check is identifire do not use IsSymbol = false
+  end;
+
   { TSardControl }
 
-  TSardControl = class(TSardNamedObject)
+  TSardControl = class(TSardSymbolicObject)
   public
     Code: TSardControlID;
     Level: Integer;
@@ -83,7 +88,7 @@ type
 
   TSardAssociative = (asLeft, asRight);//not yet
 
-  TSardOperator = class(TSardNamedObject)
+  TSardOperator = class(TSardSymbolicObject)
   public
     Associative: TSardAssociative;
     //Precedence: Integer; //TODO it is bad idea, we need more intelligent way to define the power level of operators
@@ -96,6 +101,14 @@ type
   TSardOperators = class(TSardNamedObjects<TSardOperator>)
   public
     function FindByTitle(const Title: string): TSardOperator;
+  end;
+
+  TSardSymbol = class(TSardSymbolicObject)
+  public
+  end;
+
+  TSardSymbols = class(TSardNamedObjects<TSardSymbol>)
+  public
   end;
 
   IParser = interface(IInterface)
@@ -130,8 +143,8 @@ type
     FLexer: TLexer;
   protected
     //Return true if it done, next will auto detect it detect
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); virtual; abstract;
-    function Accept(Text: string; Column: Integer): Boolean; virtual;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); virtual; abstract;
+    function Accept(Text: string; Column: Integer): Boolean; virtual; abstract;
     //This function call when switched to it
     procedure Switched;
   public
@@ -151,7 +164,7 @@ type
     procedure Finish; virtual; abstract;
     procedure Collect(Text: string); virtual; abstract;
 
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
@@ -164,8 +177,6 @@ type
     procedure SetToken(Text: string); virtual; abstract;
     procedure Collect(Text: string); override;
     procedure Finish; override;
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
   { TString_Tokenizer }
@@ -184,6 +195,7 @@ type
     FCurrent: TTokenizer;
     FControls: TSardControls;
     FOperators: TSardOperators;
+    FSymbols: TSardSymbols;
     procedure SetParser(AValue: IParser);
   protected
     function DetectTokenizer(Text: String; Column: integer): TTokenizer;
@@ -192,7 +204,7 @@ type
     function SelectTokenizer(AClass: TSardTokenizerClass): TTokenizer;
     procedure Added(Item: TTokenizer); override;
   public
-    TrimSymbols: Boolean;
+    TrimSymbols: Boolean; //ommit send open and close tags when setToken
     constructor Create; virtual;
     destructor Destroy; override;
 
@@ -213,6 +225,7 @@ type
     property Scanner: TScanner read FScanner;
     property Current: TTokenizer read FCurrent;
     property Parser: IParser read FParser write SetParser;
+    property Symbols: TSardSymbols read FSymbols;
     property Controls: TSardControls read FControls;
     property Operators: TSardOperators read FOperators;
   end;
@@ -269,9 +282,10 @@ var
   Column: Integer;
 begin
   if (not Active) then
-      RaiseError('Should be started first');
+    RaiseError('Should be started first');
   FLine := Line;
   Column := 1;
+  //Column := 0; when convert it to C, D
   Lexer.ScanLine(Text, Line, Column);
 end;
 
@@ -282,7 +296,7 @@ begin
   Start;
   for i := 0 to Lines.Count -1 do
   begin
-    ScanLine(Lines[i], i);
+    ScanLine(Lines[i], i + 1);
   end;
   Stop;
 end;
@@ -307,32 +321,29 @@ end;
 
 { TMultiLine_Tokenizer }
 
-procedure TMultiLine_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
-var
-  pos: Integer;
+procedure TMultiLine_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
-  pos := Column;
   if not Resume then
   begin
-    Column := Column + length(openSymbol);
+    Column := Column + Length(openSymbol);
   end;
 
-  while (Column < length(Text)) do
+  while (IndexInStr(Column, Text)) do //Use < instead of <= in C, D
   begin
     if ScanCompare(CloseSymbol, Text, Column) then
     begin
       if (not Lexer.TrimSymbols) then
-        Column := Column + length(CloseSymbol);
-      Collect(SubStr(Text, pos, Column));
+        Column := Column + Length(CloseSymbol);
+      Collect(SliceText(Text, Started, Column));
       if (Lexer.TrimSymbols) then
-          Column := Column + length(CloseSymbol);
+          Column := Column + Length(CloseSymbol);
       Finish;
       Resume := False;
       exit;
     end;
     Inc(Column);
   end;
-  collect(text[pos..column]);
+  collect(text[Started..Column]);
   Resume := true;
 end;
 
@@ -352,16 +363,6 @@ procedure TBufferedMultiLine_Tokenizer.Finish;
 begin
   SetToken(Buffer);
   Buffer := '';
-end;
-
-procedure TBufferedMultiLine_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
-begin
-  inherited Scan(Text, Column, Resume);
-end;
-
-function TBufferedMultiLine_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
-begin
-  Result :=inherited Accept(Text, Column);
 end;
 
 procedure TString_Tokenizer.SetToken(Text: string);
@@ -384,7 +385,7 @@ var
   itm: TTokenizer;
 begin
   Result := nil;
-  if (column >= Length(Text)) then
+  if (Column > Length(Text)) then //>= in C,D
   begin
     //do i need to switchTokenizer?
     //return null; //no tokenizer for empty line or EOL
@@ -450,6 +451,7 @@ begin
   inherited Create(true);
   FControls := TSardControls.Create;
   FOperators := TSardOperators.Create;
+  FSymbols := TSardSymbols.Create;
   TrimSymbols := True;
 end;
 
@@ -458,6 +460,7 @@ begin
   inherited Destroy;
   FreeAndNil(FControls);
   FreeAndNil(FOperators);
+  FreeAndNil(FSymbols);
 end;
 {
 function TLexer.IsKeyword(Keyword: string): Boolean;
@@ -467,7 +470,7 @@ end;}
 
 function TLexer.IsIdentifier(vChar: Char; vOpen: Boolean): Boolean;
 begin
-  Result := not isWhiteSpace(vChar) and  not IsControl(vChar) and not IsOperator(vChar) and not IsSymbol(vChar);
+  Result := not isWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar) and not IsSymbol(vChar);
   if (vOpen) then
       Result := Result and not IsNumber(vChar, vOpen);
 end;
@@ -481,7 +484,7 @@ var
 begin
   len := Length(Text);
   Resume := false;
-  while (Column < len) do
+  while (Column <= len) do
   begin
     OldColumn := Column;
     OldTokenizer := Current;
@@ -491,13 +494,13 @@ begin
       else
         Resume := True;
 
-      Current.Scan(Text, Column, Resume);
+      Current.Scan(Text, Column, Column, Resume);
 
       if not Resume then
         SwitchTokenizer(nil);
 
-      if ((oldColumn = column) and (oldTokenizer = Current)) then
-        RaiseError('Feeder in loop with: ' + Current.ClassName); //TODO: be careful here
+      if ((OldColumn = Column) and (OldTokenizer = Current)) then
+        RaiseError('Forever loop with: ' + Current.ClassName); //TODO: be careful here
     except
       on E: Exception do
       begin
@@ -567,11 +570,6 @@ begin
 end;
 
 { TTokenizer }
-
-function TTokenizer.Accept(Text: string; Column: Integer): Boolean;
-begin
-  Result := False;
-end;
 
 procedure TTokenizer.Switched;
 begin

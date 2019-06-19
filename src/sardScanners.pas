@@ -15,7 +15,7 @@ unit sardScanners;
 interface
 
 uses
-  mnUtils,
+  mnUtils, SysUtils,
   sardClasses, sardObjects, sardLexers, sardOperators;
 
 const
@@ -31,7 +31,7 @@ type
 
   TWhitespace_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
@@ -39,7 +39,7 @@ type
 
   TIdentifier_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
@@ -47,7 +47,7 @@ type
 
   TNumber_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
@@ -55,7 +55,7 @@ type
 
   TControl_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
@@ -63,7 +63,7 @@ type
 
   TOperator_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
@@ -71,7 +71,7 @@ type
 
   TLineComment_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
@@ -79,7 +79,7 @@ type
 
   TBlockComment_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   end;
 
@@ -115,7 +115,7 @@ type
 
   TEscape_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; var Column: Integer; var Resume: Boolean); override;
+    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   public
   end;
@@ -124,7 +124,7 @@ const
   sWhitespace = sEOL + [' ', #8];
   sNumberOpenChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
   sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
-  sSymbolChars = ['"', '''', '\'];
+  sSymbolChars = ['"', '''', '\']; //deprecated;
   sIdentifierSeparator = '.';
 
 type
@@ -150,22 +150,19 @@ uses
 
 { TEscape_Tokenizer }
 
-procedure TEscape_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
-var
-  pos: Integer;
+procedure TEscape_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
-  pos := Column;
   Inc(Column); //not need first char, it is not pass from isIdentifier
   //print("Hello "\n"World"); //but add " to the world
-  while ((Column < length(text)) and (Lexer.isIdentifier(Text[Column], False))) do
+  while (IndexInStr(Column, text) and (Lexer.isIdentifier(Text[Column], False))) do
     Inc(Column);
-  Lexer.Parser.SetToken(Token(ctlToken, typeEscape, SubStr(Text, pos, Column)));
+  Lexer.Parser.SetToken(Token(ctlToken, typeEscape, SliceText(Text, Started, Column)));
   Resume := False;
 end;
 
 function TEscape_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
-  Result := Text[column] = sEscape;
+  Result := Text[Column] = sEscape;
 end;
 
 { TDQString_Tokenizer }
@@ -202,18 +199,18 @@ end;
 
 { TBlockComment_Tokenizer }
 
-procedure TBlockComment_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
+procedure TBlockComment_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
-  while (Column < length(Text)) do
+  while IndexInStr(Column, text) do
   begin
       if (ScanText('*/', Text, Column)) then
       begin
           Resume := False;
           exit;
       end;
-      Inc(column);
+      Inc(Column);
   end;
-  Inc(column);;//Eat the second chat //not sure
+  Inc(Column);;//Eat the second chat //not sure
   Resume := True;
 end;
 
@@ -224,10 +221,10 @@ end;
 
 { TLineComment_Tokenizer }
 
-procedure TLineComment_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
+procedure TLineComment_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   Inc(Column);
-  while ((Column <= Length(Text)) and (not Lexer.IsEOL(Text[Column]))) do
+  while IndexInStr(Column, Text) and (not Lexer.IsEOL(Text[Column])) do
     inc(Column);
   inc(Column);//Eat the EOF char
   Resume := False;
@@ -240,16 +237,16 @@ end;
 
 { TOperator_Tokenizer }
 
-procedure TOperator_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
+procedure TOperator_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 var
   AOperator: TSardOperator;
 begin
-  AOperator := Lexer.Operators.scan(Text, Column);
+  AOperator := Lexer.Operators.Scan(Text, Column);
   if (AOperator <> nil) then
-    column := column + length(AOperator.name)
+    Column := Column + Length(AOperator.name)
   else
-    RaiseError('Unkown operator started with ' + Text[column]);
-  Lexer.Parser.setOperator(AOperator);
+    RaiseError('Unkown operator started with ' + Text[Started]);
+  Lexer.Parser.SetOperator(AOperator);
   Resume := false;
 end;
 
@@ -260,18 +257,17 @@ end;
 
 { TControl_Tokenizer }
 
-procedure TControl_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
+procedure TControl_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 var
   AControl: TSardControl;
 begin
-  Inc(Column);
   AControl := Lexer.Controls.Scan(Text, Column);
   if AControl <> nil then
     Column := Column + Length(AControl.Name)
   else
-    RaiseError('Unkown control started with ' + Text[Column]);
+    RaiseError('Unkown control started with ' + Text[Started]);
   Lexer.Parser.SetControl(AControl);
-  Resume := false;
+  Resume := False;
 end;
 
 function TControl_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
@@ -281,15 +277,12 @@ end;
 
 { TNumber_Tokenizer }
 
-procedure TNumber_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
-var
-  pos: integer;
+procedure TNumber_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
-  pos := Column;
   Inc(Column);
-  while ((Column <= Length(Text)) and (Lexer.IsNumber(Text[Column]))) do
+  while (IndexInStr(Column, Text) and (Lexer.IsNumber(Text[Column], False))) do
     inc(Column);
-  Lexer.Parser.SetToken(Token(ctlToken, typeNumber, SubStr(Text, pos, column)));
+  Lexer.Parser.SetToken(Token(ctlToken, typeNumber, SliceText(Text, Started, Column)));
   Resume := false;
 end;
 
@@ -300,15 +293,12 @@ end;
 
 { TIdentifier_tokenizer }
 
-procedure TIdentifier_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
-var
-  pos: integer;
+procedure TIdentifier_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
-  pos := Column;
   Inc(Column);
-  while ((Column <= Length(Text)) and (Lexer.IsIdentifier(Text[Column], False))) do
+  while (IndexInStr(Column, Text) and (Lexer.IsIdentifier(Text[Column], False))) do
     inc(Column);
-  Lexer.Parser.SetToken(Token(ctlToken, typeIdentifier, SubStr(Text, pos, Column)));
+  Lexer.Parser.SetToken(Token(ctlToken, typeIdentifier, SliceText(Text, Started, Column)));
   Resume := false;
 end;
 
@@ -319,15 +309,12 @@ end;
 
 { TWhitespace_Tokenizer }
 
-procedure TWhitespace_Tokenizer.Scan(Text: string; var Column: Integer; var Resume: Boolean);
-var
-  pos: integer;
+procedure TWhitespace_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
-  pos := Column;
   Inc(Column);
-  while ((Column <= Length(Text)) and (Lexer.IsWhiteSpace(Text[Column]))) do
+  while (IndexInStr(Column, Text) and (Lexer.IsWhiteSpace(Text[Column]))) do
     inc(Column);
-  Lexer.Parser.SetWhiteSpaces(SubStr(text, pos, column));
+  Lexer.Parser.SetWhiteSpaces(SliceText(text, Started, Column));
   Resume := false;
 end;
 
@@ -341,6 +328,10 @@ end;
 constructor TCodeLexer.Create;
 begin
   inherited;
+  with Symbols do
+  begin
+  end;
+
   with Controls do
   begin
     Add('', ctlNone);////TODO i feel it is so bad
@@ -348,8 +339,8 @@ begin
     Add('', ctlOperator);
     Add('', ctlStart);
     Add('', ctlStop);
-    Add('', ctlDeclare);
-    Add('', ctlAssign);
+    //Add('', ctlDeclare);
+    //Add('', ctlAssign);
 
     Add('(', ctlOpenParams);
     Add('[', ctlOpenArray);
@@ -429,7 +420,7 @@ end;
 
 function TCodeLexer.IsSymbol(vChar: Char): Boolean;
 begin
-  Result := CharInSet(vChar, sSymbolChars);
+  Result := CharInSet(vChar, sSymbolChars) or Symbols.IsOpenBy(vChar);
 end;
 
 function TCodeLexer.IsIdentifier(vChar: Char; vOpen: Boolean): Boolean;
