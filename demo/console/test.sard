@@ -1,0 +1,172 @@
+i := 10;
+i := i + 5.5;
+//=
+10 + 10;
+
+//=10
+:= 10;
+
+//=20
+:=10 + 10;
+
+//=
+x:=10;
+
+//=
+x:=10+1;
+
+//=10
+x := 10;
+:= x;
+
+//=15
+  x := 10; 
+  x := x + 5;
+  := x;
+
+//=10
+  x := 10; 
+  := x;
+
+//=Result is 20
+:= "Result is " + 10 + 10;
+
+//=10
+x := 10;
+  /*
+      x := 5;
+      x := x + 5;
+      */
+:= x;
+
+//=15
+//notice before 
+:= 5 + (2 * 5);
+        
+
+//=150
+//test divide
+:= 100 + (100 / 2);
+        
+
+//=5
+//notice before }
+x := { := 5 }
+:=x;
+        
+
+//=5
+//block without using semicolon
+x := { := 5; }
+:=x;
+        
+/* idk what is it, my bad memory
+//=Hello
+World
+*/
+//Hello World 
+        s:="Hello
+World";
+        := s;
+
+//=Hello World
+//Hello World 
+        s:='Hello ';
+        s := s+' World';
+        := s;
+
+//=10
+  x := 10; 
+    {*
+        x := 5;
+        x := x + 5;
+        *};
+        := x;
+
+//=40
+//call function
+        foo: { := 12 + 23; } //this is a declaration 
+        x := foo + 5;
+        := x;
+
+//=20
+//call function
+    foo:(z){ := z + 10; } //this is a declaration 
+    x := foo(5) + 5;
+    := x;
+
+//=150
+
+Bar:{
+    := 100;
+}
+
+Foo:{ := Bar + 50 }
+
+    := Foo;
+
+//=0.01
+
+    := version;
+
+//=986.96
+
+    R := 10;
+    x := PI * R;
+    := x * x;
+    
+
+//=test
+//testing change the var type
+            x := 10;
+            x := "test";
+            :=x;
+            
+
+//=test
+//testing change the var type
+            := 10;
+            x := 5;
+            
+
+//=20
+//call function
+        foo:(z){ := z + 10; } //this is a declaration 
+        x := foo(5 + 1) + 4;
+        := x;
+
+//=40
+//call function
+        y := 23;
+        foo:(z){ := z + y; } //this is a declaration 
+        x := foo(5) + 12;
+        := x;
+
+//=
+/*
+    This examples are worked, and this comment will ignored, not compiled or parsed as we say.
+*/
+
+x := 10 + 5 - (5 * 5); //Single Line comment
+
+x := x + 10; //Using same variable, until now local variable implemented
+x := {    //Block it any where
+            y := 0;
+            := y + 5; //this is a result return of the block
+    } //do not forget to add ; here
+{* This a block comment, compiled, useful for documentation, or regenrate the code *};
+:= x; //Return result to the main object
+
+s:='Foo';
+s:=s + ' Bar';
+:=s; //It will retrun 'Foo Bar';
+
+i := 10;
+i := i + 5.5;
+//variable i now have 15 not 15.5
+
+i := 10.0;
+i := i + 5.5;
+//variable i now have 15.5
+
+{* First init of the variable define the type *}
