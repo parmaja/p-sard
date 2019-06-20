@@ -28,7 +28,7 @@ type
 procedure TSardApplication.DoRun;
 var
   ErrorMsg: String;
-  aRun: TSardScript;
+  Script: TSardScript;
   Lines: TStringList;
 begin
   // quick check parameters
@@ -46,19 +46,22 @@ begin
     Exit;
   end;
 
-  aRun := TSardScript.Create;
+  Script := TSardScript.Create;
   try
     try
       Lines := TStringList.Create;
       try
-        Lines.LoadFromFile(Location + 'test.sard');
-        aRun.Compile(Lines);
-        aRun.Run;
+        //Lines.LoadFromFile(Location + 'test.sard');
+        Lines.Text := ':=10';
+        Script.Compile(Lines);
+        Script.Run;
+        WriteLn(Script.Result);
+        WriteLn;
       finally
         FreeAndNil(Lines);
       end;
     finally
-      FreeAndNil(aRun);
+      FreeAndNil(Script);
     end;
   except
     on E:Exception do
@@ -67,7 +70,6 @@ begin
       raise;
     end;
   end;
-
   Terminate;
 end;
 

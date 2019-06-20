@@ -104,92 +104,92 @@ type
 
   { TInteger_Node }
 
-    TInteger_Node = class(TNumber_Node)
-    public
-      Value: Integer;
-      constructor Create(AValue: Integer);
-      procedure Assign(AFromObject: TNode); override;
-      function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
-      function ToText(out outValue: Text): Boolean;
-      function ToNumber(out outValue: Number): Boolean;
-      function ToBool(out outValue: Boolean): Boolean;
-      function ToInteger(out outValue: Integer): Boolean;
-    end;
+  TInteger_Node = class(TNumber_Node)
+  public
+    Value: Integer;
+    constructor Create(AValue: Integer); overload;
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean; override;
+    function ToNumber(out outValue: Number): Boolean; override;
+    function ToBool(out outValue: Boolean): Boolean; override;
+    function ToInteger(out outValue: Integer): Boolean; override;
+  end;
 
-    { TReal_Node }
+  { TReal_Node }
 
-    TReal_Node = class(TNumber_Node)
-    public
-      Value: Double;
-      constructor Create(AValue: Number);
-      procedure Assign(AFromObject: TNode); override;
-      function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
-      function ToText(out outValue: Text): Boolean;
-      function ToNumber(out outValue: Number): Boolean;
-      function ToBool(out outValue: Boolean): Boolean;
-      function ToInteger(out outValue: Integer): Boolean;
-    end;
+  TReal_Node = class(TNumber_Node)
+  public
+    Value: Double;
+    constructor Create(AValue: Number); overload;
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean; override;
+    function ToNumber(out outValue: Number): Boolean; override;
+    function ToBool(out outValue: Boolean): Boolean; override;
+    function ToInteger(out outValue: Integer): Boolean; override;
+  end;
 
-    { TBool_Node }
+  { TBool_Node }
 
-    TBool_Node = class(TNumber_Node)
-    public
-      Value: Bool;
-      constructor Create(AValue: Bool);
-      procedure Assign(AFromObject: TNode); override;
-      function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
-      function ToText(out outValue: Text): Boolean;
-      function ToNumber(out outValue: Number): Boolean;
-      function ToBool(out outValue: Boolean): Boolean;
-      function ToInteger(out outValue: Integer): Boolean;
-    end;
+  TBool_Node = class(TNumber_Node)
+  public
+    Value: Bool;
+    constructor Create(AValue: Bool); overload;
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean; override;
+    function ToNumber(out outValue: Number): Boolean; override;
+    function ToBool(out outValue: Boolean): Boolean; override;
+    function ToInteger(out outValue: Integer): Boolean; override;
+  end;
 
-    { TDate_Node }  //TODO
+  { TDate_Node }  //TODO
 
-    {TDate_Node = class(TNumber_Node)
-    public
-      Value: TDateTime;
-      constructor Create(AValue: TDateTime);
-      procedure Assign(AFromObject: TNode); override;
-      function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
-      function ToText(out outValue: Text): Boolean;
-      function ToNumber(out outValue: Number): Boolean;
-      function ToBool(out outValue: Boolean): Boolean;
-      function ToInteger(out outValue: Integer): Boolean;
-    end;}
+  {TDate_Node = class(TNumber_Node)
+  public
+    Value: TDateTime;
+    constructor Create(AValue: TDateTime); overload;
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean;
+    function ToNumber(out outValue: Number): Boolean;
+    function ToBool(out outValue: Boolean): Boolean;
+    function ToInteger(out outValue: Integer): Boolean;
+  end;}
 
-    { TText_Node }
+  { TText_Node }
 
-    TText_Node = class(TConst_Node)
-    public
-      Value: string;
-      constructor Create(AValue: string);
-      procedure Assign(AFromObject: TNode); override;
-      function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
-      function ToText(out outValue: Text): Boolean;
-      function ToNumber(out outValue: Number): Boolean;
-      function ToBool(out outValue: Boolean): Boolean;
-      function ToInteger(out outValue: Integer): Boolean;
-    end;
+  TText_Node = class(TConst_Node)
+  public
+    Value: string;
+    constructor Create(AValue: string);
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean; override;
+    function ToNumber(out outValue: Number): Boolean; override;
+    function ToBool(out outValue: Boolean): Boolean; override;
+    function ToInteger(out outValue: Integer): Boolean; override;
+  end;
 
-    { TInstance_Node }
+  { TInstance_Node }
 
-    TInstance_Node = class(TNode)
-    private
-      FArguments: TStatements;
-    public
-      procedure Created; override;
-      destructor Destroy; override;
-      procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
-      property Arguments: TStatements read FArguments;
-    end;
+  TInstance_Node = class(TNode)
+  private
+    FArguments: TStatements;
+  public
+    procedure Created; override;
+    destructor Destroy; override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    property Arguments: TStatements read FArguments;
+  end;
 
-    { TAssign_Node }
+  { TAssign_Node }
 
-    TAssign_Node = class(TNode)
-    public
-      procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
-    end;
+  TAssign_Node = class(TNode)
+  public
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+  end;
 
 implementation
 
@@ -202,7 +202,7 @@ begin
   //* if not have a name, assign it to parent result
   Done := true;
   if (Name = '') then
-    Env.Results.current.Result := Env.Results.Parent.Result
+    Env.Results.Current.Result := Env.Results.Parent.Result
   else
   begin
     //Ok let is declare it locally
@@ -522,7 +522,7 @@ begin
   else
   begin
       if (Env.Results.current.Result.Value = nil) then
-          Env.Results.Current.Result.Value := Clone(False);
+        Env.Results.Current.Result.Value := Clone(False);
       Done := Env.Results.Current.Result.Value.Operate(self, AOperator);
   end;
 end;

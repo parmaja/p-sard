@@ -88,7 +88,7 @@ type
     FAnObject: TNode;
   protected
   public
-    constructor Create(AOperator: TSardOperator; AObject: TNode);
+    constructor Create(AOperator: TSardOperator; AObject: TNode); virtual;
     destructor Destroy; override;
 
     function Execute(Data: TRunData; Env: TRunEnv): Boolean;
@@ -139,10 +139,10 @@ type
   protected
     procedure SetName(AValue: string); override;
   public
-    function ToBool(out outValue: Boolean): Boolean;
-    function ToText(out outValue: Text): Boolean;
-    function ToNumber(out outValue: Number): Boolean;
-    function ToInteger(out outValue: Integer): Boolean;
+    function ToBool(out outValue: Boolean): Boolean; virtual;
+    function ToText(out outValue: Text): Boolean; virtual;
+    function ToNumber(out outValue: Number): Boolean; virtual;
+    function ToInteger(out outValue: Integer): Boolean; virtual;
 
     property AsBool: Bool read GetAsBool;
     property AsText: Text read GetAsText;
@@ -157,12 +157,14 @@ type
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
   public
-    constructor Create;
+    constructor Create; virtual;
     function Operate(AObject: TNode; AOperator: TSardOperator): Boolean;
-    function Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
+    function Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator = nil; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
     property Parent: TNode read FParent write SetParent;
     property ID: Integer read FID;
   end;
+
+  TNodeClass = class of TNode;
 
   {TRefObject = class(TSardObject)
   end;}
@@ -475,7 +477,8 @@ end;
 
 procedure TRunValue.SetValue(AValue: TNode);
 begin
-  if FValue =AValue then Exit;
+  if FValue = AValue then
+    Exit;
   FValue :=AValue;
 end;
 
@@ -587,7 +590,7 @@ end;
 
 function TStatements.Execute(Data: TRunData; Env: TRunEnv): Boolean;
 var
-  itm: TClause;
+  itm: TStatement;
 begin
   if Count = 0 then
     Result := False
@@ -609,6 +612,8 @@ end;
 
 procedure TStatement.Add(AOperator: TSardOperator; AObject: TNode);
 begin
+  if (AObject = nil) then
+    RaiseError('You can not add nil object!');
   if (AObject.Parent <> nil) then
     RaiseError('You can not add object to another parent!');
   AObject.FParent := Parent;
@@ -690,7 +695,7 @@ end;
 
 function TNode.Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; Defines: TDefines; Arguments: TStatements; Blocks: TStatements): Boolean;
 begin
-  Result := false;
+  Result := False;
   BeforeExecute(Data, Env, AOperator);
   if (Defines <> nil) then
       Defines.Execute(Data, Env, Arguments);
@@ -726,7 +731,7 @@ end;
 function TNode.Clone(WithValues: Boolean): TNode;
 begin
   //TODO, here we want to check if subclass have a default ctor
-  Result := TNode(Self.ClassType).Create;
+  Result := TNodeClass(ClassType).Create;
   Result.FParent := Parent;
   if WithValues then
     Result.Assign(Self);
@@ -748,9 +753,13 @@ begin
 
 end;
 
+var LastID: Integer = 0;
+
 constructor TNode.Create;
 begin
   inherited Create;
+  Inc(LastID);
+  FID := LastID;
 end;
 
 { TClause }
@@ -759,7 +768,9 @@ constructor TClause.Create(AOperator: TSardOperator; AObject: TNode);
 begin
   inherited Create;
   FAnOperator:= AOperator;
-  FAnObject:= AObject;
+  if AObject = nil then
+    RaiseError('You can not create new clause with nil');
+  FAnObject := AObject;
 end;
 
 destructor TClause.Destroy;

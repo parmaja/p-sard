@@ -122,7 +122,7 @@ begin
   FreeAndNil(Main);
 
   Main := TBlock_Node.Create; //destory the old compile and create new
-  Main.Name := 'main';
+//  Main.Name := 'main';
 
   Version_Const := TVersion_Const_Node.Create;
   Version_Const.Name := 'Version';
@@ -152,15 +152,16 @@ begin
   env := TRunEnv.Create;
   try
     Env.Results.Push;
-    //Env.Root.Object := main;
+    //Env.Root.AnObject := Main;
     Main.Execute(Env.Root, Env, nil);
 
     if (Env.Results.Current <> nil) and (Env.Results.Current.Result.Value <> nil) then
     begin
       Result := Env.Results.Current.Result.Value.AsText;
     end;
-    Env.Results.Pop();
+    Env.Results.Pop;
   finally
+    FreeAndNil(Env);
   end;
 end;
 
