@@ -53,7 +53,6 @@ type
 
   TBlock_Node = class(TStatements_Node)
   private
-    FDeclareStatement: TStatement;
   protected
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
@@ -61,7 +60,6 @@ type
     procedure Created; override;
     destructor Destroy; override;
     function DeclareObject(AObject: TNode): TDeclare_Node;
-    property DeclareStatement: TStatement read FDeclareStatement;
   end;
 
   { TConst_Node }
@@ -542,24 +540,23 @@ end;
 procedure TBlock_Node.Created;
 begin
   inherited;
-  FDeclareStatement := TStatement.Create(Parent);
 end;
 
 destructor TBlock_Node.Destroy;
 begin
-  FreeAndNil(FDeclareStatement);
   inherited Destroy;
 end;
 
 function TBlock_Node.DeclareObject(AObject: TNode): TDeclare_Node;
 begin
-  if (DeclareStatement = nil) then
-      FDeclareStatement :=  Statements.add;
-  Result := TDeclare_Node.Create;
-  //TODO is parent should be nil
-  Result.Name := AObject.Name;
-  Result.ExecuteObject := AObject;
-  DeclareStatement.Add(nil, Result);
+  with Statements.Add do
+  begin
+    Result := TDeclare_Node.Create;
+    Result.Name := AObject.Name;
+    AObject.Parent := Result;
+    Result.ExecuteObject := AObject;
+    Add(nil, Result);
+  end;
 end;
 
 { TStatements_Node }

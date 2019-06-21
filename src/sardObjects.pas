@@ -458,10 +458,8 @@ begin
   if AnObject = nil then
     RaiseError('Object of declaration is not set!')
   else if AnObject.ExecuteObject = nil then
-  begin
     RaiseError('ExecuteObject of declaration is not set!');
-    Result := AnObject.ExecuteObject.Execute(Self, Env, AOperator, AnObject.Defines, Arguments, Blocks);
-  end;
+  Result := AnObject.ExecuteObject.Execute(Self, Env, AOperator, AnObject.Defines, Arguments, Blocks);
 end;
 
 { TRunResult }
@@ -554,9 +552,10 @@ begin
     while i < Parameters.Count do
     begin
       Env.Results.Push;
-      Arguments[i].Execute(Data, Env);
       if i < Arguments.Count then
       begin
+        Arguments[i].Execute(Data, Env);
+
         p := Parameters[i];
         v := Env.Stack.Current.Variables.Register(p.name, [rkLocal, rkArgument]); //TODO but must find it locally
         v.Value := Env.Results.Current.Result.Value;

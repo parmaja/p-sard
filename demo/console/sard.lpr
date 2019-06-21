@@ -48,11 +48,14 @@ begin
 
   Script := TSardScript.Create;
   try
+    if ParamCount > 0 then
     try
       Lines := TStringList.Create;
       try
+        Lines.LoadFromFile(Params[1]);
         //Lines.LoadFromFile(Location + 'test.sard');
-        Lines.Text := ':=PI';
+        //Lines.Text := 'x:{:=10};';
+        //Lines.Text := 'print(10);print(20)';
         Script.Compile(Lines);
         Script.Run;
         WriteLn(Script.Result);

@@ -676,7 +676,7 @@ begin
       Parser.SetAction([paPop, paBypass]);
     end
     else
-      inherited AddControl(AControl);
+      inherited;
   end;
 end;
 
