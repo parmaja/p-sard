@@ -440,8 +440,8 @@ begin
   if Result = nil then
   begin
     Result := TRunData.Create(Self);
-    Result.FName := AnObject.Name;
-    Result.FAnObject := AnObject;
+    Result.FName := AObject.Name;
+    Result.FAnObject := AObject;
   end;
   Add(Result);//TODO BUG maybe into if
 end;
@@ -449,9 +449,8 @@ end;
 function TRunData.FindDeclare(AName: string): TRunData;
 begin
   Result := Find(AName);
-  if (Result <> nil) and (Parent <> nil) then
-  Result := Parent.FindDeclare(AName);
-
+  if (Result = nil) and (Parent <> nil) then
+    Result := Parent.FindDeclare(AName);
 end;
 
 function TRunData.Execute(Env: TRunEnv; AOperator: TSardOperator; Arguments: TStatements; Blocks: TStatements): Boolean;
@@ -688,9 +687,9 @@ end;}
 function TNode.Operate(AObject: TNode; AOperator: TSardOperator): Boolean;
 begin
   if AOperator = nil then
-    Result := false
+    Result := False
   else
-    Result := AObject.Operate(AObject, AOperator);
+    Result := DoOperate(AObject, AOperator);
 end;
 
 function TNode.Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; Defines: TDefines; Arguments: TStatements; Blocks: TStatements): Boolean;
@@ -698,7 +697,7 @@ begin
   Result := False;
   BeforeExecute(Data, Env, AOperator);
   if (Defines <> nil) then
-      Defines.Execute(Data, Env, Arguments);
+    Defines.Execute(Data, Env, Arguments);
   DoExecute(Data, Env, AOperator, Result);
   AfterExecute(Data, Env, AOperator);
 end;

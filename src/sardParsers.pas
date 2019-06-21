@@ -49,7 +49,7 @@ type
     procedure SetObject(AObject: TNode);
     function SetInstance(AIdentifier: string): TInstance_Node; overload;
     function SetInstance: TInstance_Node; overload;
-    function SetFork: TFork_Node;
+    function SetEnclose: TEnclose_Node;
     function SetAssign: TAssign_Node;
     function SetDeclare: TDeclare_Node;
   end;
@@ -262,8 +262,8 @@ begin
     *)
     if (LastControl = ctlCloseBlock) then
     begin
-        LastControl := ctlNone;//prevent loop
-        SetControl(Lexer.Controls.GetControl(ctlEnd));
+      LastControl := ctlNone;//prevent loop
+      SetControl(Lexer.Controls.GetControl(ctlEnd));
     end;
     Current.AddToken(Token);
     DoQueue();
@@ -491,7 +491,7 @@ begin
             Parser.Push(TCollectorBlock.Create(Parser, arguments));
         end
         else //No it is just sub statment like: 10+(5*5)
-          with Instruction.SetFork do
+          with Instruction.SetEnclose do
             Parser.Push(TCollectorStatement.Create(Parser, statement));
       end;
 
@@ -963,11 +963,11 @@ begin
   Identifier := '';
 end;
 
-function TInstruction.SetFork: TFork_Node;
+function TInstruction.SetEnclose: TEnclose_Node;
 begin
   if (Identifier <> '') then
     RaiseError('Identifier is already set');
-  Result := TFork_Node.Create;
+  Result := TEnclose_Node.Create;
   InternalSetObject(Result);
 end;
 

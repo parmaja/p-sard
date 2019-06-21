@@ -124,18 +124,18 @@ begin
   Main := TBlock_Node.Create; //destory the old compile and create new
 //  Main.Name := 'main';
 
-  Version_Const := TVersion_Const_Node.Create;
+{  Version_Const := TVersion_Const_Node.Create;
   Version_Const.Name := 'Version';
-  Main.DeclareObject(Version_Const);
+  Main.DeclareObject(Version_Const);}
 
   PI_const := TPI_Const_Node.Create();
   PI_Const.name := 'PI';
   Main.DeclareObject(PI_const);
 
-  Print_Object := TPrint_object_Node.Create();
+{  Print_Object := TPrint_object_Node.Create();
   Print_Object.name := 'print';
   Print_Declare := Main.DeclareObject(Print_Object);
-  Print_Declare.Defines.Parameters.Add('s', 'string');
+  Print_Declare.Defines.Parameters.Add('s', 'string');}
 
   // Compile
 

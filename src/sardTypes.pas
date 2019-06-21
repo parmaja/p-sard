@@ -21,9 +21,9 @@ uses
 
 type
 
-  { TFork_Node }
+  { TEnclose_Node }
 
-  TFork_Node = class(TNode)
+  TEnclose_Node = class(TNode)
   private
     FStatement: TStatement;
   protected
@@ -36,9 +36,9 @@ type
     property Statement: TStatement read FStatement;
   end;
 
-  { TEnclose_Node }
+  { TStatements_Node }
 
-  TEnclose_Node = class(TNode)
+  TStatements_Node = class(TNode)
   private
     FStatements: TStatements;
   protected
@@ -51,7 +51,7 @@ type
 
   { TBlock_Node }
 
-  TBlock_Node = class(TEnclose_Node)
+  TBlock_Node = class(TStatements_Node)
   private
     FDeclareStatement: TStatement;
   protected
@@ -234,14 +234,12 @@ var
 begin
   d := Data.FindDeclare(name);
   if d <> nil then
-    Done := d.Execute(env, AOperator, Arguments, nil)
+    Done := d.Execute(Env, AOperator, Arguments, nil)
   else
   begin
     v := Env.Stack.Current.Variables.Find(Name);
     if (v = nil) then
         RaiseError('Can not find a variable: ' + Name);
-    if (v.value = nil) then
-        RaiseError('Variable value is null: ' + v.Name);
     if (v.value = nil) then
         RaiseError('Variable object is null: ' + v.Name);
     Done := v.Value.Execute(Data, Env, AOperator);
@@ -523,7 +521,7 @@ begin
   begin
       if (Env.Results.current.Result.Value = nil) then
         Env.Results.Current.Result.Value := Clone(False);
-      Done := Env.Results.Current.Result.Value.Operate(self, AOperator);
+      Done := Env.Results.Current.Result.Value.Operate(Self, AOperator);
   end;
 end;
 
@@ -564,9 +562,9 @@ begin
   DeclareStatement.Add(nil, Result);
 end;
 
-{ TEnclose_Node }
+{ TStatements_Node }
 
-procedure TEnclose_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TStatements_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
 var
   t: TRunResult;
 begin
@@ -587,27 +585,27 @@ begin
   Done := True;
 end;
 
-procedure TEnclose_Node.Created;
+procedure TStatements_Node.Created;
 begin
   inherited;
   FStatements := TStatements.Create(Parent);
 end;
 
-destructor TEnclose_Node.Destroy;
+destructor TStatements_Node.Destroy;
 begin
   FreeAndNil(FStatements);
   inherited;
 end;
 
-{ TFork_Node }
+{ TEnclose_Node }
 
-procedure TFork_Node.BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+procedure TEnclose_Node.BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
 begin
   inherited;
   Env.Results.Push;
 end;
 
-procedure TFork_Node.AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+procedure TEnclose_Node.AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
 var
   t: TRunResult;
 begin
@@ -617,19 +615,19 @@ begin
     t.Result.Value.Execute(Data, Env, AOperator);
 end;
 
-procedure TFork_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TEnclose_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
 begin
   statement.execute(data, env);
   Done := true;
 end;
 
-procedure TFork_Node.Created;
+procedure TEnclose_Node.Created;
 begin
   inherited Created;
   FStatement := TStatement.Create(Parent);
 end;
 
-destructor TFork_Node.Destroy;
+destructor TEnclose_Node.Destroy;
 begin
   FreeAndNil(FStatement);
   inherited;

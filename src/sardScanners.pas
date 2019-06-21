@@ -232,7 +232,7 @@ end;
 
 function TLineComment_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
-  Result := scanText('//', Text, Column);
+  Result := ScanText('//', Text, Column);
 end;
 
 { TOperator_Tokenizer }
@@ -252,7 +252,7 @@ end;
 
 function TOperator_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
-  Result := Lexer.isOperator(Text[Column]);
+  Result := Lexer.IsOperator(Text[Column]);
 end;
 
 { TControl_Tokenizer }

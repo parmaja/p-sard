@@ -52,7 +52,7 @@ begin
       Lines := TStringList.Create;
       try
         //Lines.LoadFromFile(Location + 'test.sard');
-        Lines.Text := ':=10';
+        Lines.Text := ':=PI';
         Script.Compile(Lines);
         Script.Run;
         WriteLn(Script.Result);
