@@ -53,8 +53,6 @@ unit sardObjects;
               Also we can make muliple shadow of one object when creating link to it, i mean creating another object based on first one
               Also it is made for dynamic scoping, we can access the value in it instead of local variable
 
-  TrunEngine: Load file and compile it, also have debugger actions and log to console of to any plugin that provide that interface              Engine cache also compile files to use it again and it check the timestamp before recompile it
-
   TsrdAddons: It have any kind of addon, parsing, preprocessor, or debugger
 
   TmdModifier: It is like operator but with one side can be in the context before the identifier like + !x %x $x
@@ -200,6 +198,195 @@ type
     property Block: TDefineItems read FBlock;
   end;
 
+  { TDeclare_Node }
+
+  TDeclare_Node = class(TNode)
+  private
+    FDefines: TDefines;
+  public
+    //executeObject will execute in a context of statement if it is not null,
+    ExecuteObject: TNode;
+    ResultType: string;
+    procedure Created; override;
+    destructor Destroy; override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    property Defines: TDefines read FDefines;
+  end;
+
+  { TEnclose_Node }
+
+  TEnclose_Node = class(TNode)
+  private
+    FStatement: TStatement;
+  protected
+    procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+  public
+    procedure Created; override;
+    destructor Destroy; override;
+    property Statement: TStatement read FStatement;
+  end;
+
+  { TStatements_Node }
+
+  TStatements_Node = class(TNode)
+  private
+    FStatements: TStatements;
+  protected
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+  public
+    procedure Created; override;
+    destructor Destroy; override;
+    property Statements: TStatements read FStatements;
+  end;
+
+  { TBlock_Node }
+
+  TBlock_Node = class(TStatements_Node)
+  private
+  protected
+    procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
+  public
+    procedure Created; override;
+    destructor Destroy; override;
+    function DeclareObject(AObject: TNode): TDeclare_Node;
+  end;
+
+  { TConst_Node }
+
+  TConst_Node = class(TNode)
+  private
+  protected
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+  public
+  end;
+
+//*-------------------------------*/
+//*       Const Objects
+//*-------------------------------*/
+
+  TNone_Node = class(TConst_Node)
+    //Do operator
+    //Convert to 0 or ''
+  end;
+
+  { TComment_Node }
+
+  TComment_Node = class(TNode)
+  protected
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+  public
+    Value: string;
+  end;
+
+  { TPreprocessor_Node }
+
+  TPreprocessor_Node = class(TNode) //TODO
+  protected
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+  public
+  end;
+
+  TNumber_Node = class abstract(TConst_Node)
+  end;
+
+  { TInteger_Node }
+
+  TInteger_Node = class(TNumber_Node)
+  public
+    Value: Integer;
+    constructor Create(AValue: Integer); overload;
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean; override;
+    function ToNumber(out outValue: Number): Boolean; override;
+    function ToBool(out outValue: Boolean): Boolean; override;
+    function ToInteger(out outValue: Integer): Boolean; override;
+  end;
+
+  { TReal_Node }
+
+  TReal_Node = class(TNumber_Node)
+  public
+    Value: Double;
+    constructor Create(AValue: Number); overload;
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean; override;
+    function ToNumber(out outValue: Number): Boolean; override;
+    function ToBool(out outValue: Boolean): Boolean; override;
+    function ToInteger(out outValue: Integer): Boolean; override;
+  end;
+
+  { TBool_Node }
+
+  TBool_Node = class(TNumber_Node)
+  public
+    Value: Bool;
+    constructor Create(AValue: Bool); overload;
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean; override;
+    function ToNumber(out outValue: Number): Boolean; override;
+    function ToBool(out outValue: Boolean): Boolean; override;
+    function ToInteger(out outValue: Integer): Boolean; override;
+  end;
+
+  { TDate_Node }  //TODO
+
+  {TDate_Node = class(TNumber_Node)
+  public
+    Value: TDateTime;
+    constructor Create(AValue: TDateTime); overload;
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean;
+    function ToNumber(out outValue: Number): Boolean;
+    function ToBool(out outValue: Boolean): Boolean;
+    function ToInteger(out outValue: Integer): Boolean;
+  end;}
+
+  { TText_Node }
+
+  TText_Node = class(TConst_Node)
+  public
+    Value: string;
+    constructor Create(AValue: string);
+    procedure Assign(AFromObject: TNode); override;
+    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function ToText(out outValue: Text): Boolean; override;
+    function ToNumber(out outValue: Number): Boolean; override;
+    function ToBool(out outValue: Boolean): Boolean; override;
+    function ToInteger(out outValue: Integer): Boolean; override;
+  end;
+
+  { TInstance_Node }
+
+  TInstance_Node = class(TNode)
+  private
+    FArguments: TStatements;
+  public
+    procedure Created; override;
+    destructor Destroy; override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    property Arguments: TStatements read FArguments;
+  end;
+
+  { TAssign_Node }
+
+  TAssign_Node = class(TNode)
+  public
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+  end;
+
+{
+  *   Declare object to take it ref into variable
+  *   used by Declare_Node
+  //Is that a Scope!!!, idk!
+}
+
 {*
   Variables
 *}
@@ -246,26 +433,6 @@ type
   public
     procedure Push; overload;
   end;
-
-  { TDeclare_Node }
-
-  TDeclare_Node = class(TNode)
-  private
-    FDefines: TDefines;
-  public
-    //executeObject will execute in a context of statement if it is not null,
-    ExecuteObject: TNode;
-    ResultType: string;
-    procedure Created; override;
-    destructor Destroy; override;
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
-    property Defines: TDefines read FDefines;
-  end;
-{
-  *   Declare object to take it ref into variable
-  *   used by Declare_Node
-  //Is that a Scope!!!, idk!
-}
 
   { TRunData }
 
@@ -325,6 +492,97 @@ type
     property Results: TRunResults read FResults;
     property Stack: TRunStack read FStack;
     property Root: TRunData read FRoot;
+  end;
+
+  { TOpNone }
+
+  TOpNone = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpAnd }
+
+  TOpAnd = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpOr }
+
+  TOpOr = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpPlus }
+
+  TOpPlus = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpSub }
+
+  TOpSub = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpMultiply }
+
+  TOpMultiply = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpDivide }
+
+  TOpDivide = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpPower }
+
+  TOpPower = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpGreater }
+
+  TOpGreater = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpLesser }
+
+  TOpLesser = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpEqual }
+
+  TOpEqual = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpNotEqual }
+
+  TOpNotEqual = class(TSardOperator)
+  public
+    constructor Create;
+  end;
+
+  { TOpNot }
+
+  TOpNot = class(TSardOperator)
+  public
+    constructor Create;
   end;
 
 implementation
@@ -784,4 +1042,571 @@ begin
   Result := FAnObject.Execute(Data, Env, AnOperator);
 end;
 
+{ TAssign_Node }
+
+procedure TAssign_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+var
+  v: TRunValue;
+begin
+  //* if not have a name, assign it to parent result
+  Done := true;
+  if (Name = '') then
+    Env.Results.Current.Result := Env.Results.Parent.Result
+  else
+  begin
+    //Ok let is declare it locally
+    v := Env.Stack.Current.Variables.Register(Name, [rkLocal]);
+    if (v = nil) then
+      RaiseError('Variable not found!');
+    Env.Results.Current.Result := v;
+  end;
+end;
+
+{ TInstance_Node }
+
+procedure TInstance_Node.Created;
+begin
+  inherited;
+  FArguments := TStatements.Create(Self);
+end;
+
+destructor TInstance_Node.Destroy;
+begin
+  FreeAndNil(FArguments);
+  inherited;
+end;
+
+procedure TInstance_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+var
+  d: TRunData;
+  v: TRunValue;
+begin
+  d := Data.FindDeclare(name);
+  if d <> nil then
+    Done := d.Execute(Env, AOperator, Arguments, nil)
+  else
+  begin
+    v := Env.Stack.Current.Variables.Find(Name);
+    if (v = nil) then
+        RaiseError('Can not find a variable: ' + Name);
+    if (v.value = nil) then
+        RaiseError('Variable object is null: ' + v.Name);
+    Done := v.Value.Execute(Data, Env, AOperator);
+  end;
+end;
+
+{ TText_Node }
+
+constructor TText_Node.Create(AValue: string);
+begin
+  inherited Create;
+  Value := AValue;
+end;
+
+procedure TText_Node.Assign(AFromObject: TNode);
+begin
+  inherited;
+  Value := AFromObject.AsTExt;
+end;
+
+function TText_Node.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+begin
+  Result :=inherited DoOperate(AObject, AOperator);
+end;
+
+function TText_Node.ToText(out outValue: Text): Boolean;
+begin
+  outValue := Value;
+  Result := true;
+end;
+
+function TText_Node.ToNumber(out outValue: Number): Boolean;
+begin
+  outValue := StrToFloatDef(Value, 0);
+  Result := true;
+end;
+
+function TText_Node.ToBool(out outValue: Boolean): Boolean;
+begin
+  outValue := StrToBoolDef(Value, False);
+  Result := true;
+end;
+
+function TText_Node.ToInteger(out outValue: Integer): Boolean;
+begin
+  outValue := StrToIntDef(Value, 0);
+  Result := true;
+end;
+
+{ TBool_Node }
+
+constructor TBool_Node.Create(AValue: Bool);
+begin
+  inherited Create;
+  Value := AValue;
+end;
+
+procedure TBool_Node.Assign(AFromObject: TNode);
+begin
+  inherited;
+  Value := AFromObject.AsBool;
+end;
+
+function TBool_Node.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+begin
+  Result := inherited DoOperate(AObject, AOperator);
+  if AOperator.name = '+' then
+      begin
+          Value := Value and AObject.AsBool;
+          Result := true;
+      end
+  else if AOperator.name = '-' then
+      begin
+          Value := Value and not AObject.AsBool; //xor //LOL
+          Result := true;
+      end
+  else if AOperator.name = '*' then
+      begin
+          Value := Value or AObject.AsBool;
+          Result := True;
+      end
+{ else if AOperator.name = '/' then
+      begin
+          Value := Value / AObject.AsNumber;
+          Result := True;
+      end;}
+      else
+          Result := False;
+end;
+
+function TBool_Node.ToText(out outValue: Text): Boolean;
+begin
+  outValue := BoolToStr(Value);
+  Result := true;
+end;
+
+function TBool_Node.ToNumber(out outValue: Number): Boolean;
+begin
+  outValue := Ord(Value);
+  Result := true;
+end;
+
+function TBool_Node.ToBool(out outValue: Boolean): Boolean;
+begin
+  outValue := Value;
+  Result := true;
+end;
+
+function TBool_Node.ToInteger(out outValue: Integer): Boolean;
+begin
+  outValue := Ord(Value);
+  Result := true;
+end;
+
+{ TReal_Node }
+
+constructor TReal_Node.Create(AValue: Number);
+begin
+  inherited Create;
+  Value := AValue;
+end;
+
+procedure TReal_Node.Assign(AFromObject: TNode);
+begin
+  inherited;
+  Value := AFromObject.AsNumber;
+end;
+
+function TReal_Node.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+begin
+  Result := inherited DoOperate(AObject, AOperator);
+  if AOperator.name = '+' then
+      begin
+          Value := Value + AObject.AsNumber;
+          Result := true;
+      end
+  else if AOperator.name = '-' then
+      begin
+          Value := Value - AObject.AsNumber;
+          Result := true;
+      end
+  else if AOperator.name = '*' then
+      begin
+          Value := Value * AObject.AsNumber;
+          Result := True;
+      end
+  else if AOperator.name = '/' then
+      begin
+          Value := Value / AObject.AsNumber;
+          Result := True;
+      end
+      else
+          Result := False;
+end;
+
+function TReal_Node.ToText(out outValue: Text): Boolean;
+begin
+  outValue := FloatToStr(Value);
+  Result := true;
+end;
+
+function TReal_Node.ToNumber(out outValue: Number): Boolean;
+begin
+  outValue := Value;
+  Result := true;
+end;
+
+function TReal_Node.ToBool(out outValue: Boolean): Boolean;
+begin
+  outValue := Value <> 0;
+  Result := true;
+end;
+
+function TReal_Node.ToInteger(out outValue: Integer): Boolean;
+begin
+  outValue := Round(Value);
+  Result := true;
+end;
+
+{ TInteger_Node }
+
+constructor TInteger_Node.Create(AValue: Integer);
+begin
+  inherited Create;
+  Value := AValue;
+end;
+
+procedure TInteger_Node.Assign(AFromObject: TNode);
+begin
+  inherited;
+  Value := AFromObject.AsInteger;
+end;
+
+function TInteger_Node.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+begin
+  Result := inherited DoOperate(AObject, AOperator);
+  if AOperator.name = '+' then
+      begin
+          Value := Value + AObject.asInteger;
+          Result := true;
+      end
+  else if AOperator.name = '-' then
+      begin
+          Value := Value - AObject.AsInteger;
+          Result := true;
+      end
+  else if AOperator.name =  '*' then
+      begin
+          Value := Value * AObject.AsInteger;
+          Result := True;
+      end
+  else if AOperator.name = '/' then
+      begin
+          Value := Value div AObject.AsInteger;
+          Result := True;
+      end
+      else
+          Result := False;
+end;
+
+function TInteger_Node.ToText(out outValue: Text): Boolean;
+begin
+  outValue := IntToStr(Value);
+  Result := True;
+end;
+
+function TInteger_Node.ToNumber(out outValue: Number): Boolean;
+begin
+  outValue := Value;
+  Result := True;
+end;
+
+function TInteger_Node.ToBool(out outValue: Boolean): Boolean;
+begin
+  outValue := Value <> 0;
+  Result := True;
+end;
+
+function TInteger_Node.ToInteger(out outValue: Integer): Boolean;
+begin
+  outValue := Value;
+  Result := True;
+end;
+
+{ TPreprocessor_Node }
+
+procedure TPreprocessor_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+begin
+  //TODO execute external program and replace it with the result
+  Done := True;
+end;
+
+{ TComment_Node }
+
+procedure TComment_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+begin
+  //Guess what!, we will not to execute the comment ;)
+  Done := True;
+end;
+
+{ TConst_Node }
+
+procedure TConst_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+begin
+  if (Env.results.Current = nil) then
+      RaiseError('There is no stack results!');
+  if ((Env.Results.Current.Result.Value = nil) and (AOperator = nil)) then
+  begin
+      Env.Results.Current.Result.Value := Clone();
+      Done := true;
+  end
+  else
+  begin
+      if (Env.Results.current.Result.Value = nil) then
+        Env.Results.Current.Result.Value := Clone(False);
+      Done := Env.Results.Current.Result.Value.Operate(Self, AOperator);
+  end;
+end;
+
+{ TBlock_Node }
+
+procedure TBlock_Node.BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+begin
+  Env.Stack.Push;
+  inherited;
+end;
+
+procedure TBlock_Node.AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+begin
+  inherited;
+  Env.Stack.Pop;
+end;
+
+procedure TBlock_Node.Created;
+begin
+  inherited;
+end;
+
+destructor TBlock_Node.Destroy;
+begin
+  inherited Destroy;
+end;
+
+function TBlock_Node.DeclareObject(AObject: TNode): TDeclare_Node;
+begin
+  with Statements.Add do
+  begin
+    Result := TDeclare_Node.Create;
+    Result.Name := AObject.Name;
+    AObject.Parent := Result;
+    Result.ExecuteObject := AObject;
+    Add(nil, Result);
+  end;
+end;
+
+{ TStatements_Node }
+
+procedure TStatements_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+var
+  t: TRunResult;
+begin
+  {if (env.stack.current.data.object !is this)
+      error("Can not execute block directly, data.object must set to this encloser");}
+  Env.Results.Push; //<--here we can push a variable result or create temp result to drop it
+
+  Statements.Execute(Data, Env);
+  t := Env.Results.Pull;
+  //I dont know what if there is an object there what we do???
+(*
+  * := 5 + { := 10 + 10 }
+  * it return 25
+  * here 20.execute with +
+*)
+  if (t.Result.Value <> nil) then
+      t.Result.Value.Execute(Data, Env, AOperator);
+  Done := True;
+end;
+
+procedure TStatements_Node.Created;
+begin
+  inherited;
+  FStatements := TStatements.Create(Parent);
+end;
+
+destructor TStatements_Node.Destroy;
+begin
+  FreeAndNil(FStatements);
+  inherited;
+end;
+
+{ TEnclose_Node }
+
+procedure TEnclose_Node.BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+begin
+  inherited;
+  Env.Results.Push;
+end;
+
+procedure TEnclose_Node.AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+var
+  t: TRunResult;
+begin
+  inherited;
+  t := Env.Results.Pull;
+  if (t.Result.Value <> nil) then
+    t.Result.Value.Execute(Data, Env, AOperator);
+end;
+
+procedure TEnclose_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+begin
+  statement.execute(data, env);
+  Done := true;
+end;
+
+procedure TEnclose_Node.Created;
+begin
+  inherited Created;
+  FStatement := TStatement.Create(Parent);
+end;
+
+destructor TEnclose_Node.Destroy;
+begin
+  FreeAndNil(FStatement);
+  inherited;
+end;
+
+{******************************
+          Operators
+******************************}
+
+{ TOpEqual }
+
+constructor TOpEqual.Create;
+begin
+  Name := '=';
+  Title := 'Equal';
+  Associative := asLeft;
+  Description := '';
+end;
+
+{ TOpPower }
+
+constructor TOpPower.Create;
+begin
+  Name := '^';
+  Title := 'Power';
+  Associative := asLeft;
+  Description := '';
+end;
+
+{ TOpGreater }
+
+constructor TOpGreater.Create;
+begin
+  Name := '>';
+  Title := 'Greater';
+  Associative := asLeft;
+  Description := '';
+end;
+
+{ TOpLesser }
+
+constructor TOpLesser.Create;
+begin
+  Name := '<';
+  Title := 'Lesser';
+  Associative := asLeft;
+  Description := '';
+end;
+
+{ TOpNotEqual }
+
+constructor TOpNotEqual.Create;
+begin
+  Name := '<>';
+  Title := 'NotEqual';
+  Associative := asLeft;
+  Description := 'Check Equal';
+end;
+
+{ TOpNot }
+
+constructor TOpNot.Create;
+begin
+  Name := '!';
+  Title := 'not';
+  Associative := asLeft;
+  Description := 'Not';
+end;
+
+{ TOpDivide }
+
+constructor TOpDivide.Create;
+begin
+  Name := '/';
+  Title := 'Divide';
+  Associative := asLeft;
+  Description := 'Divide object on another object';
+end;
+
+{ TOpMultiply }
+
+constructor TOpMultiply.Create;
+begin
+  Name := '*';
+  Title := 'Multiply';
+  Associative := asLeft;
+  Description := 'Multiply object with another object';
+end;
+
+{ TOpSub }
+
+constructor TOpSub.Create;
+begin
+  Name := '-';
+  Title := 'Minus';
+  Associative := asLeft;
+  Description := 'Sub object from another object';
+end;
+
+{ TOpPlus }
+
+constructor TOpPlus.Create;
+begin
+  Name := '+';
+  Title := 'Plus';
+  Associative := asLeft;
+  Description := 'Add object to another object';
+end;
+
+{ TOpOr }
+
+constructor TOpOr.Create;
+begin
+  Name := '|';
+  Title := 'Or';
+  Associative := asLeft;
+  Description := '';
+end;
+
+{ TOpAnd }
+
+constructor TOpAnd.Create;
+begin
+  Name := '&';
+  Title := 'And';
+  Associative := asLeft;
+  Description := '';
+end;
+
+
+{ TOpNone }
+
+constructor TOpNone.Create;
+begin
+  Name := '';
+  Title := 'None';
+  Associative := asLeft;
+  Description := 'Nothing';
+end;
 end.

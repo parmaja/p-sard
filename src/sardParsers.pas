@@ -17,7 +17,7 @@ interface
 uses
   Classes, SysUtils,
   mnUtils,
-  sardClasses, sardObjects, sardLexers, sardTypes;
+  sardClasses, sardObjects, sardLexers;
 
 type
   TParserAction = (paPop, paBypass);

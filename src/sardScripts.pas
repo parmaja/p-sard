@@ -16,7 +16,7 @@ interface
 
 uses
   Classes, SysUtils,
-  sardClasses, sardObjects, sardTypes, sardLexers, sardScanners, sardParsers;
+  sardClasses, sardObjects, sardLexers, sardScanners, sardParsers;
 
 type
   { TCodeScanner }

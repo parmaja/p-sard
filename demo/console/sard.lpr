@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, SysUtils, CustApp,
-  sardClasses, sardLexers, sardOperators, sardObjects, sardRuntimes, sardScanners, sardTypes, sardParsers, sardScripts;
+  sardClasses, sardLexers, sardOperators, sardObjects, sardScanners, sardParsers, sardScripts;
 
 type
 
