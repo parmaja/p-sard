@@ -16,7 +16,7 @@ interface
 
 uses
   mnUtils, SysUtils,
-  sardClasses, sardObjects, sardLexers, sardOperators;
+  sardClasses, sardObjects, sardLexers;
 
 const
   sEOL = [#0, #13, #10];

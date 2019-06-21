@@ -8,7 +8,7 @@ unit sardScripts;
 *}
 
 {$IFDEF FPC}
-{$mode objfpc}
+{$mode delphi}
 {$ENDIF}
 {$H+}{$M+}
 
@@ -66,7 +66,6 @@ type
     Main: TBlock_Node;
     Scanner: TScanner;
     Result: string;
-
     destructor Destroy; override;
     procedure Compile(Text: string); overload;
     procedure Compile(Lines: TStringList); overload;

@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, SysUtils, CustApp,
-  sardClasses, sardLexers, sardOperators, sardObjects, sardScanners, sardParsers, sardScripts;
+  sardClasses, sardLexers, sardObjects, sardScanners, sardParsers, sardScripts;
 
 type
 
@@ -46,25 +46,27 @@ begin
     Exit;
   end;
 
-  Script := TSardScript.Create;
   try
     if ParamCount > 0 then
-    try
-      Lines := TStringList.Create;
+    begin
+      Script := TSardScript.Create;
       try
-        Lines.LoadFromFile(Params[1]);
-        //Lines.LoadFromFile(Location + 'test.sard');
-        //Lines.Text := 'x:{:=10};';
-        //Lines.Text := 'print(10);print(20)';
-        Script.Compile(Lines);
-        Script.Run;
-        WriteLn(Script.Result);
-        WriteLn;
+        Lines := TStringList.Create;
+        try
+          Lines.LoadFromFile(ParamStr(1));
+          //Lines.LoadFromFile(Location + 'test.sard');
+          //Lines.Text := 'x:{:=10};';
+          //Lines.Text := 'print(10);print(20)';
+          Script.Compile(Lines);
+          Script.Run;
+          WriteLn(Script.Result);
+          WriteLn;
+        finally
+          FreeAndNil(Lines);
+        end;
       finally
-        FreeAndNil(Lines);
+        FreeAndNil(Script);
       end;
-    finally
-      FreeAndNil(Script);
     end;
   except
     on E:Exception do

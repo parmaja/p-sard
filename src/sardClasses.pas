@@ -45,21 +45,18 @@ type
 
   { TSardObject }
 
-  TSardObject = class(TmnObject)
-  protected
-  public
-  end;
+  TSardObject = TmnObject;
 
   { TSardObjects }
 
-  TSardObjects<_Object_> = class(TmnObjectList<_Object_>)
+  TSardObjects<_Object_: class> = class(TmnObjectList<_Object_>)
   protected
   public
   end;
 
   { TSardNamedObject }
 
-  TSardNamedObject = class(TSardObject)
+  TSardNamedObject = class(TmnNamedObject)
   private
     FName: string;
   protected
@@ -79,7 +76,7 @@ type
 
   { TsardStack }
 
-  TSardStack<_Object_> = class(TSardObject)
+  TSardStack<_Object_: class> = class(TSardObject)
   protected
     Own: Boolean;
     type
@@ -153,15 +150,17 @@ procedure RaiseError(AError: string; Line: Integer; Column: Integer);
 begin
   if Line > 0 then
   begin
-    raise ESardParserException.Create(AError, Line, Column) at
-    get_caller_addr(get_frame),
-    get_caller_frame(get_frame);
+    raise ESardParserException.Create(AError, Line, Column)
+    {$ifdef FPC}
+    at get_caller_addr(get_frame), get_caller_frame(get_frame)
+    {$endif};
   end
   else
   begin
-    raise EsardException.Create(AError) at
-    get_caller_addr(get_frame),
-    get_caller_frame(get_frame);
+    raise EsardException.Create(AError)
+    {$ifdef FPC}
+    at get_caller_addr(get_frame), get_caller_frame(get_frame)
+    {$endif};
   end;
 end;
 
@@ -223,10 +222,10 @@ function TSardNamedObjects<_Object_>.IsOpenBy(C: Char): Boolean;
 var
   item: TSardNamedObject;
 begin
-  C := LowerCase(C);
+  C := UPCase(C);
   for item in Self do
   begin
-    if (item.Name <> '') and (item.Name[1] = C) then
+    if (item.Name <> '') and (UPCase(item.Name[1]) = C) then
     begin
       Result := True;
       exit;

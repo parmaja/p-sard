@@ -9,8 +9,6 @@ unit sardLexers;
 
 {$IFDEF FPC}
 {$mode delphi}
-{$modeswitch typehelpers}
-{$modeswitch advancedrecords}
 {$ENDIF}
 {$H+}{$M+}
 
@@ -112,6 +110,7 @@ type
   end;
 
   IParser = interface(IInterface)
+    ['{1DCD8B49-E08D-4408-B4BC-9A8C58EE8745}']
     //isKeyword call in setToken if you proceesed it return false
     //You can proceess as to setControl or setOperator
     function IsKeyword(AIdentifier: string): Boolean;
@@ -343,7 +342,7 @@ begin
     end;
     Inc(Column);
   end;
-  collect(text[Started..Column]);
+  collect(SliceText(text, Started, Column));
   Resume := true;
 end;
 

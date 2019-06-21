@@ -12,6 +12,10 @@ unit sardParsers;
 {$ENDIF}
 {$H+}{$M+}
 
+{$ifdef FPC}
+{$define Windows}
+{$endif}
+
 interface
 
 uses
@@ -182,8 +186,7 @@ type
   protected
     FActions: TParserActions;
     FNextCollector: TCollector;
-    function _AddRef: Integer; {$ifdef WINDOWS}stdcall{$else}cdecl{$endif};
-    function _Release: Integer; {$ifdef WINDOWS}stdcall{$else}cdecl{$endif};
+
     function IsKeyword(AIdentifier: string): Boolean; virtual;
 
     procedure SetToken(Token: TSardToken); virtual;
@@ -195,7 +198,16 @@ type
     constructor Create;
     procedure Start; virtual;
     procedure Stop; virtual;
-    function QueryInterface({$ifdef FPC}constref{$else}const{$endif} iid : TGuid; out Obj):HResult; {$ifdef WINDOWS}stdcall{$else}cdecl{$endif};
+
+    {$ifdef FPC}
+    function _AddRef: longint; stdcall;
+    function _Release: longint; stdcall;
+    function QueryInterface(constref iid: tguid; out obj): longint; stdcall;
+    {$else}
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+    function QueryInterface(const IID: TGUID; out Obj): HRESULT; stdcall;
+    {$endif}
     property Actions: TParserActions read FActions;
     property NextCollector: TCollector read FNextCollector;
   end;
@@ -363,15 +375,43 @@ end;
 
 { TParser }
 
-function TParser._AddRef: Integer; stdcall;
+{$ifdef FPC}
+function TParser._AddRef: longint; stdcall;
 begin
   Result := 0;
 end;
 
-function TParser._Release: Integer; stdcall;
+function TParser._Release: longint; stdcall;
 begin
   Result := 0;
 end;
+
+function TParser.QueryInterface(constref iid: tguid; out obj): longint; stdcall;
+begin
+  if GetInterface(IID, Obj) then
+    Result := 0
+  else
+    Result := E_NOINTERFACE;
+end;
+{$else}
+function TParser.QueryInterface(const IID: TGUID; out Obj): HRESULT; stdcall;
+begin
+  if GetInterface(IID, Obj) then
+    Result := 0
+  else
+    Result := E_NOINTERFACE;
+end;
+
+function TParser._AddRef: Integer;
+begin
+  Result := 0;
+end;
+
+function TParser._Release: Integer;
+begin
+  Result := 0;
+end;
+{$endif}
 
 function TParser.IsKeyword(AIdentifier: string): Boolean;
 begin
@@ -417,14 +457,6 @@ end;
 constructor TParser.Create;
 begin
   inherited Create;
-end;
-
-function TParser.QueryInterface(constref iid: TGuid; out Obj): HResult; stdcall;
-begin
-  if GetInterface(IID, Obj) then
-    Result := 0
-  else
-    Result := E_NOINTERFACE;
 end;
 
 { TControllerDefines }
@@ -664,7 +696,7 @@ end;
 
 constructor TCollectorDeclare.Create(AParser: TParser);
 begin
-  inherited
+  inherited Create(AParser, nil);
 end;
 
 procedure TCollectorDeclare.AddControl(AControl: TSardControl);
