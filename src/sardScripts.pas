@@ -184,10 +184,9 @@ var
   v: TRunValue;
 begin
   v := Env.Stack.Current.Variables.Find('s');
-  if (v <> nil) then
+  if (v <> nil) and (v.Value <> nil) then
   begin
-      //if (v.value !is null) //TODO it is bad, we should not have it null
-      WriteLn(V.Value.AsText);
+    WriteLn(V.Value.AsText);
   end;
 end;
 
