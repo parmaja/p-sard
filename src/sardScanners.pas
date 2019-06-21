@@ -16,7 +16,7 @@ interface
 
 uses
   mnUtils, SysUtils,
-  sardClasses, sardObjects, sardLexers;
+  sardClasses, sardLexers;
 
 const
   sEOL = [#0, #13, #10];
@@ -118,29 +118,6 @@ type
     procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(Text: string; Column: Integer): Boolean; override;
   public
-  end;
-
-const
-  sWhitespace = sEOL + [' ', #8];
-  sNumberOpenChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-  sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
-  sSymbolChars = ['"', '''', '\']; //deprecated;
-  sIdentifierSeparator = '.';
-
-type
-
-  { TCodeLexer }
-
-  TCodeLexer = class(TLexer)
-  public
-    constructor Create; override;
-    function IsEOL(vChar: Char): Boolean; override;
-    function IsWhiteSpace(vChar: char; vOpen: Boolean =true): Boolean; override;
-    function IsControl(vChar: Char): Boolean; override;
-    function IsOperator(vChar: Char): Boolean; override;
-    function IsNumber(vChar: Char; vOpen: Boolean =true): Boolean; override;
-    function IsSymbol(vChar: Char): Boolean; override;
-    function IsIdentifier(vChar: Char; vOpen: Boolean =true): Boolean;
   end;
 
 implementation
@@ -321,111 +298,6 @@ end;
 function TWhitespace_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
   Result := Lexer.isWhiteSpace(Text[Column]);
-end;
-
-{ TCodeLexer }
-
-constructor TCodeLexer.Create;
-begin
-  inherited;
-  with Symbols do
-  begin
-  end;
-
-  with Controls do
-  begin
-    Add('', ctlNone);////TODO i feel it is so bad
-    Add('', ctlToken);
-    Add('', ctlOperator);
-    Add('', ctlStart);
-    Add('', ctlStop);
-    //Add('', ctlDeclare);
-    //Add('', ctlAssign);
-
-    Add('(', ctlOpenParams);
-    Add('[', ctlOpenArray);
-    Add('{', ctlOpenBlock);
-    Add(')', ctlCloseParams);
-    Add(']', ctlCloseArray);
-    Add('}', ctlCloseBlock);
-    Add(';', ctlEnd);
-    Add(',', ctlNext);
-    Add(':', ctlDeclare);
-    Add(':=', ctlAssign);
-  end;
-
-  with Operators do
-  begin
-    Add(TOpPlus.Create);
-    Add(TOpSub.Create);
-    Add(TOpMultiply.Create);
-    Add(TOpDivide.Create);
-
-    Add(TOpEqual.Create);
-    Add(TOpNotEqual.Create);
-    Add(TOpAnd.Create);
-    Add(TOpOr.Create);
-    Add(TOpNot.Create);
-
-    Add(TOpGreater.Create);
-    Add(TOpLesser.Create);
-
-    Add(TOpPower.Create);
-  end;
-
-  with (Self) do
-  begin
-      Add(TWhitespace_Tokenizer.Create);
-      Add(TBlockComment_Tokenizer.Create);
-      Add(TComment_Tokenizer.Create);
-      Add(TLineComment_Tokenizer.Create);
-      Add(TNumber_Tokenizer.Create);
-      Add(TSQString_Tokenizer.Create);
-      Add(TDQString_Tokenizer.Create);
-      Add(TEscape_Tokenizer.Create);
-      Add(TControl_Tokenizer.Create);
-      Add(TOperator_Tokenizer.Create); //Register it after comment because comment take /*
-      Add(TIdentifier_Tokenizer.Create);//Sould be last one
-  end;
-
-end;
-
-function TCodeLexer.IsEOL(vChar: Char): Boolean;
-begin
-  Result := CharInSet(vChar, sEOL);
-end;
-
-function TCodeLexer.IsWhiteSpace(vChar: char; vOpen: Boolean): Boolean;
-begin
-  Result := CharInSet(vChar, sWhitespace);
-end;
-
-function TCodeLexer.IsControl(vChar: Char): Boolean;
-begin
-  Result := Controls.IsOpenBy(vChar);
-end;
-
-function TCodeLexer.IsOperator(vChar: Char): Boolean;
-begin
-  Result := Operators.IsOpenBy(vChar);
-end;
-
-function TCodeLexer.IsNumber(vChar: Char; vOpen: Boolean): Boolean;
-begin
-  if (vOpen) then
-    Result := CharInSet(vChar, sNumberOpenChars)
-  else
-    Result := CharInSet(vChar, sNumberChars);
-end;
-
-function TCodeLexer.IsSymbol(vChar: Char): Boolean;
-begin
-  Result := CharInSet(vChar, sSymbolChars) or Symbols.IsOpenBy(vChar);
-end;
-
-function TCodeLexer.IsIdentifier(vChar: Char; vOpen: Boolean): Boolean;
-begin
-  Result := inherited isIdentifier(vChar, vOpen); //we do not need to override it, but it is nice to see it here
 end;
 
 end.

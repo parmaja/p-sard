@@ -47,7 +47,7 @@ type
     typeNumber,
     typeColor,
     typeString,
-    typeEscape, //Maybe Strings escape
+    typeEscape, //Strings escape outside
     typeComment
   );
 
@@ -62,7 +62,7 @@ type
 
   TSardSymbolicObject = class abstract(TSardNamedObject)
   public
-    IsSymbol: Boolean; //when check is identifire do not use IsSymbol = false
+//    IsSymbol: Boolean; //when check is identifire do not use IsSymbol = false
   end;
 
   { TSardControl }
