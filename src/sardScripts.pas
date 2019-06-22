@@ -18,29 +18,17 @@ uses
   Classes, SysUtils,
   sardClasses, sardObjects, sardLexers, sardScanners, sardParsers;
 
-const
-  sWhitespace = sEOL + [' ', #8];
-  sNumberOpenChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-  sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
-  sSymbolChars = ['"', '''', '\']; //deprecated;
-  sIdentifierSeparator = '.';
-
 type
-  { TCodeScanner }
-
-  TCodeScanner = class(TScanner)
-  protected
-    Block: TBlock_Node;
-    Parser: TCodeParser;
-    procedure DoStart; override;
-    procedure DoStop; override;
-  public
-    constructor Create(ABlock: TBlock_Node);
-  end;
-
   { TCodeLexer }
 
   TCodeLexer = class(TLexer)
+  protected
+    const
+      sWhitespace = sEOL + [' ', #8];
+      sNumberOpenChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+      sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
+      sSymbolChars = ['"', '''', '\']; //deprecated;
+      sIdentifierSeparator = '.';
   public
     constructor Create; override;
     function IsEOL(vChar: Char): Boolean; override;
@@ -72,6 +60,18 @@ type
     destructor Destroy; override;
     procedure Start; override;
     procedure Stop; override;
+  end;
+
+  { TCodeScanner }
+
+  TCodeScanner = class(TScanner)
+  protected
+    Block: TBlock_Node;
+    Parser: TCodeParser;
+    procedure DoStart; override;
+    procedure DoStop; override;
+  public
+    constructor Create(ABlock: TBlock_Node);
   end;
 
   { TVersion_Const_Node }

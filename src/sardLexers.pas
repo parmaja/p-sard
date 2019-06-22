@@ -255,6 +255,9 @@ type
     property Lexer: TLexer read FLexer;
   end;
 
+  TScript = class(TSardScript)
+  end;
+
 function Token(AControl: TsardControlID; ATokenType: TSardTokenType; AValue: string): TSardToken;
 
 implementation

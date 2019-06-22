@@ -7,7 +7,8 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, SysUtils, CustApp,
-  sardClasses, sardLexers, sardScanners, sardObjects, sardParsers, sardScripts;
+  sardClasses, sardLexers, sardScanners, sardObjects, sardParsers, sardScripts,
+  sardJSON;
 
 type
 
@@ -30,6 +31,7 @@ var
   ErrorMsg: String;
   Script: TSardScript;
   Lines: TStringList;
+  FileName: string;
 begin
   // quick check parameters
   ErrorMsg := CheckOptions('h', 'help');
