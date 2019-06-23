@@ -24,7 +24,7 @@ uses
   sardClasses;
 
 type
-  TsardControlID = (
+  TSardControlID = (
     ctlNone,
     ctlToken,//* Token like Identifier, Keyword or Number
     ctlOperator,//
@@ -143,37 +143,6 @@ type
   end;
 
   TSardTokenizerClass = class of TTokenizer;
-
-  { TMultiLine_Tokenizer }
-
-  TMultiLine_Tokenizer = class abstract(TTokenizer)
-  protected
-    OpenSymbol: string;
-    CloseSymbol: string;
-    procedure Finish; virtual; abstract;
-    procedure Collect(Text: string); virtual; abstract;
-
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
-  end;
-
-  { TBufferedMultiLine_Tokenizer }
-
-  TBufferedMultiLine_Tokenizer = class(TMultiLine_Tokenizer)
-  private
-    Buffer: string;
-  protected
-    procedure SetToken(Text: string); virtual; abstract;
-    procedure Collect(Text: string); override;
-    procedure Finish; override;
-  end;
-
-  { TString_Tokenizer }
-
-  TString_Tokenizer = class abstract(TBufferedMultiLine_Tokenizer)
-  public
-    procedure SetToken(Text: string); override;
-  end;
 
   { TLexer }
 
@@ -396,57 +365,6 @@ begin
   DoStop;
   FLexer := nil;
   FActive := False;
-end;
-
-{ TMultiLine_Tokenizer }
-
-procedure TMultiLine_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
-begin
-  if not Resume then
-  begin
-    Column := Column + Length(openSymbol);
-  end;
-
-  while (IndexInStr(Column, Text)) do //Use < instead of <= in C, D
-  begin
-    if ScanCompare(CloseSymbol, Text, Column) then
-    begin
-      if (not Lexer.TrimSymbols) then
-        Column := Column + Length(CloseSymbol);
-      Collect(SliceText(Text, Started, Column));
-      if (Lexer.TrimSymbols) then
-          Column := Column + Length(CloseSymbol);
-      Finish;
-      Resume := False;
-      exit;
-    end;
-    Inc(Column);
-  end;
-  collect(SliceText(text, Started, Column));
-  Resume := true;
-end;
-
-function TMultiLine_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
-begin
-  Result := ScanText(openSymbol, text, column);
-end;
-
-{ TBufferedMultiLine_Tokenizer }
-
-procedure TBufferedMultiLine_Tokenizer.Collect(Text: string);
-begin
-  Buffer := Buffer + Text;
-end;
-
-procedure TBufferedMultiLine_Tokenizer.Finish;
-begin
-  SetToken(Buffer);
-  Buffer := '';
-end;
-
-procedure TString_Tokenizer.SetToken(Text: string);
-begin
-  Lexer.Parser.SetToken(Token(ctlToken, typeString, Text));
 end;
 
 { TLexer }

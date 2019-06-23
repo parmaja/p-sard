@@ -18,6 +18,11 @@ uses
   Classes, SysUtils, Contnrs,
   mnClasses, mnUtils;
 
+const
+  sEOL = [#0, #13, #10];
+
+  sEscape = '\';
+
 type
   Bool = Boolean;
   Text = string;

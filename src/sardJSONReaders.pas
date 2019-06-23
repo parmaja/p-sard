@@ -16,7 +16,7 @@ interface
 
 uses
   Classes, SysUtils,
-  sardClasses, sardLexers, sardScanners, sardParsers;
+  sardClasses, sardParsers, sardStandards;
 
 type
 
