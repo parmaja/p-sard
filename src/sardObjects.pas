@@ -63,7 +63,7 @@ interface
 
 uses
   Classes, SysUtils,
-  sardClasses, sardLexers;
+  sardClasses, sardParsers;
 
 const
   sSardVersion = '0.01';

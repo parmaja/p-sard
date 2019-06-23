@@ -104,7 +104,6 @@ type
     procedure Clear;
     function IsEmpty: Boolean;
     procedure Push(vObject: _Object_); overload;
-    //function Push: _Object_; overload;
     function Pull: _Object_; //Pop but do not delete the object
     procedure Pop;
     function Peek: _Object_;
@@ -349,12 +348,5 @@ begin
   Inc(FCount);
   AfterPush;
 end;
-{
-function TSardStack<_Object_>.Push: _Object_;
-begin
-  Result := _Object_.Create;
-  Push(Result);
-end;
-}
 
 end.

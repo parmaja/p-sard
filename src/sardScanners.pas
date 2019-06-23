@@ -16,7 +16,7 @@ interface
 
 uses
   mnUtils, SysUtils,
-  sardClasses, sardLexers;
+  sardClasses, sardParsers;
 
 const
   sEOL = [#0, #13, #10];
@@ -249,7 +249,7 @@ end;
 
 function TControl_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
 begin
-  Result := Lexer.isControl(Text[Column]);
+  Result := Lexer.IsControl(Text[Column]);
 end;
 
 { TNumber_Tokenizer }

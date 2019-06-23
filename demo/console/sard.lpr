@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Classes, SysUtils, CustApp,
   sardClasses, sardLexers, sardScanners, sardObjects, sardParsers, sardScripts,
-  sardJSON;
+  sardJSONReaders;
 
 type
 
@@ -29,7 +29,7 @@ type
 procedure TSardApplication.DoRun;
 var
   ErrorMsg: String;
-  Script: TSardScript;
+  Script: TScript;
   Lines: TStringList;
   FileName: string;
 begin
@@ -51,17 +51,24 @@ begin
   try
     if ParamCount > 0 then
     begin
-      Script := TSardScript.Create;
+      FileName := ParamStr(1);
+      if SameText(ExtractFileExt(FileName), '.json') then
+        Script := TJsonScript.Create(nil)
+      else
+        Script := TCodeScript.Create;
       try
         Lines := TStringList.Create;
         try
-          Lines.LoadFromFile(ParamStr(1));
+          Lines.LoadFromFile(FileName);
           //Lines.LoadFromFile(Location + 'test.sard');
           //Lines.Text := 'x:{:=10};';
           //Lines.Text := 'print(10);print(20)';
           Script.Compile(Lines);
-          Script.Run;
-          WriteLn(Script.Result);
+          if Script is TCodeScript then
+          begin
+            (Script as TCodeScript).Run;
+            WriteLn((Script as TCodeScript).Result);
+          end;
           WriteLn;
         finally
           FreeAndNil(Lines);
