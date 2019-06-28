@@ -20,22 +20,6 @@ uses
   sardClasses, sardParsers, sardStandards;
 
 type
-  { TLineComment_Tokenizer }
-
-  TLineComment_Tokenizer = class(TTokenizer)
-  protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
-  end;
-
-  { TComment_Tokenizer }
-
-  TComment_Tokenizer = class(TBufferedMultiLine_Tokenizer)
-  public
-    constructor Create; override;
-    procedure SetToken(Text: string); override;
-  end;
-
   TJSONParser = class;
 
   { TControllerNormal }
@@ -72,10 +56,10 @@ type
   private
   protected
     JSONName: string;
-    JSONObject: TPersistent;
+    JSONObject: TObject;
     function CreateController: TController; override;
   public
-    constructor Create(AParser: TParser; AJSONObject: TPersistent);
+    constructor Create(AParser: TParser; AJSONObject: TObject);
     procedure Prepare; override;
     procedure Post; override;
     procedure AddToken(Token: TSardToken); override;
@@ -95,10 +79,10 @@ type
   private
   protected
     JSONName: string;
-    JSONObject: TPersistent;
+    JSONObject: TObject;
     function CreateController: TController; override;
   public
-    constructor Create(AParser: TParser; AName: string; AJSONObject: TPersistent);
+    constructor Create(AParser: TParser; AName: string; AJSONObject: TObject);
     procedure Prepare; override;
     procedure AddToken(Token: TSardToken); override;
   end;
@@ -129,11 +113,11 @@ type
   TJSONScanner = class(TScanner)
   protected
     Parser: TJSONParser;
-    FRoot: TPersistent;
+    FRoot: TObject;
     function CreateParser: TParser; override;
   public
-    constructor Create(ARoot: TPersistent);
-    property Root: TPersistent read FRoot;
+    constructor Create(ARoot: TObject);
+    property Root: TObject read FRoot;
   end;
 
   { TJSONParser }
@@ -143,8 +127,9 @@ type
     LastControl: TSardControlID;
     Lexer: TLexer;
     procedure DoQueue;
+    procedure SetObject(AJSONObject: TObject; AJSONName: string; AJSONValue: string); virtual;
   public
-    constructor Create(ALexer: TLexer; AJSONObject: TPersistent);
+    constructor Create(ALexer: TLexer; AJSONObject: TObject);
     destructor Destroy; override;
 
     procedure SetToken(Token: TSardToken); override;
@@ -153,16 +138,30 @@ type
     procedure Stop; override;
   end;
 
+  { TRTTIJSONParser }
+
+  TRTTIJSONParser = class(TJSONParser)
+  protected
+    procedure SetObject(AJSONObject: TObject; AJSONName: string; AJSONValue: string); override;
+  end;
+
+  { TDOMJSONParser }
+
+  TDOMJSONParser = class(TJSONParser)
+  protected
+    procedure SetObject(AJSONObject: TObject; AJSONName: string; AJSONValue: string); override;
+  end;
+
   { TJSONScript }
 
   TJSONScript = class(TScript)
   public
-    FRoot: TPersistent;
+    FRoot: TObject;
     Scanner: TJSONScanner;
-    constructor Create(ARoot: TPersistent);
+    constructor Create(ARoot: TObject);
     destructor Destroy; override;
     procedure Compile(Lines: TStringList); override; overload;
-    property Root: TPersistent read FRoot;
+    property Root: TObject read FRoot;
   end;
 
 procedure ReadProperty(Instance: TObject; PropInfo: PPropInfo; const Value: string);
@@ -172,6 +171,19 @@ implementation
 
 uses
   StrUtils;
+
+{ TDOMJSONParser }
+
+procedure TDOMJSONParser.SetObject(AJSONObject: TObject; AJSONName: string; AJSONValue: string);
+begin
+end;
+
+{ TRTTIJSONParser }
+
+procedure TRTTIJSONParser.SetObject(AJSONObject: TObject; AJSONName: string; AJSONValue: string);
+begin
+  ReadPropertyValue(AJSONObject, AJSONName, AJSONValue);
+end;
 
 { TJSONControllerValue }
 
@@ -213,7 +225,7 @@ begin
   Result := TJSONControllerValue.Create(Self);
 end;
 
-constructor TJSONCollectorValue.Create(AParser: TParser; AName: string; AJSONObject: TPersistent);
+constructor TJSONCollectorValue.Create(AParser: TParser; AName: string; AJSONObject: TObject);
 begin
   inherited Create(AParser);
   JSONName := AName;
@@ -227,9 +239,9 @@ end;
 
 procedure TJSONCollectorValue.AddToken(Token: TSardToken);
 begin
-  if (Token.TokenType = typeIdentifier) or (Token.TokenType = typeString) then
+  if (Token.TokenType = typeIdentifier) or (Token.TokenType = typeString) or (Token.TokenType = typeNumber) then
   begin
-    ReadPropertyValue(JSONObject, JSONName, DequoteStr(Token.Value));
+    (Parser as TJSONParser).SetObject(JSONObject, JSONName, DequoteStr(Token.Value));
   end;
 end;
 
@@ -258,7 +270,7 @@ begin
   Result := TJSONControllerName.Create(Self);
 end;
 
-constructor TJSONCollectorName.Create(AParser: TParser; AJSONObject: TPersistent);
+constructor TJSONCollectorName.Create(AParser: TParser; AJSONObject: TObject);
 begin
   inherited Create(AParser);
   JSONObject := AJSONObject;
@@ -334,39 +346,9 @@ begin
   end;
 end;
 
-{ TLineComment_Tokenizer }
-
-procedure TLineComment_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
-begin
-  Inc(Column);
-  while IndexInStr(Column, Text) and (not Lexer.IsEOL(Text[Column])) do
-    inc(Column);
-  inc(Column);//Eat the EOF char
-  Resume := False;
-end;
-
-function TLineComment_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
-begin
-  Result := ScanText('//', Text, Column);
-end;
-
-{ TComment_Tokenizer }
-
-constructor TComment_Tokenizer.Create;
-begin
-  inherited Create;
-  OpenSymbol := '/*';
-  CloseSymbol := '*/';
-end;
-
-procedure TComment_Tokenizer.SetToken(Text: string);
-begin
-  Lexer.Parser.SetToken(Token(ctlToken, typeComment, text));
-end;
-
 { TJSONScript }
 
-constructor TJSONScript.Create(ARoot: TPersistent);
+constructor TJSONScript.Create(ARoot: TObject);
 begin
   inherited Create;
   FRoot := ARoot;
@@ -388,10 +370,10 @@ end;
 
 function TJSONScanner.CreateParser: TParser;
 begin
-  Result := TJSONParser.Create(Lexer, FRoot);
+  Result := TRTTIJSONParser.Create(Lexer, FRoot);
 end;
 
-constructor TJSONScanner.Create(ARoot: TPersistent);
+constructor TJSONScanner.Create(ARoot: TObject);
 begin
   inherited Create;
   FRoot := ARoot;
@@ -440,7 +422,12 @@ begin
   end
 end;
 
-constructor TJSONParser.Create(ALexer: TLexer; AJSONObject: TPersistent);
+procedure TJSONParser.SetObject(AJSONObject: TObject; AJSONName: string; AJSONValue: string);
+begin
+
+end;
+
+constructor TJSONParser.Create(ALexer: TLexer; AJSONObject: TObject);
 begin
   inherited Create;
   Lexer := ALexer;
@@ -499,9 +486,7 @@ begin
       Add(TComment_Tokenizer.Create);
       Add(TLineComment_Tokenizer.Create);
       Add(TNumber_Tokenizer.Create);
-      Add(TSQString_Tokenizer.Create);
       Add(TDQString_Tokenizer.Create);
-      Add(TEscape_Tokenizer.Create);
       Add(TControl_Tokenizer.Create);
       Add(TIdentifier_Tokenizer.Create);//Sould be last one
   end;
@@ -709,7 +694,7 @@ begin
   end;
 end;
 
-function ReadVariant(Value:string; ValueType:string):Variant;
+function ReadVariant(Value:string; ValueType:string): Variant;
 var
   aSingle:Single;
   aDouble:Double;

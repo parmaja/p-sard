@@ -1,4 +1,4 @@
-program sard;
+program json_demo;
 
 {$mode objfpc}{$H+}
 
@@ -7,7 +7,8 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, SysUtils, CustApp,
-  sardClasses, sardObjects, sardParsers, sardScripts;
+  sardClasses, sardObjects, sardParsers,
+  sardJSONReaders;
 
 type
 
@@ -76,6 +77,7 @@ var
   Script: TScript;
   Lines: TStringList;
   FileName: string;
+  JSONRoot: TMyJSONObject;
 begin
   // quick check parameters
   ErrorMsg := CheckOptions('h', 'help');
@@ -96,7 +98,8 @@ begin
     if ParamCount > 0 then
     begin
       FileName := ParamStr(1);
-      Script := TCodeScript.Create;
+      JSONRoot:=TMyJSONObject.Create;
+      Script := TJsonScript.Create(JSONRoot);
       try
         Lines := TStringList.Create;
         try
@@ -105,11 +108,12 @@ begin
           //Lines.Text := 'x:{:=10};';
           //Lines.Text := 'print(10);print(20)';
           Script.Compile(Lines);
-          if Script is TCodeScript then
-          begin
-            (Script as TCodeScript).Run;
-            WriteLn((Script as TCodeScript).Result);
-          end;
+          WriteLn('Name: ', JSONRoot.Name);
+          WriteLn('Value: ', JSONRoot.Value);
+          WriteLn('Caption: ', JSONRoot.Caption);
+          WriteLn('Tag: ', JSONRoot.Tag);
+          FreeAndNil(JSONRoot);
+          ReadLn;
         finally
           FreeAndNil(Lines);
         end;
