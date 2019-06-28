@@ -353,7 +353,7 @@ type
   TText_Node = class(TConst_Node)
   public
     Value: string;
-    constructor Create(AValue: string);
+    constructor Create(AValue: string); overload;
     procedure Assign(AFromObject: TNode); override;
     function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
     function ToText(out outValue: Text): Boolean; override;

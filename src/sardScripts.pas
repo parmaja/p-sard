@@ -45,18 +45,6 @@ type
 
   TCodeParser = class;
 
-  { TCodeScanner }
-
-  TCodeScanner = class(TScanner)
-  protected
-    Block: TBlock_Node;
-    Parser: TCodeParser;
-    procedure DoStart; override;
-    procedure DoStop; override;
-  public
-    constructor Create(ABlock: TBlock_Node);
-  end;
-
   { TInstruction }
 
   TInstruction = record
@@ -86,7 +74,6 @@ type
     function SetAssign: TAssign_Node;
     function SetDeclare: TDeclare_Node;
   end;
-
 
   { TControllerNormal }
 
@@ -194,6 +181,11 @@ type
   protected
     LastControl: TSardControlID;
     Lexer: TLexer;
+    procedure DoQueue;
+  public
+    constructor Create(ALexer: TLexer; AStatements: TStatements);
+    destructor Destroy; override;
+
     function IsKeyword(AIdentifier: string): Boolean; override;
     procedure SetToken(Token: TSardToken); override;
     procedure SetOperator(AOperator: TSardOperator); override;
@@ -201,13 +193,19 @@ type
     procedure SetWhiteSpaces(Whitespaces: string); override;
     procedure AfterPush; override;
     procedure BeforePop; override;
-    procedure DoQueue;
-
-  public
-    constructor Create(ALexer: TLexer; AStatements: TStatements);
-    destructor Destroy; override;
     procedure Start; override;
     procedure Stop; override;
+  end;
+
+  { TCodeScanner }
+
+  TCodeScanner = class(TScanner)
+  protected
+    Block: TBlock_Node;
+    Parser: TCodeParser;
+    function CreateParser: TParser; override;
+  public
+    constructor Create(ABlock: TBlock_Node);
   end;
 
   { TVersion_Const_Node }
@@ -562,21 +560,9 @@ end;
 
 { TCodeScanner }
 
-procedure TCodeScanner.DoStart;
+function TCodeScanner.CreateParser: TParser;
 begin
-  inherited DoStart;
-  Parser := TCodeParser.Create(Lexer, Block.Statements);
-
-  Lexer.Parser := Parser;
-  Lexer.Start;
-end;
-
-procedure TCodeScanner.DoStop;
-begin
-  Lexer.Stop;
-  Lexer.Parser := nil;
-  FreeAndNil(Parser);
-  inherited;
+  Result := TCodeParser.Create(Lexer, Block.Statements);
 end;
 
 constructor TCodeScanner.Create(ABlock: TBlock_Node);
@@ -617,7 +603,7 @@ begin
   Main.DeclareObject(PI_Const);
 
   Print_Object := TPrint_object_Node.Create();
-  Print_Object.name := 'print';
+  Print_Object.Name := 'print';
   with Main.DeclareObject(Print_Object) do
     Defines.Parameters.Add('s', 'string');
 
@@ -656,6 +642,7 @@ begin
   if (v <> nil) and (v.Value <> nil) then
   begin
     WriteLn(V.Value.AsText);
+    Done := true;
   end;
 end;
 

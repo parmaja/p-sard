@@ -7,10 +7,29 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, SysUtils, CustApp,
-  sardClasses, sardLexers, sardScanners, sardObjects, sardParsers, sardScripts,
+  sardClasses, sardObjects, sardParsers, sardScripts,
   sardJSONReaders;
 
 type
+
+  { TMyJSONObject }
+
+  TMyJSONObject = class(TPersistent)
+  private
+    FCaption: string;
+    FName: string;
+    FTag: string;
+    FValue: string;
+    procedure SetCaption(AValue: string);
+    procedure SetName(AValue: string);
+    procedure SetTag(AValue: string);
+    procedure SetValue(AValue: string);
+  published
+    property Name: string read FName write SetName;
+    property Value: string read FValue write SetValue;
+    property Caption: string read FCaption write SetCaption;
+    property Tag: string read FTag write SetTag;
+  end;
 
   { TSardApplication }
 
@@ -24,6 +43,32 @@ type
     procedure WriteHelp; virtual;
   end;
 
+{ TMyJSONObject }
+
+procedure TMyJSONObject.SetCaption(AValue: string);
+begin
+  if FCaption =AValue then Exit;
+  FCaption :=AValue;
+end;
+
+procedure TMyJSONObject.SetName(AValue: string);
+begin
+  if FName =AValue then Exit;
+  FName :=AValue;
+end;
+
+procedure TMyJSONObject.SetTag(AValue: string);
+begin
+  if FTag =AValue then Exit;
+  FTag :=AValue;
+end;
+
+procedure TMyJSONObject.SetValue(AValue: string);
+begin
+  if FValue =AValue then Exit;
+  FValue :=AValue;
+end;
+
 { TSardApplication }
 
 procedure TSardApplication.DoRun;
@@ -32,6 +77,7 @@ var
   Script: TScript;
   Lines: TStringList;
   FileName: string;
+  JSONRoot: TMyJSONObject;
 begin
   // quick check parameters
   ErrorMsg := CheckOptions('h', 'help');
@@ -53,7 +99,10 @@ begin
     begin
       FileName := ParamStr(1);
       if SameText(ExtractFileExt(FileName), '.json') then
-        Script := TJsonScript.Create(nil)
+      begin
+        JSONRoot:=TMyJSONObject.Create;
+        Script := TJsonScript.Create(JSONRoot);
+      end
       else
         Script := TCodeScript.Create;
       try
@@ -70,6 +119,13 @@ begin
             WriteLn((Script as TCodeScript).Result);
           end;
           WriteLn;
+
+          if JSONRoot <> nil then
+          begin
+            WriteLn(JSONRoot.Caption);
+            FreeAndNil(JSONRoot);
+          end;
+          ReadLn;
         finally
           FreeAndNil(Lines);
         end;

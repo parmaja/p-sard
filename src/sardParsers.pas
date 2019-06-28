@@ -116,6 +116,7 @@ type
   TParser = class;
   TLexer = class;
   TScanner = class;
+  TCollector = class;
   TController = class;
 
   {**
@@ -138,7 +139,6 @@ type
     procedure Switched;
   public
     property Lexer: TLexer read FLexer;
-    //constructor Create(ALexer: TLexer); virtual;
     constructor Create; virtual;
   end;
 
@@ -188,42 +188,16 @@ type
     property Operators: TSardOperators read FOperators;
   end;
 
-  { TScanner }
+  { TController }
 
-  TScanner = class abstract(TSardObjects<TLexer>)
+  TController = class(TSardObject)
   private
-    FActive: Boolean;
-    FCharset: string;
-    FLine: Integer;
-    FVer: string;
-    FLexer: TLexer;
-  protected
-    procedure Added(Item: TLexer); override;
-    procedure DoStart; virtual;
-    procedure DoStop; virtual;
+    FCollector: TCollector;
   public
-    procedure ScanLine(Text: String; Line: Integer);
-    procedure Scan(Lines: TStringList); overload;
-    procedure Start;
-    procedure Stop;
-
-    property Active: Boolean read FActive;
-    property Ver: string read FVer;
-    property Charset: string read FCharset;
-    property Line: Integer read FLine;
-    property Lexer: TLexer read FLexer;
+    constructor Create(ACollector: TCollector);
+    procedure SetControl(Control: TSardControl); virtual; abstract;
+    property Collector: TCollector read FCollector;
   end;
-
-  { TScript }
-
-  TScript = class(TSardObject)
-  public
-    procedure Compile(Text: string); overload;
-    procedure Compile(Lines: TStringList); virtual; abstract; overload;
-  end;
-
-  TParserAction = (paPop, paBypass);
-  TParserActions = set of TParserAction;
 
   { TCollector }
 
@@ -251,16 +225,8 @@ type
     property Parser: TParser read FParser;
   end;
 
-  { TController }
-
-  TController = class(TSardObject)
-  private
-    FCollector: TCollector;
-  public
-    constructor Create(ACollector: TCollector);
-    procedure SetControl(Control: TSardControl); virtual; abstract;
-    property Collector: TCollector read FCollector;
-  end;
+  TParserAction = (paPop, paBypass);
+  TParserActions = set of TParserAction;
 
   { TParser }
 
@@ -282,6 +248,43 @@ type
 
     property Actions: TParserActions read FActions;
     property NextCollector: TCollector read FNextCollector;
+  end;
+
+  { TScanner }
+
+  TScanner = class abstract(TSardObjects<TLexer>)
+  private
+    FActive: Boolean;
+    FCharset: string;
+    FLine: Integer;
+    FVer: string;
+    FLexer: TLexer;
+    FParser: TParser;
+  protected
+    procedure Added(Item: TLexer); override;
+    procedure DoStart; virtual;
+    procedure DoStop; virtual;
+    function CreateParser: TParser; virtual; abstract;
+  public
+    procedure ScanLine(Text: String; Line: Integer);
+    procedure Scan(Lines: TStringList); overload;
+    procedure Start;
+    procedure Stop;
+
+    property Active: Boolean read FActive;
+    property Ver: string read FVer;
+    property Charset: string read FCharset;
+    property Line: Integer read FLine;
+    property Lexer: TLexer read FLexer;
+    property Parser: TParser read FParser;
+  end;
+
+  { TScript }
+
+  TScript = class(TSardObject)
+  public
+    procedure Compile(Text: string); overload;
+    procedure Compile(Lines: TStringList); virtual; abstract; overload;
   end;
 
 function Token(AControl: TsardControlID; ATokenType: TSardTokenType; AValue: string): TSardToken;
@@ -320,7 +323,6 @@ end;
 
 procedure TScanner.DoStop;
 begin
-
 end;
 
 procedure TScanner.ScanLine(Text: String; Line: Integer);
@@ -355,6 +357,10 @@ begin
     RaiseError('There is no lexers added');
   FActive := True;
   FLexer := Self[0]; //First one
+
+  FParser := CreateParser;
+  FLexer.Parser := Parser;
+  FLexer.Start;
   DoStart;
 end;
 
@@ -363,6 +369,9 @@ begin
   if not Active then
     RaiseError('Already closed');
   DoStop;
+  Lexer.Stop;
+  Lexer.Parser := nil;
+  FreeAndNil(FParser);
   FLexer := nil;
   FActive := False;
 end;
@@ -509,6 +518,8 @@ end;
 
 procedure TLexer.Start;
 begin
+  if Parser = nil then
+    RaiseError('Parser should be not null');
   Parser.Start;
 end;
 
@@ -576,7 +587,6 @@ end;
 constructor TTokenizer.Create;
 begin
   inherited Create;
-//  FLexer := ALexer;
 end;
 
 { TSardControl }
@@ -636,7 +646,8 @@ end;
 
 procedure TParser.Start;
 begin
-
+  if Current = nil then
+    RaiseError('At last you need one collector push');
 end;
 
 procedure TParser.Stop;
