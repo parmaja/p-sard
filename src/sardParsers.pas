@@ -250,6 +250,8 @@ type
     property NextCollector: TCollector read FNextCollector;
   end;
 
+  TParserClass = class of TParser;
+
   { TScanner }
 
   TScanner = class abstract(TSardObjects<TLexer>)
@@ -258,7 +260,7 @@ type
     FCharset: string;
     FLine: Integer;
     FVer: string;
-    FLexer: TLexer;
+    FCurrent: TLexer;
     FParser: TParser;
   protected
     procedure Added(Item: TLexer); override;
@@ -275,16 +277,8 @@ type
     property Ver: string read FVer;
     property Charset: string read FCharset;
     property Line: Integer read FLine;
-    property Lexer: TLexer read FLexer;
+    property Current: TLexer read FCurrent;
     property Parser: TParser read FParser;
-  end;
-
-  { TScript }
-
-  TScript = class(TSardObject)
-  public
-    procedure Compile(Text: string); overload;
-    procedure Compile(Lines: TStringList); virtual; abstract; overload;
   end;
 
 function Token(AControl: TsardControlID; ATokenType: TSardTokenType; AValue: string): TSardToken;
@@ -295,19 +289,6 @@ uses
   StrUtils;
 
 { TScript }
-
-procedure TScript.Compile(Text: string);
-var
-  Lines: TStringList;
-begin
-  Lines := TStringList.Create;
-  try
-    Lines.Text := Text;
-    Compile(Lines);
-  finally
-    FreeAndNil(Lines);
-  end;
-end;
 
 { TScanner }
 
@@ -334,7 +315,7 @@ begin
   FLine := Line;
   Column := 1;
   //Column := 0; when convert it to C, D
-  Lexer.ScanLine(Text, Line, Column);
+  Current.ScanLine(Text, Line, Column);
 end;
 
 procedure TScanner.Scan(Lines: TStringList);
@@ -356,11 +337,11 @@ begin
   if Count = 0 then
     RaiseError('There is no lexers added');
   FActive := True;
-  FLexer := Self[0]; //First one
+  FCurrent := Self[0]; //First one
 
   FParser := CreateParser;
-  FLexer.Parser := Parser;
-  FLexer.Start;
+  FCurrent.Parser := Parser;
+  FCurrent.Start;
   DoStart;
 end;
 
@@ -369,10 +350,10 @@ begin
   if not Active then
     RaiseError('Already closed');
   DoStop;
-  Lexer.Stop;
-  Lexer.Parser := nil;
+  Current.Stop;
+  Current.Parser := nil;
   FreeAndNil(FParser);
-  FLexer := nil;
+  FCurrent := nil;
   FActive := False;
 end;
 

@@ -74,7 +74,7 @@ end;
 procedure TSardApplication.DoRun;
 var
   ErrorMsg: String;
-  Script: TScript;
+  Scanner: TJSONScanner;
   Lines: TStringList;
   FileName: string;
   JSONRoot: TMyJSONObject;
@@ -99,7 +99,7 @@ begin
     begin
       FileName := ParamStr(1);
       JSONRoot:=TMyJSONObject.Create;
-      Script := TJsonScript.Create(JSONRoot);
+      Scanner := TJSONScanner.Create(JSONRoot, TRTTIJSONParser);
       try
         Lines := TStringList.Create;
         try
@@ -107,7 +107,7 @@ begin
           //Lines.LoadFromFile(Location + 'test.sard');
           //Lines.Text := 'x:{:=10};';
           //Lines.Text := 'print(10);print(20)';
-          Script.Compile(Lines);
+          Scanner.Compile(Lines);
           WriteLn('Name: ', JSONRoot.Name);
           WriteLn('Value: ', JSONRoot.Value);
           WriteLn('Caption: ', JSONRoot.Caption);
@@ -118,7 +118,7 @@ begin
           FreeAndNil(Lines);
         end;
       finally
-        FreeAndNil(Script);
+        FreeAndNil(Scanner);
       end;
     end;
   except

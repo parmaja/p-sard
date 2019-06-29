@@ -238,13 +238,16 @@ type
 
   { TSardScript }
 
-  TCodeScript = class(TScript)
+  { TCodeScript }
+
+  TCodeScript = class(TSardObject)
   public
     Main: TBlock_Node;
     Scanner: TScanner;
     Result: string;
     destructor Destroy; override;
-    procedure Compile(Lines: TStringList); override; overload;
+    procedure Compile(Lines: TStringList); overload;
+    procedure Compile(Text: string); overload;
     procedure Run;
   end;
 
@@ -562,7 +565,7 @@ end;
 
 function TCodeScanner.CreateParser: TParser;
 begin
-  Result := TCodeParser.Create(Lexer, Block.Statements);
+  Result := TCodeParser.Create(Current, Block.Statements);
 end;
 
 constructor TCodeScanner.Create(ABlock: TBlock_Node);
@@ -610,6 +613,19 @@ begin
   // Compile
   Scanner := TCodeScanner.Create(Main);
   Scanner.Scan(Lines);
+end;
+
+procedure TCodeScript.Compile(Text: string);
+var
+  Lines: TStringList;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Text := Text;
+    Compile(Lines);
+  finally
+    FreeAndNil(Lines);
+  end;
 end;
 
 procedure TCodeScript.Run;

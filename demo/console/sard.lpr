@@ -73,7 +73,7 @@ end;
 procedure TSardApplication.DoRun;
 var
   ErrorMsg: String;
-  Script: TScript;
+  Script: TCodeScript;
   Lines: TStringList;
   FileName: string;
 begin
