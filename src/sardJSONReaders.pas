@@ -137,11 +137,55 @@ type
     procedure SetObjectValue(AJSONObject: TObject; AJSONName: string; AJSONValue: string); override;
   end;
 
-  { TDOMJSONParser }
+  { TJSONBaseObject }
+
+  TJSONBase = class(TmnNamedObject)
+  private
+    FJSONClass: string;
+  public
+    constructor Create; virtual;
+  published
+    property JSONClass: string read FJSONClass write FJSONClass;
+  end;
+
+  TJSONBaseClass = class of TJSONBase;
+
+  { TJSONValue }
+
+  TJSONValue = class(TJSONBase)
+  private
+    FValue: string;
+  published
+    property Value: string read FValue write FValue;
+  end;
+
+  TJSONObject = class(TJSONBase)
+  private
+  published
+  end;
+
+  TJSONClass = class(TmnNamedObject)
+  public
+    JSONBaseClass: TJSONBaseClass;
+  end;
+
+  { TJSONClasses }
+
+  TJSONClasses = class(TmnNamedObjectList<TJSONClass>)
+  public
+    procedure Add(AName: string; ABaseClass: TJSONBaseClass);
+  end;
+
+ { TDOMJSONParser }
 
   TDOMJSONParser = class(TJSONParser)
   protected
+    JSONClasses: TJSONClasses;
+    function GetObject(AJSONName: string; AJSONObjectClass: string; out AJSONObject: TObject): Boolean; override;
     procedure SetObjectValue(AJSONObject: TObject; AJSONName: string; AJSONValue: string); override;
+  public
+    procedure Created; override;
+    destructor Destroy; override;
   end;
 
   { TJSONScanner }
@@ -162,10 +206,60 @@ implementation
 uses
   StrUtils;
 
+{ TJSONBase }
+
+constructor TJSONBase.Create;
+begin
+  inherited Create;
+end;
+
+{ TJSONClasses }
+
+procedure TJSONClasses.Add(AName: string; ABaseClass: TJSONBaseClass);
+var
+  Item: TJSONClass;
+begin
+  Item := TJSONClass.Create;
+  Item.Name := AName;
+  Item.JSONBaseClass := ABaseClass;
+  inherited Add(Item);
+end;
+
 { TDOMJSONParser }
+
+function TDOMJSONParser.GetObject(AJSONName: string; AJSONObjectClass: string; out AJSONObject: TObject): Boolean;
+var
+  Item: TJSONClass;
+begin
+  Item := JSONClasses.Find(AJSONObjectClass);
+  if Item = nil then
+    RaiseError('We do not have: ' + AJSONObjectClass);
+
+  AJSONObject := Item.JSONBaseClass.Create;
+  (AJSONObject as TJSONBase).Name := AJSONName;
+  (AJSONObject as TJSONBase).JSONClass := AJSONObjectClass;
+  Result := True;
+end;
 
 procedure TDOMJSONParser.SetObjectValue(AJSONObject: TObject; AJSONName: string; AJSONValue: string);
 begin
+  (AJSONObject as TJSONValue).Value := AJSONValue;
+end;
+
+procedure TDOMJSONParser.Created;
+begin
+  inherited Created;
+  JSONClasses := TJSONClasses.Create;
+  JSONClasses.Add('', TJSONValue);
+  JSONClasses.Add('Value', TJSONValue);
+  JSONClasses.Add('Object', TJSONObject);
+  //JSONClasses.Add('Array', TJSONArray);
+end;
+
+destructor TDOMJSONParser.Destroy;
+begin
+  FreeAndNil(JSONClasses);
+  inherited Destroy;
 end;
 
 { TRTTIJSONParser }
@@ -178,8 +272,6 @@ end;
 { TJSONControllerValue }
 
 procedure TJSONControllerValue.SetControl(Control: TSardControl);
-var
-  AJSONObject: TObject;
 begin
   with (Collector as TJSONCollectorValue) do
   begin
@@ -187,9 +279,12 @@ begin
       ctlOpenBlock:
       begin
         Post;
-        if (Parser as TJSONParser).GetObject(JSONName, '', AJSONObject) then
-          Parser.Push(TJSONCollectorName.Create(Parser, JSONObject))
-        else
+        if JSONObject = nil then
+          (Parser as TJSONParser).GetObject(JSONName, 'Object', JSONObject);
+
+        Parser.Push(TJSONCollectorName.Create(Parser, JSONObject));
+
+        if JSONObject = nil then
           RaiseError('Can not find object: ' + JSONName);
       end;
       ctlOpenArray:
@@ -416,7 +511,7 @@ constructor TJSONParser.Create(ALexer: TLexer; AJSONObject: TObject);
 begin
   inherited Create;
   Lexer := ALexer;
-  Push(TJSONCollectorName.Create(Self, AJSONObject));
+  Push(TJSONCollectorValue.Create(Self, '', AJSONObject));
 end;
 
 destructor TJSONParser.Destroy;
