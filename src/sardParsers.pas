@@ -216,16 +216,20 @@ type
     procedure Prepare; virtual; abstract;
     procedure Post; virtual; abstract;
     procedure Next; virtual; abstract;
-    procedure AddToken(Token: TSardToken); virtual; abstract;
+    procedure SetToken(Token: TSardToken); virtual; abstract;
 
-    procedure AddControl(AControl: TSardControl); virtual;
+    procedure SetControl(AControl: TSardControl); virtual;
     function IsInitial: Boolean; virtual;
 
     property Controller: TController read FController;
     property Parser: TParser read FParser;
   end;
 
-  TParserAction = (paPop, paBypass);
+  TParserAction = (
+    paPop,  //pop collector
+    paPass //Pass the control to upper collector
+  );
+
   TParserActions = set of TParserAction;
 
   { TParser }
@@ -657,7 +661,7 @@ end;
 
 { TCollector }
 
-procedure TCollector.AddControl(AControl: TSardControl);
+procedure TCollector.SetControl(AControl: TSardControl);
 begin
   Controller.SetControl(AControl);
 end;

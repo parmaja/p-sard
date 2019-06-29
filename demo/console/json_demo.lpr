@@ -1,17 +1,20 @@
 program json_demo;
 
-{$mode objfpc}{$H+}
+{$mode delphi}{$H+}
+{$define DOM}
 
 uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, SysUtils, CustApp,
-  sardClasses, sardObjects, sardParsers,
+  sardClasses, sardObjects, sardParsers, sardScripts,
   sardJSONReaders;
 
 type
-
+  {$ifdef DOM}
+  TMyDOM = class(TJSONObject);
+  {$else}
   { TMyJSONObject }
 
   TMyJSONObject = class(TPersistent)
@@ -30,6 +33,7 @@ type
     property Caption: string read FCaption write SetCaption;
     property Tag: Integer read FTag write SetTag;
   end;
+  {$endif}
 
   { TSardApplication }
 
@@ -43,6 +47,8 @@ type
     procedure WriteHelp; virtual;
   end;
 
+ {$ifdef DOM}
+ {$else}
 { TMyJSONObject }
 
 procedure TMyJSONObject.SetCaption(AValue: string);
@@ -68,6 +74,7 @@ begin
   if FValue =AValue then Exit;
   FValue :=AValue;
 end;
+{$endif}
 
 { TSardApplication }
 
@@ -77,7 +84,11 @@ var
   Scanner: TJSONScanner;
   Lines: TStringList;
   FileName: string;
+  {$ifdef DOM}
+  JSONRoot: TMyDOM;
+  {$else}
   JSONRoot: TMyJSONObject;
+  {$endif}
 begin
   // quick check parameters
   ErrorMsg := CheckOptions('h', 'help');
@@ -98,20 +109,26 @@ begin
     if ParamCount > 0 then
     begin
       FileName := ParamStr(1);
+      {$ifdef DOM}
+      JSONRoot:=TMyDOM.Create;
+      Scanner := TJSONScanner.Create(JSONRoot, TDOMJSONParser);
+      {$else}
       JSONRoot:=TMyJSONObject.Create;
       Scanner := TJSONScanner.Create(JSONRoot, TRTTIJSONParser);
+      {$endif}
       try
         Lines := TStringList.Create;
         try
           Lines.LoadFromFile(FileName);
-          //Lines.LoadFromFile(Location + 'test.sard');
-          //Lines.Text := 'x:{:=10};';
-          //Lines.Text := 'print(10);print(20)';
           Scanner.Compile(Lines);
+          {$ifdef DOM}
+
+          {$else}
           WriteLn('Name: ', JSONRoot.Name);
           WriteLn('Value: ', JSONRoot.Value);
           WriteLn('Caption: ', JSONRoot.Caption);
           WriteLn('Tag: ', JSONRoot.Tag);
+          {$endif}
           FreeAndNil(JSONRoot);
           ReadLn;
         finally

@@ -100,8 +100,8 @@ type
     procedure Prepare; override;
     procedure Post; override;
     procedure Next; override;
-    procedure AddToken(Token: TSardToken); override;
-    procedure AddOperator(AOperator: TSardOperator); virtual;
+    procedure SetToken(Token: TSardToken); override;
+    procedure SetOperator(AOperator: TSardOperator); virtual;
 
     property Instruction: TInstruction read FInstruction;
   end;
@@ -147,7 +147,7 @@ type
   protected
   public
     constructor Create(AParser: TParser);
-    procedure AddControl(AControl: TSardControl); override;
+    procedure SetControl(AControl: TSardControl); override;
   end;
 
   { TCollectorDefine }
@@ -170,7 +170,7 @@ type
       Declare  ^Declare
       We end with ; or : or )
     }
-    procedure AddControl(AControl: TSardControl); override;
+    procedure SetControl(AControl: TSardControl); override;
     procedure Reset; override;
     function IsInitial: Boolean; override;
   end;
@@ -285,7 +285,7 @@ procedure TCodeCollector.Next;
 begin
 end;
 
-procedure TCodeCollector.AddToken(Token: TSardToken);
+procedure TCodeCollector.SetToken(Token: TSardToken);
 var
   text: string;
 begin
@@ -317,7 +317,7 @@ begin
   end
 end;
 
-procedure TCodeCollector.AddOperator(AOperator: TSardOperator);
+procedure TCodeCollector.SetOperator(AOperator: TSardOperator);
 begin
   Post;
   Instruction.SetOperator(AOperator);
@@ -465,7 +465,7 @@ begin
       LastControl := ctlNone;//prevent loop
       SetControl(Lexer.Controls.GetControl(ctlEnd));
     end;
-    Current.AddToken(Token);
+    Current.SetToken(Token);
     DoQueue();
     FActions := [];
     LastControl := ctlToken;
@@ -480,7 +480,7 @@ begin
   o := AOperator;
   if (o = nil) then
     RaiseError('SetOperator not Operator');
-  (Current as TCodeCollector).AddOperator(o);
+  (Current as TCodeCollector).SetOperator(o);
   DoQueue();
   FActions := [];
   LastControl := ctlOperator;
@@ -495,10 +495,10 @@ begin
       SetControl(Lexer.Controls.GetControl(ctlEnd));
   end;
 
-  Current.AddControl(AControl);
+  Current.SetControl(AControl);
   DoQueue();
-  if (paBypass in Actions) then //TODO check if Set work good here
-      Current.AddControl(AControl);
+  if (paPass in Actions) then //TODO check if Set work good here
+      Current.SetControl(AControl);
   FActions := [];
   LastControl := aControl.Code;
 end;
@@ -809,7 +809,7 @@ begin
   Result := TControllerDefines.Create(Self);
 end;
 
-procedure TCollectorDefine.AddControl(AControl: TSardControl);
+procedure TCollectorDefine.SetControl(AControl: TSardControl);
 var
   aBlock: TBlock_Node;
 begin
@@ -910,13 +910,13 @@ begin
   inherited Create(AParser, nil);
 end;
 
-procedure TCollectorDeclare.AddControl(AControl: TSardControl);
+procedure TCollectorDeclare.SetControl(AControl: TSardControl);
 begin
   case (AControl.code) of
     ctlEnd, ctlNext:
     begin
       Post;
-      Parser.SetAction([paPop, paBypass]);
+      Parser.SetAction([paPop, paPass]);
     end
     else
       inherited;
