@@ -13,7 +13,7 @@ uses
 
 type
   {$ifdef DOM}
-  TMyDOM = class(TJSONObject);
+  TMyDOM = class(TJSONElement);
   {$else}
   { TMyJSONObject }
 
@@ -81,6 +81,7 @@ end;
 procedure TSardApplication.DoRun;
 var
   ErrorMsg: String;
+  i: Integer;
   Scanner: TJSONScanner;
   Lines: TStringList;
   FileName: string;
@@ -110,7 +111,7 @@ begin
     begin
       FileName := ParamStr(1);
       {$ifdef DOM}
-      JSONRoot:=TMyDOM.Create;
+      JSONRoot:= TMyDOM.Create;
       Scanner := TJSONScanner.Create(JSONRoot, TDOMJSONParser);
       {$else}
       JSONRoot:=TMyJSONObject.Create;
@@ -122,7 +123,10 @@ begin
           Lines.LoadFromFile(FileName);
           Scanner.Compile(Lines);
           {$ifdef DOM}
-
+          Lines.Clear;
+          JSONRoot.WriteTo(Lines, True, 0);
+          for i := 0 to Lines.Count -1 do
+            WriteLn(Lines[i]);
           {$else}
           WriteLn('Name: ', JSONRoot.Name);
           WriteLn('Value: ', JSONRoot.Value);

@@ -118,7 +118,7 @@ type
     LastControl: TSardControlID;
     Lexer: TLexer;
     procedure DoQueue;
-    function GetObject(AJSONName: string; AJSONObjectClass: string; out AJSONObject: TObject): Boolean; virtual;
+    function GetSubObject(ParentObject: TObject; out AJSONObject: TObject; AJSONName: string; AJSONObjectClass: string): Boolean; virtual;
     procedure SetObjectValue(AJSONObject: TObject; AJSONName: string; AJSONValue: string); virtual;
   public
     constructor Create(ALexer: TLexer; AJSONObject: TObject); virtual;
@@ -139,51 +139,80 @@ type
     procedure SetObjectValue(AJSONObject: TObject; AJSONName: string; AJSONValue: string); override;
   end;
 
-  { TJSONBaseObject }
+  { TJSONObject }
 
-  TJSONBase = class(TmnNamedObject)
-  private
-    FJSONClass: string;
+  TJSONObject = class abstract(TSardObject)
   public
-    constructor Create; virtual;
     procedure WriteTo(Strings :TStrings; LastOne:Boolean; Level: Integer); virtual;
-  published
-    property JSONClass: string read FJSONClass write FJSONClass;
   end;
 
-  TJSONBaseClass = class of TJSONBase;
+  TJSONValue = class;
+
+  { TJSONElement }
+
+  TJSONElement = class(TJSONObject)
+  private
+    FJSONClass: string;
+    FName: string;
+    FValue: TJSONValue;
+    procedure SetName(AValue: string);
+    procedure SetValue(AValue: TJSONValue);
+  public
+    constructor Create; virtual;
+    procedure WriteTo(Strings :TStrings; LastOne:Boolean; Level: Integer); override;
+  published
+    property JSONClass: string read FJSONClass write FJSONClass;
+    property Value: TJSONValue read FValue write SetValue;
+    property Name: string read FName write SetName;
+  end;
+
+  TJSONElementClass = class of TJSONElement;
 
   { TJSONValue }
 
-  TJSONValue = class(TJSONBase)
+  TJSONValue = class abstract(TJSONObject)
   private
-    FValue: string;
+    FParent: TJSONElement;
   public
-    procedure WriteTo(Strings :TStrings; LastOne:Boolean; Level: Integer); override;
-  published
-    property Value: string read FValue write FValue;
+    constructor Create(AParent: TJSONElement);
+    property Parent: TJSONElement read FParent;
   end;
 
-  TJSONObjects = class(TmnNamedObjectList<TJSONBase>)
+  TJSONValueClass = class of TJSONValue;
+
+  { TJSONText_Value }
+
+  TJSONText_Value = class(TJSONValue)
+  private
+    FText: string;
+  public
+    procedure WriteTo(Strings :TStrings; LastOne:Boolean; Level: Integer); override;
+    constructor Create(AParent: TJSONElement; AText: string); overload;
+  published
+    property Text: string read FText write FText;
+  end;
+
+  TJSONList = class(TmnObjectList<TJSONElement>)
   public
   end;
 
   { TJSONObject }
 
-  TJSONObject = class(TJSONBase)
+  TJSONList_Value = class(TJSONValue)
   private
-    FItems: TJSONObjects;
+    FItems: TJSONList;
   public
     procedure Created; override;
     destructor Destroy; override;
+    procedure Add(Value: TJSONElement); overload;
     procedure WriteTo(Strings: TStrings; LastOne:Boolean; Level: Integer); override;
-    property Items: TJSONObjects read FItems;
+    property Items: TJSONList read FItems;
   published
   end;
 
   { TJSONArray }
 
-  TJSONArray = class(TJSONBase)
+  TJSONArray_Value = class(TJSONValue)
   private
     FItems: TStrings;
   public
@@ -202,17 +231,19 @@ type
     type
       TJSONClass = class(TmnNamedObject)
       public
-        JSONBaseClass: TJSONBaseClass;
+        JSONClass: TJSONValueClass;
       end;
+
+      { TJSONClasses }
 
       TJSONClasses = class(TmnNamedObjectList<TJSONClass>)
       public
-        procedure Add(AName: string; ABaseClass: TJSONBaseClass);
+        procedure Add(AName: string; AValueClass: TJSONValueClass);
       end;
 
   protected
     JSONClasses: TJSONClasses;
-    function GetObject(AJSONName: string; AJSONObjectClass: string; out AJSONObject: TObject): Boolean; override;
+    function GetSubObject(ParentObject: TObject; out AJSONObject: TObject; AJSONName: string; AJSONObjectClass: string): Boolean; override;
     procedure SetObjectValue(AJSONObject: TObject; AJSONName: string; AJSONValue: string); override;
   public
     procedure Created; override;
@@ -239,85 +270,123 @@ uses
 
 { TJSONValue }
 
-procedure TJSONValue.WriteTo(Strings: TStrings; LastOne: Boolean; Level: Integer);
+constructor TJSONValue.Create(AParent: TJSONElement);
+begin
+  inherited Create;
+  FParent := AParent;
+end;
+
+{ TJSONObject }
+
+procedure TJSONObject.WriteTo(Strings: TStrings; LastOne: Boolean; Level: Integer);
+begin
+
+end;
+
+{ TJSONText_Value }
+
+procedure TJSONText_Value.WriteTo(Strings: TStrings; LastOne: Boolean; Level: Integer);
 var
   Line: string;
 begin
   inherited;
-  Line := QuoteStr(Name, '"')+': '+QuoteStr(Value, '"');
+  Line := StringOfChar(' ', Level * 4) + QuoteStr(Parent.Name, '"')+': '+QuoteStr(Text, '"');
   if not LastOne then
     Line := Line + ',';
   Strings.Add(Line);
 end;
 
-{ TJSONArray }
+constructor TJSONText_Value.Create(AParent: TJSONElement; AText: string);
+begin
+  inherited Create(AParent);
+  FText := AText;
+end;
 
-procedure TJSONArray.Created;
+{ TJSONArray_Value }
+
+procedure TJSONArray_Value.Created;
 begin
   inherited;
   FItems := TStringList.Create;
 end;
 
-destructor TJSONArray.Destroy;
+destructor TJSONArray_Value.Destroy;
 begin
   FreeAndNil(FItems);
   inherited;
 end;
 
-{ TJSONObject }
+{ TJSONList_Value }
 
-procedure TJSONObject.Created;
+procedure TJSONList_Value.Created;
 begin
   inherited;
-  FItems := TJSONObjects.Create;
+  FItems := TJSONList.Create;
 end;
 
-destructor TJSONObject.Destroy;
+destructor TJSONList_Value.Destroy;
 begin
   FreeAndNil(FItems);
   inherited;
 end;
 
-procedure TJSONObject.WriteTo(Strings: TStrings; LastOne: Boolean; Level: Integer);
+procedure TJSONList_Value.Add(Value: TJSONElement);
+begin
+  Items.Add(Value);
+end;
+
+procedure TJSONList_Value.WriteTo(Strings: TStrings; LastOne: Boolean; Level: Integer);
 var
-  Itm: TJSONBase;
+  Itm: TJSONElement;
 begin
   inherited;
-  Strings.Add(QuoteStr(Name, '"') + ': {');
+  Strings.Add(StringOfChar(' ', Level * 4) + QuoteStr(Parent.Name, '"') + ': {');
   for Itm in Items do
     Itm.WriteTo(Strings, itm = Items.Last , Level + 1);
   if not LastOne then
-    Strings.Add('},')
+    Strings.Add(StringOfChar(' ', Level * 4) + '},')
   else
-    Strings.Add('}');
+    Strings.Add(StringOfChar(' ', Level * 4) + '}');
 end;
 
-{ TJSONBase }
+{ TJSONElement }
 
-constructor TJSONBase.Create;
+procedure TJSONElement.SetValue(AValue: TJSONValue);
+begin
+  if FValue =AValue then Exit;
+  FValue :=AValue;
+end;
+
+procedure TJSONElement.SetName(AValue: string);
+begin
+  if FName =AValue then Exit;
+  FName :=AValue;
+end;
+
+constructor TJSONElement.Create;
 begin
   inherited Create;
 end;
 
-procedure TJSONBase.WriteTo(Strings: TStrings; LastOne: Boolean; Level: Integer);
+procedure TJSONElement.WriteTo(Strings: TStrings; LastOne: Boolean; Level: Integer);
 begin
 end;
 
 { TJSONClasses }
 
-procedure TDOMJSONParser.TJSONClasses.Add(AName: string; ABaseClass: TJSONBaseClass);
+procedure TDOMJSONParser.TJSONClasses.Add(AName: string; AValueClass: TJSONValueClass);
 var
   Item: TJSONClass;
 begin
   Item := TJSONClass.Create;
   Item.Name := AName;
-  Item.JSONBaseClass := ABaseClass;
+  Item.JSONClass := AValueClass;
   inherited Add(Item);
 end;
 
 { TDOMJSONParser }
 
-function TDOMJSONParser.GetObject(AJSONName: string; AJSONObjectClass: string; out AJSONObject: TObject): Boolean;
+function TDOMJSONParser.GetSubObject(ParentObject: TObject; out AJSONObject: TObject; AJSONName: string; AJSONObjectClass: string): Boolean;
 var
   Item: TJSONClass;
 begin
@@ -325,25 +394,27 @@ begin
   if Item = nil then
     RaiseError('We do not have: ' + AJSONObjectClass);
 
-  AJSONObject := Item.JSONBaseClass.Create;
-  (AJSONObject as TJSONBase).Name := AJSONName;
-  (AJSONObject as TJSONBase).JSONClass := AJSONObjectClass;
+  AJSONObject := Item.JSONClass.Create(ParentObject as TJSONElement);
+  (AJSONObject as TJSONElement).Name := AJSONName;
+  (AJSONObject as TJSONElement).JSONClass := AJSONObjectClass;
+  (ParentObject as TJSONList_Value).Add(AJSONObject as TJSONElement);
   Result := True;
 end;
 
 procedure TDOMJSONParser.SetObjectValue(AJSONObject: TObject; AJSONName: string; AJSONValue: string);
 begin
-  (AJSONObject as TJSONValue).Value := AJSONValue;
+  //(AJSONObject as TJSONList_Value).Add(TJSONText_Value.Create(AJSONValue));
+//  (AJSONObject as TJSONText_Value).Value := AJSONValue;
 end;
 
 procedure TDOMJSONParser.Created;
 begin
   inherited Created;
   JSONClasses := TJSONClasses.Create;
-  JSONClasses.Add('', TJSONValue);
-  JSONClasses.Add('Value', TJSONValue);
-  JSONClasses.Add('Object', TJSONObject);
-  JSONClasses.Add('Array', TJSONArray);
+  JSONClasses.Add('', TJSONText_Value);
+  JSONClasses.Add('Value', TJSONText_Value);
+  JSONClasses.Add('Object', TJSONList_Value);
+  JSONClasses.Add('Array', TJSONArray_Value);
 end;
 
 destructor TDOMJSONParser.Destroy;
@@ -362,6 +433,8 @@ end;
 { TJSONControllerValue }
 
 procedure TJSONControllerValue.SetControl(Control: TSardControl);
+var
+  AJSONObject: TObject;
 begin
   with (Collector as TJSONCollectorValue) do
   begin
@@ -369,13 +442,12 @@ begin
       ctlOpenBlock:
       begin
         Post;
-        if JSONObject = nil then //TODO: i dont like it
-          (Parser as TJSONParser).GetObject(JSONName, 'Object', JSONObject);
-
-        Parser.Push(TJSONCollectorElement.Create(Parser, JSONObject));
-
-        if JSONObject = nil then
+        (Parser as TJSONParser).GetSubObject(JSONObject, AJSONObject, JSONName, 'Object');
+        if AJSONObject = nil then
           RaiseError('Can not find object: ' + JSONName);
+
+        Parser.Push(TJSONCollectorElement.Create(Parser, AJSONObject));
+
       end;
       ctlCloseBlock:
       begin
@@ -545,8 +617,7 @@ begin
       ctlStart:
       begin
       end;
-      ctlStop:
-        Post;
+      ctlStop: ;
       ctlEnd:
       begin
         Post;
@@ -597,6 +668,8 @@ begin
     SetControl(Lexer.Controls.GetControl(ctlEnd));
   end;
 
+  if Current = nil then
+    RaiseError('There is no current collector');
   Current.SetControl(AControl);
   DoQueue();
   if (paPass in Actions) then //TODO check if Set work good here
@@ -620,7 +693,7 @@ begin
   end
 end;
 
-function TJSONParser.GetObject(AJSONName: string; AJSONObjectClass: string; out AJSONObject: TObject): Boolean;
+function TJSONParser.GetSubObject(ParentObject: TObject; out AJSONObject: TObject; AJSONName: string; AJSONObjectClass: string): Boolean;
 begin
   Result := False;
   AJSONObject := nil;
@@ -641,20 +714,21 @@ end;
 
 destructor TJSONParser.Destroy;
 begin
-  Pop;
   inherited;
 end;
 
 procedure TJSONParser.Start;
 begin
   inherited;
-  SetControl(Lexer.Controls.GetControl(ctlStart));
+  if Current <> nil then
+    SetControl(Lexer.Controls.GetControl(ctlStart));
 end;
 
 procedure TJSONParser.Stop;
 begin
   inherited;
-  SetControl(Lexer.Controls.GetControl(ctlStop));
+  if Current <> nil then //not already finished
+    SetControl(Lexer.Controls.GetControl(ctlStop));
 end;
 
 { TJSONLexer }
