@@ -131,7 +131,7 @@ uses
 
 function FormatColLine(Column, Line: Integer): string;
 begin
-   Result := 'Line #' + IntToStr(Line) + ', Column #' + IntToStr(Column);
+   Result := '[Line: #' + IntToStr(Line) + ', #' + IntToStr(Column) + ']';
 end;
 
 function IndexInStr(Index: Integer; const Str: string): Boolean;

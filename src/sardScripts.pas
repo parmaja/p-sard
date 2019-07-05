@@ -97,9 +97,9 @@ type
     FInstruction: TInstruction;
   public
     procedure Reset; override;
-    procedure Prepare; override;
-    procedure Post; override;
-    procedure Next; override;
+    procedure Prepare; virtual;
+    procedure Post; virtual;
+    procedure Next; virtual;
     procedure DoToken(Token: TSardToken); override;
     procedure SetOperator(AOperator: TSardOperator); virtual;
 

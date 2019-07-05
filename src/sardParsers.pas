@@ -49,10 +49,11 @@ type
     typeNone,
     typeIdentifier,
     typeNumber,
-    typeColor,
     typeString,
     typeEscape, //Strings escape outside
-    typeComment
+    typeComment,
+    typeColor,
+    typeDateTime
   );
 
   { TsardToken }
@@ -215,9 +216,6 @@ type
     destructor Destroy; override;
 
     procedure Reset; virtual; abstract;
-    procedure Prepare; virtual; abstract;
-    procedure Post; virtual; abstract;
-    procedure Next; virtual; abstract;
 
     procedure SetToken(Token: TSardToken);
     procedure SetControl(AControl: TSardControl);

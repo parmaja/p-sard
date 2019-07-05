@@ -39,9 +39,6 @@ type
   public
     function IsInitial: Boolean; override;
     procedure Reset; override;
-    procedure Prepare; override;
-    procedure Post; override;
-    procedure Next; override;
   end;
 
   { TJSONCollectorElement }
@@ -51,7 +48,7 @@ type
     Name: string;
   protected
     type
-      TExpect = (expName, expAssign);
+      TExpect = (elmName, elmValue);
     var
       Expect: TExpect;
     ParentObject: TObject;
@@ -59,7 +56,6 @@ type
   public
     constructor Create(AParser: TParser; AParentObject, ACurrentObject: TObject);
     procedure Reset; override;
-    procedure Post; override;
     procedure DoToken(Token: TSardToken); override;
     procedure DoControl(AControl: TSardControl); override;
   end;
@@ -70,7 +66,7 @@ type
   private
   protected
     type
-      TExpect = (expValue, expNext);
+      TExpect = (valValue, valNext);
     var
       Expect: TExpect;
     CurrentObject: TObject;
@@ -78,7 +74,25 @@ type
   public
     constructor Create(AParser: TParser; AName: string; AObject: TObject);
     procedure Reset; override;
-    procedure Post; override;
+    procedure DoToken(Token: TSardToken); override;
+    procedure DoControl(AControl: TSardControl); override;
+  end;
+
+  { TJSONCollectorArray }
+
+  TJSONCollectorArray = class(TJSONCollector)
+  private
+  protected
+    type
+      TExpect = (aryValue, aryNext);
+    var
+      Expect: TExpect;
+    ParentObject: TObject; //element with array value created
+    //CurrentObject: TObject;
+    Name: string;
+  public
+    constructor Create(AParser: TParser; AName: string; AParentObject: TObject);
+    procedure Reset; override;
     procedure DoToken(Token: TSardToken); override;
     procedure DoControl(AControl: TSardControl); override;
   end;
@@ -131,9 +145,14 @@ type
 
   TJSONParserClass = class of TJSONParser;
 
+  { TSourceWriter }
+
   TSourceWriter = class abstract(TObject)
   public
-    procedure Add(S: string); virtual; abstract;
+    TabWidth: Integer;
+    constructor Create;
+    procedure Add(S: string); virtual; abstract; overload;
+    procedure Add(Level: Integer = 1; S: string = ''); overload;
     procedure NewLine; virtual; abstract;
   end;
 
@@ -227,9 +246,13 @@ type
     property Number: string read FNumber write FNumber;
   end;
 
+  { TJSONItems }
+
   TJSONItems = class(TmnObjectList<TJSONElement>)
   public
   end;
+
+  { TJSONObject_Value }
 
   TJSONObject_Value = class(TJSONValue)
   private
@@ -237,21 +260,30 @@ type
   public
     procedure Created; override;
     destructor Destroy; override;
+    procedure NeedObject(AJSONName: string; out AJSONObject: TObject);
     procedure Add(Value: TJSONElement); overload;
     procedure WriteTo(Writer: TSourceWriter; LastOne:Boolean; Level: Integer); override;
     property Items: TJSONItems read FItems;
   published
   end;
 
-  { TJSONArray }
+  { TJSONList }
+
+  TJSONList = class(TmnObjectList<TJSONValue>)
+  public
+  end;
+
+  { TJSONArray_Value }
 
   TJSONArray_Value = class(TJSONValue)
   private
-    FItems: TStrings;
+    FItems: TJSONList;
   public
     procedure Created; override;
     destructor Destroy; override;
-    property Items: TStrings read FItems;
+    procedure Add(Value: TJSONValue); overload;
+    procedure WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    property Items: TJSONList read FItems;
   published
   end;
 
@@ -300,6 +332,61 @@ implementation
 
 uses
   StrUtils;
+
+{ TSourceWriter }
+
+constructor TSourceWriter.Create;
+begin
+  inherited Create;
+  TabWidth := 4;
+end;
+
+procedure TSourceWriter.Add(Level: Integer; S: string);
+begin
+  Add(StringOfChar(' ', Level * TabWidth) + S);
+end;
+
+{ TJSONCollectorArray }
+
+constructor TJSONCollectorArray.Create(AParser: TParser; AName: string; AParentObject: TObject);
+begin
+  inherited Create(AParser);
+  Name := AName;
+  ParentObject := AParentObject;
+end;
+
+procedure TJSONCollectorArray.Reset;
+begin
+  inherited Reset;
+  Expect := Low(Expect);
+end;
+
+procedure TJSONCollectorArray.DoToken(Token: TSardToken);
+begin
+  RaiseError('No token for array!');
+end;
+
+procedure TJSONCollectorArray.DoControl(AControl: TSardControl);
+begin
+  case AControl.Code of
+    ctlOpenArray:
+    begin
+      Parser.Push(TJSONCollectorValue.Create(Parser, Name, ParentObject));
+    end;
+    ctlCloseArray:
+    begin
+      Parser.SetAction([paPop]);
+      Reset;
+    end;
+    ctlNext:
+    begin
+      Parser.Push(TJSONCollectorValue.Create(Parser, Name, ParentObject));
+      Reset;
+    end;
+    else
+      inherited;
+  end;
+end;
 
 { TStringSourceWriter }
 
@@ -391,12 +478,32 @@ end;
 procedure TJSONArray_Value.Created;
 begin
   inherited;
-  FItems := TStringList.Create;
+  FItems := TJSONList.Create;
 end;
 
 destructor TJSONArray_Value.Destroy;
 begin
   FreeAndNil(FItems);
+  inherited;
+end;
+
+procedure TJSONArray_Value.Add(Value: TJSONValue);
+begin
+  Items.Add(Value);
+end;
+
+procedure TJSONArray_Value.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+var
+  Itm: TJSONValue;
+begin
+  Writer.Add('[');
+  Writer.NewLine;
+  for Itm in Items do
+  begin
+    Writer.Add(Level + 1);
+    Itm.WriteTo(Writer, itm = Items.Last , Level + 1);
+  end;
+  Writer.Add(Level, ']');
   inherited;
 end;
 
@@ -414,6 +521,13 @@ begin
   inherited;
 end;
 
+procedure TJSONObject_Value.NeedObject(AJSONName: string; out AJSONObject: TObject);
+begin
+  AJSONObject := TJSONElement.Create;
+  (AJSONObject as TJSONElement).Name := AJSONName;
+  Add((AJSONObject as TJSONElement));
+end;
+
 procedure TJSONObject_Value.Add(Value: TJSONElement);
 begin
   Items.Add(Value);
@@ -427,7 +541,7 @@ begin
   Writer.NewLine;
   for Itm in Items do
     Itm.WriteTo(Writer, itm = Items.Last , Level + 1);
-  Writer.Add(StringOfChar(' ', Level * 4) + '}');
+  Writer.Add(Level, '}');
   inherited;
 end;
 
@@ -453,10 +567,9 @@ end;
 
 procedure TJSONElement.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
 begin
-  Writer.Add(StringOfChar(' ', Level * 4) + QuoteStr(Name, '"') + ': ');
+  Writer.Add(Level, QuoteStr(Name, '"') + ': ');
   if Value = nil then
     RaiseError('Value is null for: ' + Name)
-//    Writer.Add('<null>')
   else
     Value.WriteTo(Writer, LastOne, Level);
 end;
@@ -479,20 +592,33 @@ procedure TDOMJSONParser.NeedObject(AParentObject: TObject; AJSONName: string; o
 begin
   if not ((AParentObject as TJSONElement).Value is TJSONObject_Value) then
     RaiseError('Value is not object');
-  AJSONObject := TJSONElement.Create;
-  (AJSONObject as TJSONElement).Name := AJSONName;
-  ((AParentObject as TJSONElement).Value as TJSONObject_Value).Add((AJSONObject as TJSONElement));
+  ((AParentObject as TJSONElement).Value as TJSONObject_Value).NeedObject(AJSONName, AJSONObject);
 end;
 
 procedure TDOMJSONParser.SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType);
+var
+  v: TJSONValue;
+  e: TJSONElement;
 begin
-  if (AObject as TJSONElement).Value <> nil then
-    RaiseError('Value is already set');
+  if AObject = nil then
+    RaiseError('Can not assign value to nil element');
+
+  e := AObject as TJSONElement;
+
+  if (e.Value <> nil) and not(e.Value is TJSONArray_Value) then
+    RaiseError('Value is already set and it is not array: ' + e.Value.ClassName);
+
   case AType of
-    jtNumber: (AObject as TJSONElement).Value :=  TJSONNumber_Value.Create(nil, AValue);
-    jtString: (AObject as TJSONElement).Value :=  TJSONString_Value.Create(nil, AValue);
-    jtObject: (AObject as TJSONElement).Value := TJSONObject_Value.Create(nil);
+    jtNumber: v :=  TJSONNumber_Value.Create(nil, AValue);
+    jtString: v :=  TJSONString_Value.Create(nil, AValue);
+    jtObject: v := TJSONObject_Value.Create(nil);
+    jtArray: v := TJSONArray_Value.Create(nil);
   end;
+
+  if (e.Value is TJSONArray_Value) then
+    (e.Value as TJSONArray_Value).Add(v)
+  else
+    e.Value :=  v;
 end;
 
 procedure TDOMJSONParser.Created;
@@ -534,15 +660,9 @@ begin
   Expect := Low(Expect);
 end;
 
-procedure TJSONCollectorValue.Post;
-begin
-  inherited Post;
-  Reset;
-end;
-
 procedure TJSONCollectorValue.DoToken(Token: TSardToken);
 begin
-  if Expect = expValue then
+  if Expect = valValue then
   begin
     if (Token.TokenType = typeIdentifier) or (Token.TokenType = typeString) then
       (Parser as TJSONParser).SetObjectValue(CurrentObject, Name, DequoteStr(Token.Value), jtString)
@@ -559,7 +679,7 @@ begin
   case AControl.Code of
     ctlOpenBlock:
     begin
-      if Expect = expValue then
+      if Expect = valValue then
       begin
         (Parser as TJSONParser).SetObjectValue(CurrentObject, Name, '', jtObject);
         Parser.Push(TJSONCollectorElement.Create(Parser, CurrentObject, nil));
@@ -567,46 +687,57 @@ begin
         //TODO Reset if not strict mode
       end
       else
-        RaiseError('Expecting , or }'); //TODO fix message
+        inherited;
     end;
     ctlCloseBlock:
     begin
-      if Expect = expNext then
+      if Expect = valNext then
       begin
         Parser.SetAction([paPass, paPop]);
       end
       else
-        RaiseError('} not expected');
+        inherited;
     end;
     ctlOpenArray:
     begin
-      if Expect = expValue then
+      if Expect = valValue then
       begin
         (Parser as TJSONParser).SetObjectValue(CurrentObject, Name, '', jtArray);
-        Parser.Push(TJSONCollectorElement.Create(Parser, CurrentObject, nil));
+        Parser.Push(TJSONCollectorArray.Create(Parser, Name, CurrentObject));
+        Parser.SetAction([paPass]);
+        Inc(Expect);
       end
       else
-        RaiseError('Expecting , or } or ]'); //TODO fix message
+        inherited;
+    end;
+    ctlCloseArray:
+    begin
+      if Expect = valNext then
+      begin
+        Parser.SetAction([paPass, paPop]);
+      end
+      else
+        inherited;
     end;
     ctlStop: //ctlStop using stop if file ended after value, we treat it as comma, but in Element collector we will check if that error
     begin
-      if Expect = expNext then
+      if Expect = valNext then
       begin
         Parser.SetAction([paPass, paPop]);
         Reset;
       end
       else
-        RaiseError('End of file not expected');
+        inherited;
     end;
     ctlNext:
     begin
-      if Expect = expNext then
+      if Expect = valNext then
       begin
-        Parser.SetAction([paPop]);
+        Parser.SetAction([paPass, paPop]); //paPass pass it to array to push another value collection, but element should ignore it
         Reset;
       end
       else
-        RaiseError('Comma not expected');
+        inherited;
     end;
     else
       inherited;
@@ -629,21 +760,16 @@ begin
   Expect := Low(Expect);
 end;
 
-procedure TJSONCollectorElement.Post;
-begin
-  inherited;
-end;
-
 procedure TJSONCollectorElement.DoToken(Token: TSardToken);
 begin
   if (Token.TokenType = typeIdentifier) or (Token.TokenType = typeString) then
   begin
-    if Expect = expName then
+    if Expect = elmName then
     begin
       if Name <> '' then
         RaiseError('Name already set: ' + Name);
       Name := DequoteStr(Token.Value, '"');
-      Inc(Expect);
+      //Inc(Expect);
     end
     else
       RaiseError('Name expected');
@@ -659,28 +785,33 @@ begin
       Parser.Push(TJSONCollectorValue.Create(Parser, '', CurrentObject));
     ctlAssign:
     begin
-      if Expect = expAssign then
+      if Expect = elmName then
       begin
         (Parser as TJSONParser).NeedObject(ParentObject, Name, CurrentObject);
         Parser.Push(TJSONCollectorValue.Create(Parser, Name, CurrentObject));
-        Reset;
+        Inc(Expect);
       end
       else
-        RaiseError('Assiging not expected');
+        inherited;
     end;
     ctlCloseBlock:
     begin
-      if Expect = expName then
+      if Expect = elmValue then
       begin
         Parser.SetAction([paPop]);
         Reset;
       end
       else
-        RaiseError('} not expected');
+        inherited;
     end;
     ctlNext:
     begin
-      RaiseError('You can not use , here!!!');
+      if Expect = elmValue then
+      begin
+        Reset; //good if it come from values of array
+      end
+      else
+        inherited;
     end;
     else
       inherited;
@@ -710,22 +841,6 @@ end;
 
 procedure TJSONCollector.Reset;
 begin
-
-end;
-
-procedure TJSONCollector.Prepare;
-begin
-
-end;
-
-procedure TJSONCollector.Post;
-begin
-
-end;
-
-procedure TJSONCollector.Next;
-begin
-
 end;
 
 procedure TJSONController.SetControl(Control: TSardControl);
@@ -760,7 +875,7 @@ end;
 procedure TJSONParser.SetToken(Token: TSardToken);
 begin
   Current.SetToken(Token);
-  DoQueue();
+  DoQueue;
   FActions := [];
 end;
 
@@ -772,7 +887,7 @@ begin
   Current.SetControl(AControl);
   while true do
   begin
-    DoQueue();
+    DoQueue;
     if (paPass in Actions) then
     begin
       FActions := FActions - [paPass];
