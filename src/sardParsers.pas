@@ -76,7 +76,7 @@ type
     Code: TSardControlID;
     Level: Integer;
     Description: string;
-    constructor Create(AName: string; ACode: TsardControlID);
+    constructor Create(AName: string; ACode: TsardControlID; ADescription: string = '');
   end;
 
   { TSardControls }
@@ -85,7 +85,7 @@ type
   public
     function FindControl(Code: TsardControlID): TSardControl;
     function GetControl(Code: TsardControlID): TSardControl;
-    function Add(AName: string; ACode: TsardControlID): TSardControl;
+    function Add(AName: string; ACode: TsardControlID; ADescription: string = ''): TSardControl;
   end;
 
   TSardAssociative = (asLeft, asRight);//not yet
@@ -207,7 +207,9 @@ type
     FParser: TParser;
   protected
     procedure InternalPost; virtual;
-    function CreateController: TController; virtual; abstract;
+    function CreateController: TController; virtual;
+    procedure DoToken(Token: TSardToken); virtual; abstract;
+    procedure DoControl(AControl: TSardControl); virtual; abstract;
   public
     constructor Create(AParser: TParser);
     destructor Destroy; override;
@@ -216,9 +218,9 @@ type
     procedure Prepare; virtual; abstract;
     procedure Post; virtual; abstract;
     procedure Next; virtual; abstract;
-    procedure SetToken(Token: TSardToken); virtual; abstract;
 
-    procedure SetControl(AControl: TSardControl); virtual;
+    procedure SetToken(Token: TSardToken);
+    procedure SetControl(AControl: TSardControl);
     function IsInitial: Boolean; virtual;
 
     property Controller: TController read FController;
@@ -453,8 +455,8 @@ begin
   FreeAndNil(FOperators);
   FreeAndNil(FSymbols);
 end;
-{
-function TLexer.IsKeyword(Keyword: string): Boolean;
+
+{function TLexer.IsKeyword(Keyword: string): Boolean;
 begin
   Result := false;
 end;}
@@ -539,9 +541,11 @@ begin
     raise EsardException.Create('Control not found');
 end;
 
-function TSardControls.Add(AName: string; ACode: TsardControlID): TSardControl;
+function TSardControls.Add(AName: string; ACode: TsardControlID; ADescription: string): TSardControl;
 begin
-  Result := TSardControl.Create(AName, ACode);
+  if FindControl(ACode) <> nil then
+    RaiseError('Control already exists');
+  Result := TSardControl.Create(AName, ACode, ADescription);
   inherited Add(Result)
 end;
 
@@ -576,11 +580,12 @@ end;
 
 { TSardControl }
 
-constructor TSardControl.Create(AName: string; ACode: TsardControlID);
+constructor TSardControl.Create(AName: string; ACode: TsardControlID; ADescription: string);
 begin
   inherited Create;
   Name := AName;
   Code := ACode;
+  Description := ADescription;
 end;
 
 { TSardToken }
@@ -663,7 +668,15 @@ end;
 
 procedure TCollector.SetControl(AControl: TSardControl);
 begin
-  Controller.SetControl(AControl);
+  {$ifdef VERBOSE}
+  if AControl.Description <> '' then
+    WriteLn('Control: ' + AControl.Description)
+  else
+    WriteLn('Control: ' + AControl.Name);
+  {$endif}
+  DoControl(AControl);
+  if Controller <> nil then
+    Controller.SetControl(AControl);
 end;
 
 function TCollector.IsInitial: Boolean;
@@ -677,8 +690,21 @@ begin
   FreeAndNil(FController);
 end;
 
+procedure TCollector.SetToken(Token: TSardToken);
+begin
+  {$ifdef VERBOSE}
+   WriteLn('Token: ' + Token.Value);
+  {$endif}
+  DoToken(Token);
+end;
+
 procedure TCollector.InternalPost;
 begin
+end;
+
+function TCollector.CreateController: TController;
+begin
+  Result := nil;
 end;
 
 constructor TCollector.Create(AParser: TParser);

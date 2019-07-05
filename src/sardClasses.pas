@@ -243,7 +243,7 @@ end;
 
 constructor ESardParserException.Create(const Msg: string; const Line, Column: Integer);
 begin
-  inherited Create(Msg + #13 + FormatColLine(Column, Line));
+  inherited Create(Msg + ' ' + FormatColLine(Column, Line));
   FLine := Line;
   FColumn := Column;
 end;
@@ -269,9 +269,18 @@ procedure TSardStack<_Object_>.Pop;
 var
   aObject: _Object_;
 begin
+  {$ifdef VERBOSE}
+  Write('POP: ' + Current.ClassName);
+  {$endif}
   aObject := Pull;
   if Own then
     aObject.Free;
+  {$ifdef VERBOSE}
+  if Current <> nil then
+    WriteLn(' TO: ' + Current.ClassName)
+  else
+    WriteLn;
+  {$endif}
 end;
 
 function TSardStack<_Object_>.GetParent: _Object_;
@@ -347,6 +356,9 @@ begin
   FCurrentItem := aItem;
   Inc(FCount);
   AfterPush;
+  {$ifdef VERBOSE}
+  WriteLn('PUSH: ' + Current.ClassName);
+  {$endif}
 end;
 
 end.

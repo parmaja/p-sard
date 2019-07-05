@@ -100,7 +100,7 @@ type
     procedure Prepare; override;
     procedure Post; override;
     procedure Next; override;
-    procedure SetToken(Token: TSardToken); override;
+    procedure DoToken(Token: TSardToken); override;
     procedure SetOperator(AOperator: TSardOperator); virtual;
 
     property Instruction: TInstruction read FInstruction;
@@ -147,7 +147,7 @@ type
   protected
   public
     constructor Create(AParser: TParser);
-    procedure SetControl(AControl: TSardControl); override;
+    procedure DoControl(AControl: TSardControl); override;
   end;
 
   { TCollectorDefine }
@@ -170,7 +170,7 @@ type
       Declare  ^Declare
       We end with ; or : or )
     }
-    procedure SetControl(AControl: TSardControl); override;
+    procedure DoControl(AControl: TSardControl); override;
     procedure Reset; override;
     function IsInitial: Boolean; override;
   end;
@@ -285,7 +285,7 @@ procedure TCodeCollector.Next;
 begin
 end;
 
-procedure TCodeCollector.SetToken(Token: TSardToken);
+procedure TCodeCollector.DoToken(Token: TSardToken);
 var
   text: string;
 begin
@@ -492,14 +492,21 @@ begin
   if (LastControl = ctlCloseBlock) then //see setToken
   begin
       LastControl := ctlNone;//prevent loop
-      SetControl(Lexer.Controls.GetControl(ctlEnd));
+      SetControl(Lexer.Controls.GetControl(ctlEnd)); //TODO check if we need it
   end;
 
   Current.SetControl(AControl);
-  DoQueue();
-  if (paPass in Actions) then //TODO check if Set work good here
-      Current.SetControl(AControl);
-  FActions := [];
+  while true do
+  begin
+    DoQueue();
+    if (paPass in Actions) then
+    begin
+      FActions := FActions - [paPass];
+      Current.SetControl(AControl)
+    end
+    else
+      break;
+  end;
   LastControl := aControl.Code;
 end;
 
@@ -809,7 +816,7 @@ begin
   Result := TControllerDefines.Create(Self);
 end;
 
-procedure TCollectorDefine.SetControl(AControl: TSardControl);
+procedure TCollectorDefine.DoControl(AControl: TSardControl);
 var
   aBlock: TBlock_Node;
 begin
@@ -910,7 +917,7 @@ begin
   inherited Create(AParser, nil);
 end;
 
-procedure TCollectorDeclare.SetControl(AControl: TSardControl);
+procedure TCollectorDeclare.DoControl(AControl: TSardControl);
 begin
   case (AControl.code) of
     ctlEnd, ctlNext:

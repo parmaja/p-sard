@@ -145,20 +145,15 @@ begin
         FreeAndNil(Scanner);
       end;
     end;
-  except
-    on E:Exception do
-    begin
-      ShowException(E);
-      raise;
-    end;
+  finally
   end;
   Terminate;
 end;
 
 procedure TSardApplication.ShowException(E: Exception);
 begin
-  WriteLn(E.Message);
   inherited ShowException(E);
+  Readln();
 end;
 
 constructor TSardApplication.Create(TheOwner: TComponent);
@@ -181,7 +176,7 @@ var
   Application: TSardApplication;
 begin
   Application := TSardApplication.Create(nil);
-  Application.Title :='Sard';
+  Application.Title :='JSON Demo';
   Application.Run;
   Application.Free;
 end.
