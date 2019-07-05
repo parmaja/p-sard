@@ -88,7 +88,6 @@ type
     var
       Expect: TExpect;
     ParentObject: TObject; //element with array value created
-    //CurrentObject: TObject;
     Name: string;
   public
     constructor Create(AParser: TParser; AName: string; AParentObject: TObject);
@@ -145,6 +144,8 @@ type
 
   TJSONParserClass = class of TJSONParser;
 
+//-----------------------------------------------------------------------------
+
   { TSourceWriter }
 
   TSourceWriter = class abstract(TObject)
@@ -169,12 +170,16 @@ type
     procedure NewLine; override;
   end;
 
+//-----------------------------------------------------------------------------
+
   { TRTTIJSONParser }
 
   TRTTIJSONParser = class(TJSONParser)
   protected
     procedure SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType); override;
   end;
+
+//-----------------------------------------------------------------------------
 
   { TJSONObject }
 
@@ -287,32 +292,16 @@ type
   published
   end;
 
-//--------------------
+//-----------------------------------------------------------------------------
 
  { TDOMJSONParser }
 
   TDOMJSONParser = class(TJSONParser)
   protected
-    type
-      TJSONClass = class(TmnNamedObject)
-      public
-        JSONClass: TJSONValueClass;
-      end;
-
-      { TJSONClasses }
-
-      TJSONClasses = class(TmnNamedObjectList<TJSONClass>)
-      public
-        procedure Add(AName: string; AValueClass: TJSONValueClass);
-      end;
-
   protected
-    JSONClasses: TJSONClasses;
     procedure NeedObject(AParentObject: TObject; AJSONName: string; out AJSONObject: TObject); override;
     procedure SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType); override;
   public
-    procedure Created; override;
-    destructor Destroy; override;
   end;
 
   { TJSONScanner }
@@ -574,18 +563,6 @@ begin
     Value.WriteTo(Writer, LastOne, Level);
 end;
 
-{ TJSONClasses }
-
-procedure TDOMJSONParser.TJSONClasses.Add(AName: string; AValueClass: TJSONValueClass);
-var
-  Item: TJSONClass;
-begin
-  Item := TJSONClass.Create;
-  Item.Name := AName;
-  Item.JSONClass := AValueClass;
-  inherited Add(Item);
-end;
-
 { TDOMJSONParser }
 
 procedure TDOMJSONParser.NeedObject(AParentObject: TObject; AJSONName: string; out AJSONObject: TObject);
@@ -619,23 +596,6 @@ begin
     (e.Value as TJSONArray_Value).Add(v)
   else
     e.Value :=  v;
-end;
-
-procedure TDOMJSONParser.Created;
-begin
-  inherited Created;
-  JSONClasses := TJSONClasses.Create;
-  JSONClasses.Add('', TJSONString_Value);
-  JSONClasses.Add('String', TJSONString_Value);
-  JSONClasses.Add('Number', TJSONNumber_Value);
-  JSONClasses.Add('Object', TJSONObject_Value);
-  JSONClasses.Add('Array', TJSONArray_Value);
-end;
-
-destructor TDOMJSONParser.Destroy;
-begin
-  FreeAndNil(JSONClasses);
-  inherited Destroy;
 end;
 
 { TRTTIJSONParser }
@@ -684,7 +644,6 @@ begin
         (Parser as TJSONParser).SetObjectValue(CurrentObject, Name, '', jtObject);
         Parser.Push(TJSONCollectorElement.Create(Parser, CurrentObject, nil));
         Inc(Expect);
-        //TODO Reset if not strict mode
       end
       else
         inherited;
@@ -769,7 +728,6 @@ begin
       if Name <> '' then
         RaiseError('Name already set: ' + Name);
       Name := DequoteStr(Token.Value, '"');
-      //Inc(Expect);
     end
     else
       RaiseError('Name expected');
@@ -807,9 +765,7 @@ begin
     ctlNext:
     begin
       if Expect = elmValue then
-      begin
-        Reset; //good if it come from values of array
-      end
+        Reset //good if it comes from values of array
       else
         inherited;
     end;
