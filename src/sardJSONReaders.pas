@@ -122,6 +122,8 @@ type
   TJSONType = (
     jtString,
     jtNumber,
+    jtIdentifier,
+    jtBoolean,
     jtObject,
     jtArray
   );
@@ -241,6 +243,18 @@ type
     property Text: string read FText write FText;
   end;
 
+  { TJSONIdentifier_Value }
+
+  TJSONIdentifier_Value = class(TJSONValue)
+  private
+    FText: string;
+  public
+    procedure WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    constructor Create(AParent: TJSONElement; AText: string); overload;
+  published
+    property Text: string read FText write FText;
+  end;
+
   { TJSONNumber_Value }
 
   TJSONNumber_Value = class(TJSONValue)
@@ -251,6 +265,19 @@ type
     constructor Create(AParent: TJSONElement; ANumber: string); overload;
   published
     property Number: string read FNumber write FNumber;
+  end;
+
+  { TJSONBoolean_Value }
+
+  TJSONBoolean_Value = class(TJSONValue)
+  private
+    FValue: Boolean;
+  public
+    procedure WriteTo(Writer: TSourceWriter; LastOne:Boolean; Level: Integer); override;
+    constructor Create(AParent: TJSONElement; AValue: Boolean); overload;
+    constructor Create(AParent: TJSONElement; AValue: string); overload;
+  published
+    property Value: Boolean read FValue write FValue;
   end;
 
   { TJSONItems }
@@ -324,6 +351,46 @@ implementation
 
 uses
   StrUtils;
+
+{ TJSONBoolean_Value }
+
+procedure TJSONBoolean_Value.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  if Value then
+    Writer.Add('true')
+  else
+    Writer.Add('false');
+  inherited WriteTo(Writer, LastOne, Level);
+end;
+
+constructor TJSONBoolean_Value.Create(AParent: TJSONElement; AValue: Boolean);
+begin
+  inherited Create(AParent);
+  FValue := AValue;
+end;
+
+constructor TJSONBoolean_Value.Create(AParent: TJSONElement; AValue: string);
+begin
+  inherited Create(AParent);
+  if AValue = 'true' then
+    FValue := true
+  else if AValue = 'false' then
+    FValue := false;
+end;
+
+{ TJSONIdentifier_Value }
+
+procedure TJSONIdentifier_Value.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  Writer.Add(Text);
+  inherited;
+end;
+
+constructor TJSONIdentifier_Value.Create(AParent: TJSONElement; AText: string);
+begin
+  inherited Create(AParent);
+  FText := AText;
+end;
 
 { TSourceWriter }
 
@@ -592,6 +659,8 @@ begin
 
   case AType of
     jtNumber: v :=  TJSONNumber_Value.Create(nil, AValue);
+    jtIdentifier: v :=  TJSONIdentifier_Value.Create(nil, AValue);
+    jtBoolean: v :=  TJSONBoolean_Value.Create(nil, AValue);
     jtString: v :=  TJSONString_Value.Create(nil, AValue);
     jtObject: v := TJSONObject_Value.Create(nil);
     jtArray: v := TJSONArray_Value.Create(nil);
@@ -632,8 +701,15 @@ procedure TJSONCollectorValue.DoToken(Token: TSardToken);
 begin
   if Expect = valValue then
   begin
-    if (Token.TokenType = typeIdentifier) or (Token.TokenType = typeString) then
+    if (Token.TokenType = typeString) then
       Parser.SetObjectValue(CurrentObject, Name, DequoteStr(Token.Value), jtString)
+    else if (Token.TokenType = typeIdentifier) then
+    begin
+      if (Token.Value = 'true') or (Token.Value = 'false') then
+        Parser.SetObjectValue(CurrentObject, Name, Token.Value, jtBoolean)
+      else
+        Parser.SetObjectValue(CurrentObject, Name, Token.Value, jtIdentifier)
+    end
     else if (Token.TokenType = typeNumber) then
       Parser.SetObjectValue(CurrentObject, Name, DequoteStr(Token.Value), jtNumber);
     Inc(Expect);
