@@ -650,28 +650,36 @@ end;
 function TDOMJSONParser.SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject;
 var
   v: TJSONValue;
+  procedure CreateValue;
+  begin
+    case AType of
+      jtNumber: v :=  TJSONNumber_Value.Create(nil, AValue);
+      jtIdentifier: v :=  TJSONIdentifier_Value.Create(nil, AValue);
+      jtBoolean: v :=  TJSONBoolean_Value.Create(nil, AValue);
+      jtString: v :=  TJSONString_Value.Create(nil, AValue);
+      jtObject: v := TJSONObject_Value.Create(nil);
+      jtArray: v := TJSONArray_Value.Create(nil);
+    end;
+    Result := v;
+  end;
 begin
   if AObject = nil then
-    RaiseError('Can not assign value to nil element');
-
-{  if (e.Value <> nil) and not(e.Value is TJSONArray_Value) then
-    RaiseError('Value is already set and it is not array: ' + e.Value.ClassName);}
-
-  case AType of
-    jtNumber: v :=  TJSONNumber_Value.Create(nil, AValue);
-    jtIdentifier: v :=  TJSONIdentifier_Value.Create(nil, AValue);
-    jtBoolean: v :=  TJSONBoolean_Value.Create(nil, AValue);
-    jtString: v :=  TJSONString_Value.Create(nil, AValue);
-    jtObject: v := TJSONObject_Value.Create(nil);
-    jtArray: v := TJSONArray_Value.Create(nil);
-  end;
-
-  Result := v;
+    RaiseError('Can not set value to nil object');
 
   if (AObject is TJSONArray_Value) then
-    (AObject as TJSONArray_Value).Add(v)
+  begin
+    CreateValue;
+    (AObject as TJSONArray_Value).Add(v);
+  end
   else if (AObject is TJSONElement) then
+  begin
+     if (AObject as TJSONElement).Value <> nil then
+      RaiseError('Value is already set and it is not array: ' + AObject.ClassName);
+    CreateValue;
     (AObject as TJSONElement).Value  :=  v;
+  end
+  else
+    RaiseError('Value can not set to:' + AObject.ClassName);
 end;
 
 { TRTTIJSONParser }

@@ -1,7 +1,7 @@
 program json_demo;
 
 {$mode delphi}{$H+}
-{$define DOM}
+{.$define DOM}
 
 uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
