@@ -130,14 +130,14 @@ type
 
   { TJSONParser }
 
-  TJSONParser = class(TParser)
+  TJSONParser = class abstract(TParser)
   private
     FStrict: Boolean;
   protected
     Lexer: TLexer;
     procedure DoQueue;
     procedure NeedElement(AParentObject: TObject; AName: string; out AObject: TObject); virtual;
-    function SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject; virtual;
+    function SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject; virtual; abstract;
   public
     constructor Create(ALexer: TLexer; AObject: TObject); virtual;
     destructor Destroy; override;
@@ -176,15 +176,6 @@ type
     destructor Destroy; override;
     procedure Add(S: string); override;
     procedure NewLine; override;
-  end;
-
-//-----------------------------------------------------------------------------
-
-  { TRTTIJSONParser }
-
-  TRTTIJSONParser = class(TJSONParser)
-  protected
-    function SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject; override;
   end;
 
 //-----------------------------------------------------------------------------
@@ -324,6 +315,16 @@ type
     procedure WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
     property Items: TJSONList read FItems;
   published
+  end;
+
+//-----------------------------------------------------------------------------
+
+  { TRTTIJSONParser }
+
+  TRTTIJSONParser = class(TJSONParser)
+  protected
+    procedure NeedElement(AParentObject: TObject; AName: string; out AObject: TObject); override;
+    function SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject; override;
   end;
 
 //-----------------------------------------------------------------------------
@@ -691,10 +692,16 @@ end;
 
 { TRTTIJSONParser }
 
+procedure TRTTIJSONParser.NeedElement(AParentObject: TObject; AName: string; out AObject: TObject);
+begin
+  AObject := AParentObject;
+end;
+
 function TRTTIJSONParser.SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject;
 begin
-  SetPropertyValue(AObject, AName, AValue);
-  Result := nil;
+  if AName <> '' then
+    SetPropertyValue(AObject, AName, AValue);
+  Result := AObject;
 end;
 
 { TJSONCollectorValue }
@@ -702,6 +709,8 @@ end;
 constructor TJSONCollectorValue.Create(AParser: TParser; AName: string; AObject: TObject);
 begin
   inherited Create(AParser);
+  if AObject = nil then
+    RaiseError('Object nil in collection value!');
   Name := AName;
   CurrentObject := AObject;
 end;
@@ -978,11 +987,6 @@ end;
 procedure TJSONParser.NeedElement(AParentObject: TObject; AName: string; out AObject: TObject);
 begin
   AObject := nil;
-end;
-
-function TJSONParser.SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject;
-begin
-  Result := nil;
 end;
 
 constructor TJSONParser.Create(ALexer: TLexer; AObject: TObject);
