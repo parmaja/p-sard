@@ -9,7 +9,7 @@ uses
   {$ENDIF}{$ENDIF}
   Classes, SysUtils, CustApp,
   sardClasses, sardObjects, sardParsers, sardScripts,
-  sardJSONReaders;
+  sardJSONs, sardJSONRTTIs;
 
 type
   {$ifdef DOM}
@@ -81,13 +81,12 @@ end;
 procedure TSardApplication.DoRun;
 var
   ErrorMsg: String;
-  i: Integer;
   Scanner: TJSONScanner;
   Lines: TStringList;
   FileName: string;
-  Writer: TStringSourceWriter;
   {$ifdef DOM}
   JSONRoot: TMyDOM;
+  Writer: TStringSourceWriter;
   {$else}
   JSONRoot: TMyJSONObject;
   {$endif}

@@ -1,4 +1,4 @@
-unit sardJSONReaders;
+unit sardJSONs;
 {**
 *  This file is part of the "SARD"
 *
@@ -16,7 +16,7 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Variants,
-  mnUtils, mnClasses, mnRTTIUtils,
+  mnUtils, mnClasses,
   sardClasses, sardParsers, sardStandards;
 
 type
@@ -315,16 +315,6 @@ type
     procedure WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
     property Items: TJSONList read FItems;
   published
-  end;
-
-//-----------------------------------------------------------------------------
-
-  { TRTTIJSONParser }
-
-  TRTTIJSONParser = class(TJSONParser)
-  protected
-    procedure NeedElement(AParentObject: TObject; AName: string; out AObject: TObject); override;
-    function SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject; override;
   end;
 
 //-----------------------------------------------------------------------------
@@ -688,20 +678,6 @@ begin
   end
   else
     RaiseError('Value can not set to:' + AObject.ClassName);
-end;
-
-{ TRTTIJSONParser }
-
-procedure TRTTIJSONParser.NeedElement(AParentObject: TObject; AName: string; out AObject: TObject);
-begin
-  AObject := AParentObject;
-end;
-
-function TRTTIJSONParser.SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject;
-begin
-  if AName <> '' then
-    SetPropertyValue(AObject, AName, AValue);
-  Result := AObject;
 end;
 
 { TJSONCollectorValue }
