@@ -1,7 +1,7 @@
 program json_demo;
 
 {$mode delphi}{$H+}
-{.$define DOM}
+{$define DOM}
 
 uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
@@ -113,7 +113,8 @@ begin
       FileName := ParamStr(1);
       {$ifdef DOM}
       JSONRoot:= TMyDOM.Create;
-      Scanner := TJSONScanner.Create(JSONRoot, TDOMJSONParser);
+      Scanner := TJSONScanner.Create(JSONRoot, TDataJSONParser);
+      //Scanner.Strict := False;
       {$else}
       JSONRoot:=TMyJSONObject.Create;
       Scanner := TJSONScanner.Create(JSONRoot, TRTTIJSONParser);

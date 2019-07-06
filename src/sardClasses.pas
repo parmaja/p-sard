@@ -243,7 +243,7 @@ end;
 
 constructor ESardParserException.Create(const Msg: string; const Line, Column: Integer);
 begin
-  inherited Create(Msg + ' ' + FormatColLine(Column, Line));
+  inherited Create(Msg + ' at ' + FormatColLine(Column, Line));
   FLine := Line;
   FColumn := Column;
 end;

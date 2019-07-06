@@ -104,7 +104,7 @@ type
   protected
     const
       sWhitespace = sEOL + [' ', #8];
-      sNumberOpenChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+      sNumberOpenChars = ['-', '+', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
       sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
       sSymbolChars = ['"', '''', '\']; //deprecated;
       sIdentifierSeparator = '.';
@@ -131,6 +131,8 @@ type
   { TJSONParser }
 
   TJSONParser = class(TParser)
+  private
+    FStrict: Boolean;
   protected
     Lexer: TLexer;
     procedure DoQueue;
@@ -144,6 +146,8 @@ type
     procedure SetControl(AControl: TSardControl); override;
     procedure Start; override;
     procedure Stop; override;
+
+    property Strict: Boolean read FStrict write FStrict default true;
   end;
 
   TJSONParserClass = class of TJSONParser;
@@ -324,9 +328,9 @@ type
 
 //-----------------------------------------------------------------------------
 
- { TDOMJSONParser }
+ { TDataJSONParser }
 
-  TDOMJSONParser = class(TJSONParser)
+  TDataJSONParser = class(TJSONParser)
   protected
   protected
     procedure NeedElement(AParentObject: TObject; AJSONName: string; out AJSONObject: TObject); override;
@@ -337,6 +341,8 @@ type
   { TJSONScanner }
 
   TJSONScanner = class(TScanner)
+  private
+    FStrict: Boolean;
   protected
     FParserClass: TJSONParserClass;
     FRoot: TObject;
@@ -345,6 +351,7 @@ type
     constructor Create(ARoot: TObject; AParserClass: TJSONParserClass);
     procedure Compile(Lines: TStringList);
     property Root: TObject read FRoot;
+    property Strict: Boolean read FStrict write FStrict default true;
   end;
 
 implementation
@@ -638,16 +645,16 @@ begin
     Value.WriteTo(Writer, LastOne, Level);
 end;
 
-{ TDOMJSONParser }
+{ TDataJSONParser }
 
-procedure TDOMJSONParser.NeedElement(AParentObject: TObject; AJSONName: string; out AJSONObject: TObject);
+procedure TDataJSONParser.NeedElement(AParentObject: TObject; AJSONName: string; out AJSONObject: TObject);
 begin
   if not (AParentObject is TJSONObject_Value) then
     RaiseError('Value is not object');
   (AParentObject as TJSONObject_Value).NeedElement(AJSONName, AJSONObject);
 end;
 
-function TDOMJSONParser.SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject;
+function TDataJSONParser.SetObjectValue(AObject: TObject; AName: string; AValue: string; AType: TJSONType): TObject;
 var
   v: TJSONValue;
   procedure CreateValue;
@@ -741,7 +748,7 @@ begin
     end;
     ctlCloseBlock:
     begin
-      if Expect = valNext then
+      if (Expect = valNext) or not Parser.Strict then
       begin
         Parser.SetAction([paPass, paPop]);
       end
@@ -761,7 +768,7 @@ begin
     end;
     ctlCloseArray:
     begin
-      if Expect = valNext then
+      if (Expect = valNext) or not Parser.Strict then
       begin
         Parser.SetAction([paPass, paPop]);
       end
@@ -770,7 +777,7 @@ begin
     end;
     ctlStop: //ctlStop using stop if file ended after value, we treat it as comma, but in Element collector we will check if that error
     begin
-      if Expect = valNext then
+      if (Expect = valNext) or not Parser.Strict then
       begin
         Parser.SetAction([paPass, paPop]);
         Reset;
@@ -780,7 +787,7 @@ begin
     end;
     ctlNext:
     begin
-      if Expect = valNext then
+      if (Expect = valNext) or not Parser.Strict then
       begin
         Parser.SetAction([paPass, paPop]); //paPass pass it to array to push another value collection, but element should ignore it
         Reset;
@@ -846,7 +853,7 @@ begin
     end;
     ctlCloseBlock:
     begin
-      if Expect = elmValue then
+      if (Expect = elmValue) or not Parser.Strict then
       begin
         Parser.SetAction([paPop]);
         Reset;
@@ -879,7 +886,7 @@ begin
     ctlStart: ;
     ctlStop:
     begin
-      if Parser.Count > 1 then
+      if (Parser.Count > 1) and Parser.Strict then
         RaiseError('Incomplete Code');
     end
     else
@@ -908,11 +915,13 @@ end;
 function TJSONScanner.CreateParser: TParser;
 begin
   Result := FParserClass.Create(Current, FRoot);
+  (Result as TJSONParser).Strict := Strict;
 end;
 
 constructor TJSONScanner.Create(ARoot: TObject; AParserClass: TJSONParserClass);
 begin
   inherited Create;
+  FStrict := True;
   FRoot := ARoot;
   FParserClass := AParserClass;
   Add(TJSONLexer.Create);
@@ -979,6 +988,7 @@ end;
 constructor TJSONParser.Create(ALexer: TLexer; AObject: TObject);
 begin
   inherited Create;
+  FStrict := True;
   Lexer := ALexer;
   Push(TJSONCollectorElement.Create(Self, AObject));
 end;
