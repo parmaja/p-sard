@@ -31,7 +31,7 @@ type
   protected
     OpenSymbol: string;
     CloseSymbol: string;
-    procedure Finish; virtual; abstract;
+    procedure Collected; virtual; abstract;
     procedure Collect(Text: string); virtual; abstract;
 
     procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
@@ -46,7 +46,7 @@ type
   protected
     procedure SetToken(Text: string); virtual; abstract;
     procedure Collect(Text: string); override;
-    procedure Finish; override;
+    procedure Collected; override;
   end;
 
   { TString_Tokenizer }
@@ -170,7 +170,7 @@ begin
       Collect(SliceText(Text, Started, Column));
       if (Lexer.TrimSymbols) then
           Column := Column + Length(CloseSymbol);
-      Finish;
+      Collected;
       Resume := False;
       exit;
     end;
@@ -192,7 +192,7 @@ begin
   Buffer := Buffer + Text;
 end;
 
-procedure TBufferedMultiLine_Tokenizer.Finish;
+procedure TBufferedMultiLine_Tokenizer.Collected;
 begin
   SetToken(Buffer);
   Buffer := '';

@@ -105,11 +105,8 @@ begin
           //Lines.Text := 'x:{:=10};';
           //Lines.Text := 'print(10);print(20)';
           Script.Compile(Lines);
-          if Script is TCodeScript then
-          begin
-            (Script as TCodeScript).Run;
-            WriteLn((Script as TCodeScript).Result);
-          end;
+          Script.Run;
+          WriteLn((Script as TCodeScript).Result);
         finally
           FreeAndNil(Lines);
         end;
