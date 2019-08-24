@@ -715,7 +715,7 @@ begin
     Inc(Expect);
   end
   else
-    RaiseError('Value not expcted: ' + Token.Value);
+    RaiseError('Value not expected: ' + Token.Value);
 end;
 
 procedure TJSONCollectorValue.DoControl(AControl: TSardControl);

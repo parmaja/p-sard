@@ -101,6 +101,7 @@ type
     procedure Post; virtual;
     procedure Next; virtual;
     procedure DoToken(Token: TSardToken); override;
+    procedure DoControl(AControl: TSardControl); override;
     procedure SetOperator(AOperator: TSardOperator); virtual;
 
     property Instruction: TInstruction read FInstruction;
@@ -315,6 +316,10 @@ begin
       else
         Instruction.SetIdentifier(text);
   end
+end;
+
+procedure TCodeCollector.DoControl(AControl: TSardControl);
+begin
 end;
 
 procedure TCodeCollector.SetOperator(AOperator: TSardOperator);

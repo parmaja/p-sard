@@ -136,6 +136,7 @@ type
     //Return true if it done, next will auto detect it detect
     procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); virtual; abstract;
     function Accept(Text: string; Column: Integer): Boolean; virtual; abstract;
+    procedure Finish; virtual;
     //This function call when switched to it
     procedure Switched;
   public
@@ -329,7 +330,7 @@ begin
   Start;
   for i := 0 to Lines.Count -1 do
   begin
-    ScanLine(Lines[i], i + 1);
+    ScanLine(trim(Lines[i]), i + 1); //TODO REMOVE TRIM
   end;
   Stop;
 end;
@@ -510,6 +511,8 @@ end;
 
 procedure TLexer.Stop;
 begin
+  if Current <> nil then
+    Current.Finish;
   Parser.Stop;
 end;
 
@@ -565,6 +568,10 @@ begin
 end;
 
 { TTokenizer }
+
+procedure TTokenizer.Finish;
+begin
+end;
 
 procedure TTokenizer.Switched;
 begin

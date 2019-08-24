@@ -114,6 +114,9 @@ begin
         FreeAndNil(Script);
       end;
     end;
+    {$ifdef DEBUG}
+    ReadLn();
+    {$endif}
   except
     on E:Exception do
     begin
