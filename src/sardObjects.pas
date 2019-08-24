@@ -155,7 +155,7 @@ type
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
   public
-    constructor Create; virtual;
+    constructor Create; overload; virtual;
     function Operate(AObject: TNode; AOperator: TSardOperator): Boolean;
     function Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator = nil; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
     property Parent: TNode read FParent write SetParent;

@@ -160,7 +160,7 @@ type
   public
     TabWidth: Integer;
     constructor Create;
-    procedure Add(S: string); virtual; abstract; overload;
+    procedure Add(S: string); overload; virtual; abstract;
     procedure Add(Level: Integer = 1; S: string = ''); overload;
     procedure NewLine; virtual; abstract;
   end;
