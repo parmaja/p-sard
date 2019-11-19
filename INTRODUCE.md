@@ -202,31 +202,13 @@ You can create object based on any other object, but it will not copy the values
       num = 10; <- this a member of the object you can use it
     }
 
-  
-Required
---------
-
-D v2.079+ http://dlang.org DMD2
-
-
-Library
---------
-
-https://github.com/parmaja/d-minilib
-
-https://github.com/robik/ConsoleD/tree/master/source
-
-or
-
-https://github.com/adamdruppe/arsd/blob/master/terminal.d
-
 
 License
 =======
 
 The SARD script is open-sourced software licensed under the [MIT license](http://opensource.org/licenses/MIT)
 
-###Articles###
+### Articles ###
 
 This articles i want to read
 
