@@ -32,7 +32,7 @@ Specification
   * There is no "For". "While", "Repeat" or even "If" "Else", those are an objects //not yet
   * No global, but object functions is global for child objects
   
-#####Done:#####
+##### Done: #####
 
 ```D
 /*
@@ -94,7 +94,7 @@ x := 10;
 := x + foo(5, 5);
 ```
 
-#####TODO:#####
+##### TODO: #####
 
 ```D
 x := #0; // Boolean values, true and false words are just global variables.
@@ -120,7 +120,7 @@ object.{     <-not sure
 }
 ```
 
-####Rules####
+#### Rules ####
 
 
 -	Do not use $ or % sign any where, I reserved it for special financial operating, btw i am an accountant.
@@ -129,7 +129,7 @@ object.{     <-not sure
 - No special name/char/case for classes.
 - Keep it visual, i mean, you can convert it to uml diagram and vise versa, in fact my target to convert it to Scratch similar visual programming, so any complex parsing will break the rules.
 
-###Thinking loud###
+### Thinking loud ###
 
 Arrays:
 
