@@ -180,18 +180,18 @@ type
 
 //-----------------------------------------------------------------------------
 
-  { TJSONObject }
+  { TJSONBase }
 
-  TJSONObject = class abstract(TSardObject)
+  TJSONBase = class abstract(TSardObject)
   public
     procedure WriteTo(Writer: TSourceWriter; LastOne:Boolean; Level: Integer); virtual;
   end;
 
   TJSONValue = class;
 
-  { TJSONElement }
+  { TJSONObject }
 
-  TJSONElement = class(TJSONObject)
+  TJSONObject = class(TJSONBase)
   private
     FName: string;
     FValue: TJSONValue;
@@ -206,22 +206,22 @@ type
 
   { TJSONRoot }
 
-  TJSONRoot = class(TJSONElement)
+  TJSONRoot = class(TJSONObject)
   public
     procedure WriteTo(Writer: TSourceWriter; LastOne:Boolean; Level: Integer); override;
   end;
 
-  TJSONElementClass = class of TJSONElement;
+  TJSONElementClass = class of TJSONObject;
 
   { TJSONValue }
 
-  TJSONValue = class abstract(TJSONObject)
+  TJSONValue = class abstract(TJSONBase)
   private
-    FParent: TJSONElement;
+    FParent: TJSONObject;
   public
-    constructor Create(AParent: TJSONElement);
+    constructor Create(AParent: TJSONObject);
     procedure WriteTo(Writer: TSourceWriter; LastOne:Boolean; Level: Integer); override;
-    property Parent: TJSONElement read FParent;
+    property Parent: TJSONObject read FParent;
   end;
 
   TJSONValueClass = class of TJSONValue;
@@ -233,7 +233,7 @@ type
     FText: string;
   public
     procedure WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
-    constructor Create(AParent: TJSONElement; AText: string); overload;
+    constructor Create(AParent: TJSONObject; AText: string); overload;
   published
     property Text: string read FText write FText;
   end;
@@ -245,7 +245,7 @@ type
     FText: string;
   public
     procedure WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
-    constructor Create(AParent: TJSONElement; AText: string); overload;
+    constructor Create(AParent: TJSONObject; AText: string); overload;
   published
     property Text: string read FText write FText;
   end;
@@ -257,7 +257,7 @@ type
     FNumber: string;
   public
     procedure WriteTo(Writer: TSourceWriter; LastOne:Boolean; Level: Integer); override;
-    constructor Create(AParent: TJSONElement; ANumber: string); overload;
+    constructor Create(AParent: TJSONObject; ANumber: string); overload;
   published
     property Number: string read FNumber write FNumber;
   end;
@@ -269,15 +269,15 @@ type
     FValue: Boolean;
   public
     procedure WriteTo(Writer: TSourceWriter; LastOne:Boolean; Level: Integer); override;
-    constructor Create(AParent: TJSONElement; AValue: Boolean); overload;
-    constructor Create(AParent: TJSONElement; AValue: string); overload;
+    constructor Create(AParent: TJSONObject; AValue: Boolean); overload;
+    constructor Create(AParent: TJSONObject; AValue: string); overload;
   published
     property Value: Boolean read FValue write FValue;
   end;
 
   { TJSONItems }
 
-  TJSONItems = class(TmnObjectList<TJSONElement>)
+  TJSONItems = class(TmnObjectList<TJSONObject>)
   public
   end;
 
@@ -290,7 +290,7 @@ type
     procedure Created; override;
     destructor Destroy; override;
     procedure NeedElement(AJSONName: string; out AJSONObject: TObject);
-    procedure Add(Value: TJSONElement); overload;
+    procedure Add(Value: TJSONObject); overload;
     procedure WriteTo(Writer: TSourceWriter; LastOne:Boolean; Level: Integer); override;
     property Items: TJSONItems read FItems;
   published
@@ -361,13 +361,13 @@ begin
   inherited WriteTo(Writer, LastOne, Level);
 end;
 
-constructor TJSONBoolean_Value.Create(AParent: TJSONElement; AValue: Boolean);
+constructor TJSONBoolean_Value.Create(AParent: TJSONObject; AValue: Boolean);
 begin
   inherited Create(AParent);
   FValue := AValue;
 end;
 
-constructor TJSONBoolean_Value.Create(AParent: TJSONElement; AValue: string);
+constructor TJSONBoolean_Value.Create(AParent: TJSONObject; AValue: string);
 begin
   inherited Create(AParent);
   if AValue = 'true' then
@@ -384,7 +384,7 @@ begin
   inherited;
 end;
 
-constructor TJSONIdentifier_Value.Create(AParent: TJSONElement; AText: string);
+constructor TJSONIdentifier_Value.Create(AParent: TJSONObject; AText: string);
 begin
   inherited Create(AParent);
   FText := AText;
@@ -486,7 +486,7 @@ begin
   inherited;
 end;
 
-constructor TJSONNumber_Value.Create(AParent: TJSONElement; ANumber: string);
+constructor TJSONNumber_Value.Create(AParent: TJSONObject; ANumber: string);
 begin
   inherited Create(AParent);
   FNumber := ANumber;
@@ -494,7 +494,7 @@ end;
 
 { TJSONValue }
 
-constructor TJSONValue.Create(AParent: TJSONElement);
+constructor TJSONValue.Create(AParent: TJSONObject);
 begin
   inherited Create;
   FParent := AParent;
@@ -509,9 +509,9 @@ begin
   Writer.NewLine;
 end;
 
-{ TJSONObject }
+{ TJSONBase }
 
-procedure TJSONObject.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TJSONBase.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
 begin
 
 end;
@@ -524,7 +524,7 @@ begin
   inherited;
 end;
 
-constructor TJSONString_Value.Create(AParent: TJSONElement; AText: string);
+constructor TJSONString_Value.Create(AParent: TJSONObject; AText: string);
 begin
   inherited Create(AParent);
   FText := AText;
@@ -585,19 +585,19 @@ end;
 
 procedure TJSONObject_Value.NeedElement(AJSONName: string; out AJSONObject: TObject);
 begin
-  AJSONObject := TJSONElement.Create;
-  (AJSONObject as TJSONElement).Name := AJSONName;
-  Add((AJSONObject as TJSONElement));
+  AJSONObject := TJSONObject.Create;
+  (AJSONObject as TJSONObject).Name := AJSONName;
+  Add((AJSONObject as TJSONObject));
 end;
 
-procedure TJSONObject_Value.Add(Value: TJSONElement);
+procedure TJSONObject_Value.Add(Value: TJSONObject);
 begin
   Items.Add(Value);
 end;
 
 procedure TJSONObject_Value.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
 var
-  Itm: TJSONElement;
+  Itm: TJSONObject;
 begin
   Writer.Add('{');
   Writer.NewLine;
@@ -607,9 +607,9 @@ begin
   inherited;
 end;
 
-{ TJSONElement }
+{ TJSONObject }
 
-procedure TJSONElement.SetValue(AValue: TJSONValue);
+procedure TJSONObject.SetValue(AValue: TJSONValue);
 begin
   if FValue <> AValue then
   begin
@@ -621,13 +621,13 @@ begin
   end;
 end;
 
-procedure TJSONElement.SetName(AValue: string);
+procedure TJSONObject.SetName(AValue: string);
 begin
   if FName =AValue then Exit;
   FName :=AValue;
 end;
 
-procedure TJSONElement.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TJSONObject.WriteTo(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
 begin
   Writer.Add(Level, QuoteStr(Name, '"') + ': ');
   if Value = nil then
@@ -669,12 +669,12 @@ begin
     CreateValue;
     (AObject as TJSONArray_Value).Add(v);
   end
-  else if (AObject is TJSONElement) then
+  else if (AObject is TJSONObject) then
   begin
-     if (AObject as TJSONElement).Value <> nil then
+     if (AObject as TJSONObject).Value <> nil then
       RaiseError('Value is already set and it is not array: ' + AObject.ClassName);
     CreateValue;
-    (AObject as TJSONElement).Value  :=  v;
+    (AObject as TJSONObject).Value  :=  v;
   end
   else
     RaiseError('Value can not set to:' + AObject.ClassName);
