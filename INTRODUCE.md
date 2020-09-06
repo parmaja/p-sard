@@ -3,14 +3,13 @@ Sard Script
 
 It is an object script language not a programming language, but you can use it as programming language.
 
-But "A new language should bring something new to the table.", Until now it is just training to build language or teaching my self D language.
+But "A new language should bring something new to the table.", Until now it is just training to build language or teaching my language theories.
 
 The idea behind it, it is not use any of reserved words it is kind of challenge, only signs (symbols), only objects there is no "void", "var", "let" "function" or "procedure" or even "if", "else" or "while".
 But we can implement "if" or "while" internally by define it as internal object (not yet).
 
 This project ported to D from my old project writen in Pascal language, and I will continue it with D.
 
-https://github.com/parmaja/fpc-sard/
 
 Specification
 -------------
@@ -34,42 +33,42 @@ Specification
   
 ##### Done: #####
 
-```D
-/*
-  This examples worked, and this comment will ignored, not compiled or parsed as we say.
-*/
+```js
+    /*
+      This examples worked, and this comment will ignored, not compiled or parsed as we say.
+    */
 
-x := 10 + 5 - (5 * 5); //Single Line comment
+    x := 10 + 5 - (5 * 5); //Single Line comment
 
-x := x + 10; //Using same variable, until now local variable implemented
-x := {    //Block it any where
-      y := 0;
-      := y + 5; //this is a result return of the block
-  }
+    x := x + 10; //Using same variable, until now local variable implemented
+    x := {    //Block it any where
+          y := 0;
+          := y + 5; //this is a result return of the block
+      }
 
-{* This a block comment, compiled, useful for documentation, or regenrate the code *}
+    {* This a block comment, compiled, useful for documentation, or regenrate the code *}
 
-:= x; //Return result to the main object
+    := x; //Return result to the main object
 ```
 First init of the variable define the type
 
-```D
-s:='Foo';
-s:=s+' Bar';
-:=s; //It will retrun 'Foo Bar';
+```js
+    s:='Foo';
+    s:=s+' Bar';
+    :=s; //It will retrun 'Foo Bar';
 
-i := 10;
-i := i + 5.5;
-//variable i now have 15 not 15.5
+    i := 10;
+    i := i + 5.5;
+    //variable i now have 15 not 15.5
 
-i := 10.0;
-i := i + 5.5;
-//variable i now have 15.5
+    i := 10.0;
+    i := i + 5.5;
+    //variable i now have 15.5
 ```
 
 Next f is a function or let us say it is an object we can run it.
 
-```D
+```js
 f:{
     x := 10;
     z: {
@@ -84,38 +83,41 @@ f:{
 
 Declare function/object with parameters
 
-```D
-foo:(p1, p2) {
-  := p1 * p2;
-}
+```js
+    foo:(p1, p2) {
+      := p1 * p2;
+    }
 
-x := 10;
+    x := 10;
 
-:= x + foo(5, 5);
+    := x + foo(5, 5);
 ```
 
 ##### TODO: #####
 
-```D
-x := #0; // Boolean values, true and false words are just global variables.
-x := #1;
-x := #fc0f1c; //Color const and operator mix the colors not just add it
-x := 0xffec;  //hex integer number like but the style of print it as hex we need to override ToString
-x := "foo"\n\r"bar"; //escape char outside the string
-x := "I said:"\""As he said";
+```js
+    x := #0; // Boolean values, true and false words are just global variables.
+    x := #1;
+    x := #fc0f1c; //Color const and operator mix the colors not just add it
+    x := 0xffec;  //hex integer number like but the style of print it as hex we need to override ToString
+    x := "foo"\n\r"bar"; //escape char outside the string
+    x := "I said:"\""As he said";
 ```
 
-/*
-    Preprocessor, it will run in external addon/command.... and return string into it
-    similar to <?foo ?> in xml
-*/
-```D
-{?foo
-?}
+```js
+    /*
+        Preprocessor, it will run in external addon/command.... and return string into it
+        similar to <?foo ?> in xml
+    */
+```
+
+```js
+    {?foo
+    ?}
 ```
 
 Pattren of object f.b;
-```D
+```js
 object.{     <-not sure
 }
 ```
@@ -133,7 +135,7 @@ object.{     <-not sure
 
 Arrays:
 
-```D
+```js
     a := [];
 
     a := ["x", "y", "z"];
@@ -142,7 +144,7 @@ Arrays:
 ```
     mayebe manage property as array inside the object like
 
-```D
+```js
     a:{
       num=10;
       str="test";
@@ -159,11 +161,11 @@ Optional open source code with <?sard ?> like php
 Preprocessor: When {?somthing it will passed to addon in engine to return the result to rescan it or replace it with this preprocessor
 
 What about private, public or protected, the default must be protected
-
+```
     x:(p1, p2){ block } //protected
     x:-(){} //private
     x:+(){} //public
-
+```
 We need to add multi blocks to the identifier like this
 
     x(10,10){ ... } { ... }
