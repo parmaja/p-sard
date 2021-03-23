@@ -31,6 +31,7 @@ unit sardObjects;
 
 {$IFDEF FPC}
 {$mode delphi}
+{$WARN 5024 off : Parameter "$1" not used}
 {$ENDIF}
 {$H+}{$M+}
 
@@ -58,7 +59,6 @@ unit sardObjects;
   TmdModifier: It is like operator but with one side can be in the context before the identifier like + !x %x $x
 
 }
-
 interface
 
 uses
@@ -85,6 +85,7 @@ type
     FAnOperator: TSardOperator;
     FAnObject: TNode;
   protected
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
   public
     constructor Create(AOperator: TSardOperator; AObject: TNode); virtual;
     destructor Destroy; override;
@@ -101,6 +102,8 @@ type
   private
     FDebugInfo: TDebugInfo;
     FParent: TNode;
+  protected
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
   public
     constructor Create(AParent: TNode);
     procedure Add(AOperator: TSardOperator; AObject: TNode);
@@ -114,6 +117,7 @@ type
   TStatements = class(TSardObjects<TStatement>)
   private
     FParent: TNode;
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
   public
     constructor Create(AParent: TNode); virtual;
     function Add: TStatement;
@@ -127,8 +131,9 @@ type
   TNode = class abstract(TSardNamedObject)
   private
     FID: Integer;
+    FInternal: Boolean;
     FParent: TNode;
-    FRefCount: Integer;
+    //FRefCount: Integer;
     function GetAsBool: Bool;
     function GetAsInteger: Integer;
     function GetAsNumber: Number;
@@ -154,12 +159,15 @@ type
     procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); virtual; abstract;
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     constructor Create; overload; virtual;
+    constructor CreateInternal;
     function Operate(AObject: TNode; AOperator: TSardOperator): Boolean;
     function Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator = nil; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
     property Parent: TNode read FParent write SetParent;
     property ID: Integer read FID;
+    property Internal: Boolean read FInternal; //registered inside
   end;
 
   TNodeClass = class of TNode;
@@ -222,6 +230,7 @@ type
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
     procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
     destructor Destroy; override;
@@ -235,6 +244,7 @@ type
     FStatements: TStatements;
   protected
     procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
     destructor Destroy; override;
@@ -248,10 +258,18 @@ type
   protected
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
     destructor Destroy; override;
     function DeclareObject(AObject: TNode): TDeclare_Node;
+  end;
+
+  { TMain_Node }
+
+  TMain_Node = class(TBlock_Node)
+  public
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   end;
 
   { TConst_Node }
@@ -295,6 +313,8 @@ type
   { TInteger_Node }
 
   TInteger_Node = class(TNumber_Node)
+  protected
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     Value: Integer;
     constructor Create(AValue: Integer); overload;
@@ -367,6 +387,8 @@ type
   TInstance_Node = class(TNode)
   private
     FArguments: TStatements;
+  protected
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
     destructor Destroy; override;
@@ -379,6 +401,7 @@ type
   TAssign_Node = class(TNode)
   public
     procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   end;
 
 {
@@ -586,6 +609,13 @@ type
   end;
 
 implementation
+
+{ TMain_Node }
+
+procedure TMain_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+end;
 
 { TRunStack }
 
@@ -864,6 +894,17 @@ begin
   end;
 end;
 
+procedure TStatements.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+var
+  itm: TStatement;
+begin
+  inherited;
+  for itm in Self do
+  begin
+    itm.ExportWrite(Writer, LastOne, Level + 1);
+  end;
+end;
+
 { TStatement }
 
 procedure TStatement.Add(AOperator: TSardOperator; AObject: TNode);
@@ -885,6 +926,19 @@ begin
   for itm in Self do
   begin
     itm.Execute(Data, Env);
+  end;
+end;
+
+procedure TStatement.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+var
+  itm: TClause;
+begin
+  inherited;
+  //https://en.wikipedia.org/wiki/Shunting-yard_algorithm
+  //:= "Result is " + 10 + 10 ;
+  for itm in Self do
+  begin
+    itm.ExportWrite(Writer, LastOne, Level + 1);
   end;
 end;
 
@@ -1018,6 +1072,17 @@ begin
   FID := LastID;
 end;
 
+constructor TNode.CreateInternal;
+begin
+  Create;
+  FInternal := True;
+end;
+
+procedure TNode.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+end;
+
 { TClause }
 
 constructor TClause.Create(AOperator: TSardOperator; AObject: TNode);
@@ -1042,6 +1107,15 @@ begin
   Result := FAnObject.Execute(Data, Env, AnOperator);
 end;
 
+procedure TClause.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+  if FAnOperator <> nil then
+    FAnOperator.ExportWrite(Writer, LastOne, Level);
+
+  FAnObject.ExportWrite(Writer, LastOne, Level);
+end;
+
 { TAssign_Node }
 
 procedure TAssign_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
@@ -1060,6 +1134,12 @@ begin
       RaiseError('Variable not found!');
     Env.Results.Current.Result := v;
   end;
+end;
+
+procedure TAssign_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+  Writer.Add(Name + ' := ');
 end;
 
 { TInstance_Node }
@@ -1093,6 +1173,11 @@ begin
         RaiseError('Variable object is null: ' + v.Name);
     Done := v.Value.Execute(Data, Env, AOperator);
   end;
+end;
+
+procedure TInstance_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
 end;
 
 { TText_Node }
@@ -1270,6 +1355,12 @@ end;
 
 { TInteger_Node }
 
+procedure TInteger_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+  Writer.Add(IntToStr(Value));
+end;
+
 constructor TInteger_Node.Create(AValue: Integer);
 begin
   inherited Create;
@@ -1382,6 +1473,11 @@ begin
   Env.Stack.Pop;
 end;
 
+procedure TBlock_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+end;
+
 procedure TBlock_Node.Created;
 begin
   inherited;
@@ -1427,6 +1523,14 @@ begin
   Done := True;
 end;
 
+procedure TStatements_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+  Statements.ExportWrite(Writer, LastOne, Level);
+  Writer.Add(';');
+  Writer.NewLine;
+end;
+
 procedure TStatements_Node.Created;
 begin
   inherited;
@@ -1459,7 +1563,7 @@ end;
 
 procedure TEnclose_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
 begin
-  statement.execute(data, env);
+  Statement.Execute(data, env);
   Done := true;
 end;
 
@@ -1473,6 +1577,14 @@ destructor TEnclose_Node.Destroy;
 begin
   FreeAndNil(FStatement);
   inherited;
+end;
+
+procedure TEnclose_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+  Writer.Add('(');
+  FStatement.ExportWrite(Writer, LastOne, Level);
+  Writer.Add(')');
 end;
 
 {******************************

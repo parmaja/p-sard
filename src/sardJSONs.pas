@@ -9,6 +9,7 @@ unit sardJSONs;
 
 {$IFDEF FPC}
 {$mode delphi}
+{$WARN 5024 off : Parameter "$1" not used}
 {$ENDIF}
 {$H+}{$M+}
 
@@ -151,32 +152,6 @@ type
   end;
 
   TJSONParserClass = class of TJSONParser;
-
-//-----------------------------------------------------------------------------
-
-  { TSourceWriter }
-
-  TSourceWriter = class abstract(TObject)
-  public
-    TabWidth: Integer;
-    constructor Create;
-    procedure Add(S: string); overload; virtual; abstract;
-    procedure Add(Level: Integer = 1; S: string = ''); overload;
-    procedure NewLine; virtual; abstract;
-  end;
-
-  { TStringSourceWriter }
-
-  TStringSourceWriter = class(TSourceWriter)
-  private
-    FStrings: TStrings;
-    FLine: string;
-  public
-    constructor Create(Strings: TStrings);
-    destructor Destroy; override;
-    procedure Add(S: string); override;
-    procedure NewLine; override;
-  end;
 
 //-----------------------------------------------------------------------------
 
@@ -390,19 +365,6 @@ begin
   FText := AText;
 end;
 
-{ TSourceWriter }
-
-constructor TSourceWriter.Create;
-begin
-  inherited Create;
-  TabWidth := 4;
-end;
-
-procedure TSourceWriter.Add(Level: Integer; S: string);
-begin
-  Add(StringOfChar(' ', Level * TabWidth) + S);
-end;
-
 { TJSONCollectorArray }
 
 constructor TJSONCollectorArray.Create(AParser: TParser; AName: string; AParentObject: TObject);
@@ -443,32 +405,6 @@ begin
     else
       inherited;
   end;
-end;
-
-{ TStringSourceWriter }
-
-constructor TStringSourceWriter.Create(Strings: TStrings);
-begin
-  inherited Create;
-  FStrings := Strings;
-end;
-
-destructor TStringSourceWriter.Destroy;
-begin
-  if FLine <> '' then
-    NewLine;
-  inherited Destroy;
-end;
-
-procedure TStringSourceWriter.Add(S: string);
-begin
-  FLine := FLine + S;
-end;
-
-procedure TStringSourceWriter.NewLine;
-begin
-  FStrings.Add(FLine);
-  FLine := '';
 end;
 
 { TJSONRoot }

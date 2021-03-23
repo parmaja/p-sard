@@ -9,6 +9,7 @@ unit sardClasses;
 
 {$IFDEF FPC}
 {$mode delphi}
+{$WARN 5024 off : Parameter "$1" not used}
 {$ENDIF}
 {$H+}{$M+}
 
@@ -46,7 +47,7 @@ type
   { TSardObject }
 
   TSardObject = TmnObject;
-
+  TSourceWriter = class;
   { TSardObjects }
 
   TSardObjects<_Object_: class> = class(TmnObjectList<_Object_>)
@@ -61,6 +62,7 @@ type
     FName: string;
   protected
     procedure SetName(AValue: string); virtual;
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
   public
     property Name: string read FName write SetName;
   end;
@@ -111,6 +113,31 @@ type
     property Parent: _Object_ read GetParent;
     property CurrentItem: TSardStackItem read FCurrentItem;
     property Count: Integer read FCount;
+  end;
+
+  { TSourceWriter }
+
+  TSourceWriter = class abstract(TObject)
+  public
+    TabWidth: Integer;
+    constructor Create;
+    procedure Add(S: string); overload; virtual; abstract;
+    procedure Add(Level: Integer = 1; S: string = ''); overload;
+    procedure NewLine; virtual; abstract;
+  end;
+
+  { TStringSourceWriter }
+
+  TStringSourceWriter = class(TSourceWriter)
+  private
+    FStrings: TStrings;
+    FLine: string;
+  public
+    constructor Create(Strings: TStrings);
+    destructor Destroy; override;
+    procedure Flush;
+    procedure Add(S: string); override;
+    procedure NewLine; override;
   end;
 
 procedure RaiseError(AError: string; Line: Integer = 0; Column: Integer = 0);
@@ -239,6 +266,11 @@ begin
   FName :=AValue;
 end;
 
+procedure TSardNamedObject.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+
+end;
+
 { EsardParserException }
 
 constructor ESardParserException.Create(const Msg: string; const Line, Column: Integer);
@@ -359,6 +391,50 @@ begin
   {$ifdef VERBOSE}
   WriteLn('PUSH: ' + Current.ClassName);
   {$endif}
+end;
+
+{ TSourceWriter }
+
+constructor TSourceWriter.Create;
+begin
+  inherited Create;
+  TabWidth := 4;
+end;
+
+procedure TSourceWriter.Add(Level: Integer; S: string);
+begin
+  Add(StringOfChar(' ', Level * TabWidth) + S);
+end;
+
+{ TStringSourceWriter }
+
+constructor TStringSourceWriter.Create(Strings: TStrings);
+begin
+  inherited Create;
+  FStrings := Strings;
+end;
+
+destructor TStringSourceWriter.Destroy;
+begin
+  Flush;
+  inherited;
+end;
+
+procedure TStringSourceWriter.Flush;
+begin
+  if FLine <> '' then
+    NewLine;
+end;
+
+procedure TStringSourceWriter.Add(S: string);
+begin
+  FLine := FLine + S;
+end;
+
+procedure TStringSourceWriter.NewLine;
+begin
+  FStrings.Add(FLine);
+  FLine := '';
 end;
 
 end.

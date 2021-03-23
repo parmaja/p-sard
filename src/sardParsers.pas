@@ -91,12 +91,15 @@ type
 
   TSardAssociative = (asLeft, asRight);//not yet
 
+  { TSardOperator }
+
   TSardOperator = class(TSardSymbolicObject)
   public
     Associative: TSardAssociative;
     //Precedence: Integer; //TODO it is bad idea, we need more intelligent way to define the power level of operators
     Title: string;
     Description: string;
+    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   end;
 
   { TSardOperators }
@@ -292,6 +295,14 @@ implementation
 
 uses
   StrUtils;
+
+{ TSardOperator }
+
+procedure TSardOperator.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+  Writer.Add(Name);
+end;
 
 { TScript }
 

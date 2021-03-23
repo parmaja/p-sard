@@ -9,6 +9,7 @@ unit sardScripts;
 
 {$IFDEF FPC}
 {$mode delphi}
+{$WARN 5024 off : Parameter "$1" not used}
 {$ENDIF}
 {$H+}{$M+}
 
@@ -49,7 +50,7 @@ type
 
   TInstruction = record
   public
-    procedure internalSetObject(aObject: TNode);
+    procedure InternalSetObject(aObject: TNode);
   public
     Identifier: string;
     AnOperator: TSardOperator;
@@ -237,19 +238,21 @@ type
     procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
   end;
 
-  { TSardScript }
-
   { TCodeScript }
 
   TCodeScript = class(TSardObject)
+  protected
+    procedure RegisterStandard;
   public
-    Main: TBlock_Node;
+    Main: TMain_Node;
     Scanner: TScanner;
     Result: string;
+    RegisterInternals: Boolean;
     destructor Destroy; override;
     procedure Compile(Lines: TStringList); overload;
     procedure Compile(Text: string); overload;
     procedure Run;
+    procedure ExportToFile(FileName: string);
   end;
 
 implementation
@@ -258,9 +261,9 @@ implementation
 
 procedure TCodeCollector.Reset;
 begin
-  //destroy(instruction);
+  //FreeAndNil(instruction);
   FInstruction := Default(TInstruction);
-  //instruction= new Instruction;
+  //instruction= TInstruction.Create;
 end;
 
 procedure TCodeCollector.Prepare;
@@ -272,12 +275,12 @@ procedure TCodeCollector.Post;
 begin
   if (instruction.IsEmpty) then
   begin
-      //debug(log_compile) writeln("Post() empty");
+    //debug(log_compile) writeln("Post() empty");
   end
   else
   begin
-      Prepare;
-      InternalPost;
+    Prepare;
+    InternalPost;
   end;
   Reset;
 end;
@@ -596,32 +599,36 @@ begin
   inherited Destroy;
 end;
 
-procedure TCodeScript.Compile(Lines: TStringList);
+procedure TCodeScript.RegisterStandard;
 var
   Version_Const: TVersion_Const_Node;
   PI_Const: TPI_Const_Node;
   Print_Object: TPrint_object_Node;
 begin
+  Version_Const := TVersion_Const_Node.CreateInternal;
+  Version_Const.Name := 'Version';
+  Main.DeclareObject(Version_Const);
+
+  PI_const := TPI_Const_Node.CreateInternal;
+  PI_Const.name := 'PI';
+  Main.DeclareObject(PI_Const);
+
+  Print_Object := TPrint_object_Node.CreateInternal;
+  Print_Object.Name := 'print';
+  with Main.DeclareObject(Print_Object) do
+    Defines.Parameters.Add('s', 'string');
+end;
+
+procedure TCodeScript.Compile(Lines: TStringList);
+begin
   //writeln("-------------------------------");
 
   FreeAndNil(Main);
 
-  Main := TBlock_Node.Create; //destory the old compile and create new
+  Main := TMain_Node.Create; //destory the old compile and create new
 //  Main.Name := 'main';
-
-  Version_Const := TVersion_Const_Node.Create;
-  Version_Const.Name := 'Version';
-  Main.DeclareObject(Version_Const);
-
-  PI_const := TPI_Const_Node.Create();
-  PI_Const.name := 'PI';
-  Main.DeclareObject(PI_Const);
-
-  Print_Object := TPrint_object_Node.Create();
-  Print_Object.Name := 'print';
-  with Main.DeclareObject(Print_Object) do
-    Defines.Parameters.Add('s', 'string');
-
+  if RegisterInternals then
+    RegisterStandard;
   // Compile
   Scanner := TCodeScanner.Create(Main);
   Scanner.Scan(Lines);
@@ -658,6 +665,23 @@ begin
   finally
     FreeAndNil(Env);
   end;
+end;
+
+procedure TCodeScript.ExportToFile(FileName: string);
+var
+  Writer: TStringSourceWriter;
+  Strings: TStringList;
+begin
+  Strings := TStringList.Create;
+  Writer := TStringSourceWriter.Create(Strings);
+  try
+    Main.ExportWrite(Writer, False, 0);
+    Writer.Flush;
+    Strings.SaveToFile(FileName);
+  finally
+    FreeAndNil(Writer);
+    FreeAndNil(Strings);
+  end
 end;
 
 { TPrint_Object_Node }
@@ -1005,7 +1029,7 @@ end;
 
 { TInstruction }
 
-procedure TInstruction.internalSetObject(aObject: TNode);
+procedure TInstruction.InternalSetObject(aObject: TNode);
 begin
   if ((AnObject <> nil) and (aObject <> nil)) then
       RaiseError('Object is already set');

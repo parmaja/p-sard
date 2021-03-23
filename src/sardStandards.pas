@@ -11,7 +11,7 @@ unit sardStandards;
 {$mode delphi}
 {$ENDIF}
 {$H+}{$M+}
-
+{$WARN 5024 off : Parameter "$1" not used}
 interface
 
 uses
