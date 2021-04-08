@@ -1,6 +1,7 @@
 program sard;
 
 {$mode objfpc}{$H+}
+{$apptype CONSOLE}
 
 uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
@@ -66,8 +67,10 @@ begin
             Script.RegisterInternals := False;
             Script.Compile(Lines);
             Script.Run;
-            Script.ExportToFile('export.sard');
+
             WriteLn((Script as TCodeScript).Result);
+            //Script.ExportToFile('export.sard');
+            Script.ExportToConsole;
           finally
             FreeAndNil(Lines);
           end;
@@ -119,6 +122,9 @@ end;
 
 var
   Application: TSardApplication;
+
+{$R *.res}
+
 begin
   Application := TSardApplication.Create(nil);
   Application.Title :='Sard';

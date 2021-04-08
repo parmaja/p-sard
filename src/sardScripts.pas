@@ -253,6 +253,7 @@ type
     procedure Compile(Text: string); overload;
     procedure Run;
     procedure ExportToFile(FileName: string);
+    procedure ExportToConsole;
   end;
 
 implementation
@@ -649,9 +650,9 @@ end;
 
 procedure TCodeScript.Run;
 var
-  env: TRunEnv;
+  Env: TRunEnv;
 begin
-  env := TRunEnv.Create;
+  Env := TRunEnv.Create;
   try
     Env.Results.Push;
     //Env.Root.AnObject := Main;
@@ -678,6 +679,25 @@ begin
     Main.ExportWrite(Writer, False, 0);
     Writer.Flush;
     Strings.SaveToFile(FileName);
+  finally
+    FreeAndNil(Writer);
+    FreeAndNil(Strings);
+  end
+end;
+
+procedure TCodeScript.ExportToConsole;
+var
+  Writer: TStringSourceWriter;
+  Strings: TStringList;
+  s: string;
+begin
+  Strings := TStringList.Create;
+  Writer := TStringSourceWriter.Create(Strings);
+  try
+    Main.ExportWrite(Writer, False, 0);
+    Writer.Flush;
+    for s in Strings do
+      WriteLn(s);
   finally
     FreeAndNil(Writer);
     FreeAndNil(Strings);
