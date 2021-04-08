@@ -29,6 +29,17 @@ unit sardObjects;
 
 *}
 
+{
+  Blocks
+    Statements
+      Statement
+        Clause: Operator,Modifier,Object
+        Clause: Operator,Modifier,Object
+      Statement
+        Clause: Operator,Modifier,Object
+        Clause: Operator,Modifier,Object
+}
+
 {$IFDEF FPC}
 {$mode delphi}
 {$WARN 5024 off : Parameter "$1" not used}

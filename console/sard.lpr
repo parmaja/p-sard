@@ -4,6 +4,7 @@ program sard;
 {$apptype CONSOLE}
 
 uses
+  Crt,
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
@@ -84,8 +85,10 @@ begin
     {$ifdef DEBUG}
     if HasOption('w', 'wait') then
     begin
-      Write('Press enter to exit.');
-      ReadLn();
+      //Write('Press enter to exit.');
+      //ReadLn();
+      Write('Press any key to exit.');
+      ReadKey;
     end;
     {$endif}
   except

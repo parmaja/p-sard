@@ -597,7 +597,7 @@ destructor TCodeScript.Destroy;
 begin
   FreeAndNil(Main);
   FreeAndNil(Scanner);
-  inherited Destroy;
+  inherited;
 end;
 
 procedure TCodeScript.RegisterStandard;
