@@ -552,7 +552,7 @@ end;
 
 constructor TCodeParser.Create(ALexer: TLexer; AStatements: TStatements);
 begin
-  inherited Create;
+  inherited Create(False); //TODO Check if own
   Lexer := ALexer;
   if (AStatements = nil) then
     RaiseError('You should set Parser.Statements!');

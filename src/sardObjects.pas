@@ -439,6 +439,7 @@ type
     procedure SetValue(AValue: TNode);
   public
     constructor Create; overload;
+    destructor Destroy; override;
     constructor Create(AName: string; ARunKind: TRunVarKinds); overload;
     procedure Clear;
     property RunKind: TRunVarKinds read FRunKind;
@@ -459,6 +460,7 @@ type
   public
     Result: TRunValue;
     constructor Create;
+    destructor Destroy; override;
   end;
 
   { TRunResults }
@@ -647,9 +649,9 @@ end;
 constructor TRunEnv.Create;
 begin
   inherited Create;
-  FResults := TRunResults.Create;
+  FResults := TRunResults.Create(True);
   FRoot := TRunData.Create(nil);
-  FStack := TRunStack.Create;
+  FStack := TRunStack.Create(False); //TODO check if own (nop)
 end;
 
 destructor TRunEnv.Destroy;
@@ -769,6 +771,12 @@ begin
   Result := TRunValue.Create;
 end;
 
+destructor TRunResult.Destroy;
+begin
+  FreeAndNil(Result);
+  inherited;
+end;
+
 { TRunValue }
 
 procedure TRunValue.SetValue(AValue: TNode);
@@ -781,6 +789,12 @@ end;
 constructor TRunValue.Create;
 begin
   inherited Create;
+end;
+
+destructor TRunValue.Destroy;
+begin
+  FreeAndNil(FValue);
+  inherited;
 end;
 
 constructor TRunValue.Create(AName: string; ARunKind: TRunVarKinds);

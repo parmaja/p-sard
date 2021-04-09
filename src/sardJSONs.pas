@@ -903,7 +903,7 @@ end;
 
 constructor TJSONParser.Create(ALexer: TLexer; AObject: TObject);
 begin
-  inherited Create;
+  inherited Create(False); //TODO check if own
   FStrict := True;
   Lexer := ALexer;
   Push(TJSONCollectorElement.Create(Self, AObject));

@@ -101,7 +101,7 @@ type
     procedure AfterPush; virtual;
     procedure BeforePop; virtual;
   public
-    constructor Create;
+    constructor Create(OwnItems: Boolean); virtual;
     destructor Destroy; override;
     procedure Clear;
     function IsEmpty: Boolean;
@@ -341,9 +341,10 @@ procedure TSardStack<_Object_>.BeforePop;
 begin
 end;
 
-constructor TSardStack<_Object_>.Create;
+constructor TSardStack<_Object_>.Create(OwnItems: Boolean);
 begin
   inherited Create;
+  Own := OwnItems;
 end;
 
 destructor TSardStack<_Object_>.Destroy;

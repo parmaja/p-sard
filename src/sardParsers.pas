@@ -243,7 +243,7 @@ type
     FActions: TParserActions;
     FNextCollector: TCollector;
   public
-    constructor Create;
+    constructor Create(OwnItems: Boolean);
     procedure Start; virtual;
     procedure Stop; virtual;
     function IsKeyword(AIdentifier: string): Boolean; virtual;
@@ -667,9 +667,9 @@ begin
   FNextCollector := ANextCollector;
 end;
 
-constructor TParser.Create;
+constructor TParser.Create(OwnItems: Boolean);
 begin
-  inherited Create;
+  inherited;
 end;
 
 { TController }
