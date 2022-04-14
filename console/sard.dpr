@@ -1,13 +1,8 @@
 program Sard;
 
-{$mode objfpc}{$H+}
 {$apptype CONSOLE}
 
 uses
-  Crt,
-  {$IFDEF UNIX}{$IFDEF UseCThreads}
-  cthreads,
-  {$ENDIF}{$ENDIF}
   Classes, SysUtils,
   sardClasses, sardObjects, sardParsers, sardScripts, sardJSONs,
   SardConsole;
@@ -23,8 +18,7 @@ begin
   if Application.WaitKey then
   begin
     Write('Press Enter to exit.');
-    KeyPressed;
+    Readln;
   end;
   Application.Free;
 end.
-

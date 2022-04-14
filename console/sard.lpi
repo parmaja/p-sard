@@ -68,10 +68,10 @@
     </RunParams>
     <RequiredPackages>
       <Item>
-        <PackageName Value="Sard"/>
+        <PackageName Value="MiniLib"/>
       </Item>
       <Item>
-        <PackageName Value="MiniCommons"/>
+        <PackageName Value="Sard"/>
       </Item>
       <Item>
         <PackageName Value="LCL"/>
@@ -81,6 +81,7 @@
       <Unit>
         <Filename Value="sard.lpr"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="Sard"/>
       </Unit>
     </Units>
   </ProjectOptions>

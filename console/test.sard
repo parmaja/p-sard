@@ -1,1 +1,4 @@
-zaher := 0;
+f:(x: integer, y: integer){
+}
+y := 5;
+x := + y - f(10,10);
