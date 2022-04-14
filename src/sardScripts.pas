@@ -4,7 +4,7 @@ unit sardScripts;
 *
 * @license   The MIT License (MIT)
 *            Included in this distribution
-* @author    Zaher Dirkey <zaher at parmaja dot com>
+* @author    Zaher Dirkey 
 *}
 
 {$IFDEF FPC}
@@ -1099,7 +1099,7 @@ end;
 procedure TInstruction.SetIdentifier(AIdentifier: string);
 begin
   if (Identifier <> '') then
-      RaiseError('Identifier is already set');
+      RaiseError('Identifier is already set: ' + Identifier);
   Identifier := AIdentifier;
 end;
 

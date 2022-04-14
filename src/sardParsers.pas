@@ -4,7 +4,7 @@ unit sardParsers;
  *
  * @license   The MIT License (MIT)
  *            Included in this distribution
- * @author    Zaher Dirkey <zaher at parmaja dot com>
+ * @author    Zaher Dirkey 
  *}
 
 {$IFDEF FPC}
@@ -109,9 +109,13 @@ type
     function FindByTitle(const Title: string): TSardOperator;
   end;
 
+  { TSardSymbol }
+
   TSardSymbol = class(TSardSymbolicObject)
   public
   end;
+
+  { TSardSymbols }
 
   TSardSymbols = class(TSardNamedObjects<TSardSymbol>)
   public

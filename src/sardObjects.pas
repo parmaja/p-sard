@@ -4,7 +4,7 @@ unit sardObjects;
  *
  * @license   The MIT License (MIT)
  *            Included in this distribution
- * @author    Zaher Dirkey <zaher at parmaja dot com>
+ * @author    Zaher Dirkey 
  *}
 
 {**
@@ -186,6 +186,8 @@ type
   {TRefObject = class(TSardObject)
   end;}
 
+  //f(x: integer, y: integer){
+  //->  x: integer, y: integer
   { TDefine }
 
   TDefine = class(TSardNamedObject)
@@ -233,7 +235,8 @@ type
   end;
 
   { TEnclose_Node }
-
+  // 10 + ( x + 10)
+  //-> ( x + 10)
   TEnclose_Node = class(TNode)
   private
     FStatement: TStatement;

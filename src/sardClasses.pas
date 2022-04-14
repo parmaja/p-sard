@@ -4,7 +4,7 @@ unit sardClasses;
  *
  * @license   The MIT License (MIT)
  *            Included in this distribution
- * @author    Zaher Dirkey <zaher at parmaja dot com>
+ * @author    Zaher Dirkey 
  *}
 
 {$IFDEF FPC}
@@ -48,6 +48,7 @@ type
 
   TSardObject = TmnObject;
   TSourceWriter = class;
+
   { TSardObjects }
 
   TSardObjects<_Object_: class> = class(TmnObjectList<_Object_>)
@@ -143,11 +144,11 @@ type
 procedure RaiseError(AError: string; Line: Integer = 0; Column: Integer = 0);
 
 function ScanCompare(S: string; const Text: string; Index: Integer): Boolean;
-function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
+function ScanText(const S: string; const Text: string; var Index: Integer): Boolean;
 function StringRepeat(S: string; C: Integer): string;
 function FormatColLine(Column, Line: Integer): string;
 //If index can less than str length
-function IndexInStr(Index: Integer; const Str: string): Boolean;
+function IndexInStr(Index: Integer; const Str: string): Boolean; inline;
 //AToIndex not included
 function SliceText(const AText: String; const AFromIndex, AToIndex: Integer): String;
 
@@ -195,7 +196,7 @@ begin
   Result := ScanText(S, Text, Index);
 end;
 
-function ScanText(S: string; const Text: string; var Index: Integer): Boolean;
+function ScanText(const S: string; const Text: string; var Index: Integer): Boolean;
 begin
   if S = '' then
     Result := False
@@ -205,7 +206,7 @@ begin
     //Result := (Length(Text) - Index) >= length(S); //when convert to C, D
     if Result then
     begin
-      Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive
+      Result := LowerCase(MidStr(Text, Index, Length(S))) = LowerCase(S); //caseinsensitive  :-S need to improve @BILAL help me please
       if Result then
         Index := Index + Length(S);
     end;

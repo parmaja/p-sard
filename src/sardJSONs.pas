@@ -4,7 +4,7 @@ unit sardJSONs;
 *
 * @license   The MIT License (MIT)
 *            Included in this distribution
-* @author    Zaher Dirkey <zaher at parmaja dot com>
+* @author    Zaher Dirkey 
 *}
 
 {$IFDEF FPC}

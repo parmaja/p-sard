@@ -4,14 +4,15 @@ unit sardStandards;
  *
  * @license   The MIT License (MIT)
  *            Included in this distribution
- * @author    Zaher Dirkey <zaher at parmaja dot com>
+ * @author    Zaher Dirkey 
  *}
 
 {$IFDEF FPC}
+{$WARN 5024 off : Parameter "$1" not used}
 {$mode delphi}
 {$ENDIF}
 {$H+}{$M+}
-{$WARN 5024 off : Parameter "$1" not used}
+
 interface
 
 uses
