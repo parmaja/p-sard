@@ -1,4 +1,4 @@
-Pascal SARD script
+SARD script
 ==================
 
 The idea behind it, it is not use any of reserved words it is kind of challenge, only signs (symbols), only objects there is no "void", "var", "let" "function" or "procedure" or even "if", "else" or "while".
