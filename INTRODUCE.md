@@ -209,9 +209,3 @@ License
 =======
 
 The SARD script is open-sourced software licensed under the [MIT license](http://opensource.org/licenses/MIT)
-
-### Articles ###
-
-This articles i want to read
-
-http://blogs.msdn.com/b/abhinaba/archive/2009/01/25/back-to-basic-series-on-dynamic-memory-management.aspx
