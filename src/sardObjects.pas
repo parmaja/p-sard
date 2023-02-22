@@ -93,17 +93,15 @@ type
 
   TClause = class(TSardObject)
   private
-    FAnOperator: TSardOperator;
     FAnObject: TNode;
   protected
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
   public
-    constructor Create(AOperator: TSardOperator; AObject: TNode); virtual;
+    constructor Create(AObject: TNode); virtual;
     destructor Destroy; override;
 
     function Execute(Data: TRunData; Env: TRunEnv): Boolean;
 
-    property AnOperator: TSardOperator read FAnOperator;
     property AnObject: TNode read FAnObject;
   end;
 
@@ -117,7 +115,7 @@ type
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
   public
     constructor Create(AParent: TNode);
-    procedure Add(AOperator: TSardOperator; AObject: TNode);
+    procedure Add(AObject: TNode);
     procedure Execute(Data: TRunData; Env: TRunEnv);
     property Parent: TNode read FParent;
     property DebugInfo: TDebugInfo read FDebugInfo; //<-- Null until we compiled it with Debug Info
@@ -166,16 +164,16 @@ type
     procedure Assign(AFromObject: TNode); virtual;
     function Clone(WithValues: Boolean = True): TNode;
   protected
-    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; virtual;
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); virtual; abstract;
-    procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
-    procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); virtual;
+    function DoOperate(AObject: TNode): Boolean; virtual;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); virtual; abstract;
+    procedure BeforeExecute(Data: TRunData; Env: TRunEnv); virtual;
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv); virtual;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     constructor Create; overload; virtual;
     constructor CreateInternal;
-    function Operate(AObject: TNode; AOperator: TSardOperator): Boolean;
-    function Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator = nil; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
+    function Operate(AObject: TNode): Boolean;
+    function Execute(Data: TRunData; Env: TRunEnv; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
     property Parent: TNode read FParent write SetParent;
     property ID: Integer read FID;
     property Internal: Boolean read FInternal; //registered inside
@@ -230,7 +228,7 @@ type
     ResultType: string;
     procedure Created; override;
     destructor Destroy; override;
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     property Defines: TDefines read FDefines;
   end;
 
@@ -241,9 +239,9 @@ type
   private
     FStatement: TStatement;
   protected
-    procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
-    procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure BeforeExecute(Data: TRunData; Env: TRunEnv); override;
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
@@ -257,7 +255,7 @@ type
   private
     FStatements: TStatements;
   protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
@@ -270,8 +268,8 @@ type
   TBlock_Node = class(TStatements_Node)
   private
   protected
-    procedure BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
-    procedure AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator); override;
+    procedure BeforeExecute(Data: TRunData; Env: TRunEnv); override;
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
@@ -291,7 +289,7 @@ type
   TConst_Node = class(TNode)
   private
   protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   public
   end;
 
@@ -308,7 +306,7 @@ type
 
   TComment_Node = class(TNode)
   protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   public
     Value: string;
   end;
@@ -317,7 +315,7 @@ type
 
   TPreprocessor_Node = class(TNode) //TODO
   protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   public
   end;
 
@@ -333,7 +331,7 @@ type
     Value: Integer;
     constructor Create(AValue: Integer); overload;
     procedure Assign(AFromObject: TNode); override;
-    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function DoOperate(AObject: TNode): Boolean; override;
     function ToText(out outValue: Text): Boolean; override;
     function ToNumber(out outValue: Number): Boolean; override;
     function ToBool(out outValue: Boolean): Boolean; override;
@@ -347,7 +345,7 @@ type
     Value: Double;
     constructor Create(AValue: Number); overload;
     procedure Assign(AFromObject: TNode); override;
-    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function DoOperate(AObject: TNode): Boolean; override;
     function ToText(out outValue: Text): Boolean; override;
     function ToNumber(out outValue: Number): Boolean; override;
     function ToBool(out outValue: Boolean): Boolean; override;
@@ -361,7 +359,7 @@ type
     Value: Bool;
     constructor Create(AValue: Bool); overload;
     procedure Assign(AFromObject: TNode); override;
-    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function DoOperate(AObject: TNode): Boolean; override;
     function ToText(out outValue: Text): Boolean; override;
     function ToNumber(out outValue: Number): Boolean; override;
     function ToBool(out outValue: Boolean): Boolean; override;
@@ -375,7 +373,7 @@ type
     Value: TDateTime;
     constructor Create(AValue: TDateTime); overload;
     procedure Assign(AFromObject: TNode); override;
-    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function DoOperate(AObject: TNode): Boolean; override;
     function ToText(out outValue: Text): Boolean;
     function ToNumber(out outValue: Number): Boolean;
     function ToBool(out outValue: Boolean): Boolean;
@@ -389,7 +387,7 @@ type
     Value: string;
     constructor Create(AValue: string); overload;
     procedure Assign(AFromObject: TNode); override;
-    function DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean; override;
+    function DoOperate(AObject: TNode): Boolean; override;
     function ToText(out outValue: Text): Boolean; override;
     function ToNumber(out outValue: Number): Boolean; override;
     function ToBool(out outValue: Boolean): Boolean; override;
@@ -406,7 +404,7 @@ type
   public
     procedure Created; override;
     destructor Destroy; override;
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     property Arguments: TStatements read FArguments;
   end;
 
@@ -414,7 +412,7 @@ type
 
   TAssign_Node = class(TNode)
   public
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   end;
 
@@ -488,7 +486,7 @@ type
     function Declare(AObject: TDeclare_Node): TRunData;
     function FindDeclare(AName: string): TRunData;
 
-    function Execute(Env: TRunEnv; AOperator: TSardOperator; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
+    function Execute(Env: TRunEnv; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
 
     property Name: string read FName;
     property AnObject: TDeclare_Node read FAnObject;
@@ -532,6 +530,15 @@ type
     property Stack: TRunStack read FStack;
     property Root: TRunData read FRoot;
   end;
+
+  { TSardOperator }
+
+  TSardOperator = class(TSardNamedObject)
+  public
+    Title: string;
+    Description: string;
+  end;
+
 
   { TOpNone }
 
@@ -693,7 +700,7 @@ begin
   inherited;
 end;
 
-procedure TDeclare_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TDeclare_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   Data.Declare(Self);
 end;
@@ -757,13 +764,13 @@ begin
     Result := Parent.FindDeclare(AName);
 end;
 
-function TRunData.Execute(Env: TRunEnv; AOperator: TSardOperator; Arguments: TStatements; Blocks: TStatements): Boolean;
+function TRunData.Execute(Env: TRunEnv; Arguments: TStatements; Blocks: TStatements): Boolean;
 begin
   if AnObject = nil then
     RaiseError('Object of declaration is not set!')
   else if AnObject.ExecuteObject = nil then
     RaiseError('ExecuteObject of declaration is not set!');
-  Result := AnObject.ExecuteObject.Execute(Self, Env, AOperator, AnObject.Defines, Arguments, Blocks);
+  Result := AnObject.ExecuteObject.Execute(Self, Env, AnObject.Defines, Arguments, Blocks);
 end;
 
 { TRunResult }
@@ -935,14 +942,14 @@ end;
 
 { TStatement }
 
-procedure TStatement.Add(AOperator: TSardOperator; AObject: TNode);
+procedure TStatement.Add(AObject: TNode);
 begin
   if (AObject = nil) then
     RaiseError('You can not add nil object!');
   if (AObject.Parent <> nil) then
     RaiseError('You can not add object to another parent!');
   AObject.FParent := Parent;
-  inherited Add(TClause.Create(AOperator, AObject));
+  inherited Add(TClause.Create(AObject));
 end;
 
 procedure TStatement.Execute(Data: TRunData; Env: TRunEnv);
@@ -1023,22 +1030,19 @@ begin
   FParent := AParent;
 end;}
 
-function TNode.Operate(AObject: TNode; AOperator: TSardOperator): Boolean;
+function TNode.Operate(AObject: TNode): Boolean;
 begin
-  if AOperator = nil then
-    Result := False
-  else
-    Result := DoOperate(AObject, AOperator);
+   Result := DoOperate(AObject);
 end;
 
-function TNode.Execute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; Defines: TDefines; Arguments: TStatements; Blocks: TStatements): Boolean;
+function TNode.Execute(Data: TRunData; Env: TRunEnv; Defines: TDefines; Arguments: TStatements; Blocks: TStatements): Boolean;
 begin
   Result := False;
-  BeforeExecute(Data, Env, AOperator);
+  BeforeExecute(Data, Env);
   if (Defines <> nil) then
     Defines.Execute(Data, Env, Arguments);
-  DoExecute(Data, Env, AOperator, Result);
-  AfterExecute(Data, Env, AOperator);
+  DoExecute(Data, Env, Result);
+  AfterExecute(Data, Env);
 end;
 
 function TNode.ToBool(out outValue: Boolean): Boolean;
@@ -1075,18 +1079,18 @@ begin
     Result.Assign(Self);
 end;
 
-function TNode.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+function TNode.DoOperate(AObject: TNode): Boolean;
 begin
   Result := False;
 end;
 
-procedure TNode.BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+procedure TNode.BeforeExecute(Data: TRunData; Env: TRunEnv);
 begin
   if Data = nil then
     RaiseError('Data is needed!');
 end;
 
-procedure TNode.AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+procedure TNode.AfterExecute(Data: TRunData; Env: TRunEnv);
 begin
 
 end;
@@ -1113,10 +1117,9 @@ end;
 
 { TClause }
 
-constructor TClause.Create(AOperator: TSardOperator; AObject: TNode);
+constructor TClause.Create(AObject: TNode);
 begin
   inherited Create;
-  FAnOperator:= AOperator;
   if AObject = nil then
     RaiseError('You can not create new clause with nil');
   FAnObject := AObject;
@@ -1132,21 +1135,18 @@ function TClause.Execute(Data: TRunData; Env: TRunEnv): Boolean;
 begin
   if FAnObject = nil then
     RaiseError('Object not set!');
-  Result := FAnObject.Execute(Data, Env, AnOperator);
+  Result := FAnObject.Execute(Data, Env);
 end;
 
 procedure TClause.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
 begin
   inherited;
-  if FAnOperator <> nil then
-    FAnOperator.ExportWrite(Writer, LastOne, Level);
-
   FAnObject.ExportWrite(Writer, LastOne, Level);
 end;
 
 { TAssign_Node }
 
-procedure TAssign_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TAssign_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
   v: TRunValue;
 begin
@@ -1184,14 +1184,14 @@ begin
   inherited;
 end;
 
-procedure TInstance_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TInstance_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
   d: TRunData;
   v: TRunValue;
 begin
   d := Data.FindDeclare(name);
   if d <> nil then
-    Done := d.Execute(Env, AOperator, Arguments, nil)
+    Done := d.Execute(Env, Arguments, nil)
   else
   begin
     v := Env.Stack.Current.Variables.Find(Name);
@@ -1199,7 +1199,7 @@ begin
         RaiseError('Can not find a variable: ' + Name);
     if (v.value = nil) then
         RaiseError('Variable object is null: ' + v.Name);
-    Done := v.Value.Execute(Data, Env, AOperator);
+    Done := v.Value.Execute(Data, Env);
   end;
 end;
 
@@ -1222,9 +1222,9 @@ begin
   Value := AFromObject.AsTExt;
 end;
 
-function TText_Node.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+function TText_Node.DoOperate(AObject: TNode): Boolean;
 begin
-  Result :=inherited DoOperate(AObject, AOperator);
+  Result :=inherited DoOperate(AObject);
 end;
 
 function TText_Node.ToText(out outValue: Text): Boolean;
@@ -1265,10 +1265,10 @@ begin
   Value := AFromObject.AsBool;
 end;
 
-function TBool_Node.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+function TBool_Node.DoOperate(AObject: TNode): Boolean;
 begin
-  Result := inherited DoOperate(AObject, AOperator);
-  if AOperator.name = '+' then
+  Result := inherited DoOperate(AObject);
+(*  if AOperator.name = '+' then
       begin
           Value := Value and AObject.AsBool;
           Result := true;
@@ -1290,6 +1290,7 @@ begin
       end;}
       else
           Result := False;
+*)
 end;
 
 function TBool_Node.ToText(out outValue: Text): Boolean;
@@ -1330,10 +1331,10 @@ begin
   Value := AFromObject.AsNumber;
 end;
 
-function TReal_Node.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+function TReal_Node.DoOperate(AObject: TNode): Boolean;
 begin
-  Result := inherited DoOperate(AObject, AOperator);
-  if AOperator.name = '+' then
+  Result := inherited DoOperate(AObject);
+(*  if AOperator.name = '+' then
       begin
           Value := Value + AObject.AsNumber;
           Result := true;
@@ -1355,6 +1356,7 @@ begin
       end
       else
           Result := False;
+*)
 end;
 
 function TReal_Node.ToText(out outValue: Text): Boolean;
@@ -1401,10 +1403,10 @@ begin
   Value := AFromObject.AsInteger;
 end;
 
-function TInteger_Node.DoOperate(AObject: TNode; AOperator: TSardOperator): Boolean;
+function TInteger_Node.DoOperate(AObject: TNode): Boolean;
 begin
-  Result := inherited DoOperate(AObject, AOperator);
-  if AOperator.name = '+' then
+  Result := inherited DoOperate(AObject);
+(*  if AOperator.name = '+' then
       begin
           Value := Value + AObject.asInteger;
           Result := true;
@@ -1426,6 +1428,7 @@ begin
       end
       else
           Result := False;
+*)
 end;
 
 function TInteger_Node.ToText(out outValue: Text): Boolean;
@@ -1454,7 +1457,7 @@ end;
 
 { TPreprocessor_Node }
 
-procedure TPreprocessor_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TPreprocessor_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   //TODO execute external program and replace it with the result
   Done := True;
@@ -1462,7 +1465,7 @@ end;
 
 { TComment_Node }
 
-procedure TComment_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TComment_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   //Guess what!, we will not to execute the comment ;)
   Done := True;
@@ -1470,11 +1473,11 @@ end;
 
 { TConst_Node }
 
-procedure TConst_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TConst_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   if (Env.results.Current = nil) then
       RaiseError('There is no stack results!');
-  if ((Env.Results.Current.Result.Value = nil) and (AOperator = nil)) then
+  if (Env.Results.Current.Result.Value = nil) then
   begin
       Env.Results.Current.Result.Value := Clone();
       Done := true;
@@ -1483,19 +1486,19 @@ begin
   begin
       if (Env.Results.current.Result.Value = nil) then
         Env.Results.Current.Result.Value := Clone(False);
-      Done := Env.Results.Current.Result.Value.Operate(Self, AOperator);
+      Done := Env.Results.Current.Result.Value.Operate(Self);
   end;
 end;
 
 { TBlock_Node }
 
-procedure TBlock_Node.BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+procedure TBlock_Node.BeforeExecute(Data: TRunData; Env: TRunEnv);
 begin
   Env.Stack.Push;
   inherited;
 end;
 
-procedure TBlock_Node.AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+procedure TBlock_Node.AfterExecute(Data: TRunData; Env: TRunEnv);
 begin
   inherited;
   Env.Stack.Pop;
@@ -1524,13 +1527,13 @@ begin
     Result.Name := AObject.Name;
     AObject.Parent := Result;
     Result.ExecuteObject := AObject;
-    Add(nil, Result);
+    Add(nil);
   end;
 end;
 
 { TStatements_Node }
 
-procedure TStatements_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TStatements_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
   t: TRunResult;
 begin
@@ -1547,7 +1550,7 @@ begin
   * here 20.execute with +
 *)
   if (t.Result.Value <> nil) then
-      t.Result.Value.Execute(Data, Env, AOperator);
+      t.Result.Value.Execute(Data, Env);
   Done := True;
 end;
 
@@ -1573,23 +1576,23 @@ end;
 
 { TEnclose_Node }
 
-procedure TEnclose_Node.BeforeExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+procedure TEnclose_Node.BeforeExecute(Data: TRunData; Env: TRunEnv);
 begin
   inherited;
   Env.Results.Push;
 end;
 
-procedure TEnclose_Node.AfterExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator);
+procedure TEnclose_Node.AfterExecute(Data: TRunData; Env: TRunEnv);
 var
   t: TRunResult;
 begin
   inherited;
   t := Env.Results.Pull;
   if (t.Result.Value <> nil) then
-    t.Result.Value.Execute(Data, Env, AOperator);
+    t.Result.Value.Execute(Data, Env);
 end;
 
-procedure TEnclose_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TEnclose_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   Statement.Execute(data, env);
   Done := true;
@@ -1625,7 +1628,6 @@ constructor TOpEqual.Create;
 begin
   Name := '=';
   Title := 'Equal';
-  Associative := asLeft;
   Description := '';
 end;
 
@@ -1635,7 +1637,6 @@ constructor TOpPower.Create;
 begin
   Name := '^';
   Title := 'Power';
-  Associative := asLeft;
   Description := '';
 end;
 
@@ -1645,7 +1646,6 @@ constructor TOpGreater.Create;
 begin
   Name := '>';
   Title := 'Greater';
-  Associative := asLeft;
   Description := '';
 end;
 
@@ -1655,7 +1655,6 @@ constructor TOpLesser.Create;
 begin
   Name := '<';
   Title := 'Lesser';
-  Associative := asLeft;
   Description := '';
 end;
 
@@ -1665,7 +1664,6 @@ constructor TOpNotEqual.Create;
 begin
   Name := '<>';
   Title := 'NotEqual';
-  Associative := asLeft;
   Description := 'Check Equal';
 end;
 
@@ -1675,7 +1673,6 @@ constructor TOpNot.Create;
 begin
   Name := '!';
   Title := 'not';
-  Associative := asLeft;
   Description := 'Not';
 end;
 
@@ -1685,7 +1682,6 @@ constructor TOpDivide.Create;
 begin
   Name := '/';
   Title := 'Divide';
-  Associative := asLeft;
   Description := 'Divide object on another object';
 end;
 
@@ -1695,7 +1691,6 @@ constructor TOpMultiply.Create;
 begin
   Name := '*';
   Title := 'Multiply';
-  Associative := asLeft;
   Description := 'Multiply object with another object';
 end;
 
@@ -1705,7 +1700,6 @@ constructor TOpSub.Create;
 begin
   Name := '-';
   Title := 'Minus';
-  Associative := asLeft;
   Description := 'Sub object from another object';
 end;
 
@@ -1715,7 +1709,6 @@ constructor TOpPlus.Create;
 begin
   Name := '+';
   Title := 'Plus';
-  Associative := asLeft;
   Description := 'Add object to another object';
 end;
 
@@ -1725,7 +1718,6 @@ constructor TOpOr.Create;
 begin
   Name := '|';
   Title := 'Or';
-  Associative := asLeft;
   Description := '';
 end;
 
@@ -1735,7 +1727,6 @@ constructor TOpAnd.Create;
 begin
   Name := '&';
   Title := 'And';
-  Associative := asLeft;
   Description := '';
 end;
 
@@ -1745,7 +1736,6 @@ constructor TOpNone.Create;
 begin
   Name := '';
   Title := 'None';
-  Associative := asLeft;
   Description := 'Nothing';
 end;
 end.

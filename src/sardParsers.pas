@@ -26,8 +26,6 @@ uses
 type
   TSardControlID = (
     ctlNone,
-    ctlToken,//* Token like Identifier, Keyword or Number
-    ctlOperator,//
     ctlStart, //Start parsing
     ctlStop, //Start parsing
     ctlDeclare, //Declare a class of object
@@ -42,7 +40,8 @@ type
     ctlOpenPreprocessor, //* <?
     ctlClosePreprocessor, //* ?>
     ctlOpenArray, // [
-    ctlCloseArray // ]
+    ctlCloseArray, // ]
+    ctlToken//* Token like Identifier, Keyword or Number
   );
 
   TSardTokenType = (
@@ -89,32 +88,6 @@ type
     function Add(AName: string; ACode: TsardControlID; ADescription: string = ''): TSardControl;
   end;
 
-  TSardAssociative = (asLeft, asRight);//not yet
-
-  { TSardOperator }
-
-  TSardOperator = class(TSardSymbolicObject)
-  public
-    Associative: TSardAssociative;
-    //Precedence: Integer; //TODO it is bad idea, we need more intelligent way to define the power level of operators
-    Title: string;
-    Description: string;
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
-  end;
-
-  { TSardOperators }
-
-  TSardOperators = class(TSardNamedObjects<TSardOperator>)
-  public
-    function FindByTitle(const Title: string): TSardOperator;
-  end;
-
-  { TSardSymbol }
-
-  TSardSymbol = class(TSardSymbolicObject)
-  public
-  end;
-
   TParser = class;
   TLexer = class;
   TScanner = class;
@@ -155,7 +128,6 @@ type
     FScanner: TScanner;
     FCurrent: TTokenizer;
     FControls: TSardControls;
-    FOperators: TSardOperators;
     procedure SetParser(AValue: TParser);
   protected
     function DetectTokenizer(const Text: String; Column: integer): TTokenizer;
@@ -171,7 +143,6 @@ type
     function IsEOL(vChar: Char): Boolean; virtual; abstract;
     function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
     function IsControl(vChar: Char): Boolean; virtual; abstract;
-    function IsOperator(vChar: Char): Boolean; virtual; abstract;
     function IsNumber(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
 
 //    function IsKeyword(Keyword: string): Boolean;
@@ -185,7 +156,6 @@ type
     property Current: TTokenizer read FCurrent;
     property Parser: TParser read FParser write SetParser;
     property Controls: TSardControls read FControls;
-    property Operators: TSardOperators read FOperators;
   end;
 
   { TController }
@@ -245,7 +215,6 @@ type
 
     procedure SetToken(Token: TSardToken); virtual;
     procedure SetControl(AControl: TSardControl); virtual;
-    procedure SetOperator(AOperator: TSardOperator); virtual;
     procedure SetAction(AActions: TParserActions = []; ANextCollector: TCollector = nil); virtual;
 
     property Actions: TParserActions read FActions;
@@ -289,16 +258,6 @@ implementation
 
 uses
   StrUtils;
-
-{ TSardOperator }
-
-procedure TSardOperator.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
-begin
-  inherited;
-  Writer.Add(Name);
-end;
-
-{ TScript }
 
 { TScanner }
 
@@ -447,7 +406,6 @@ constructor TLexer.Create;
 begin
   inherited Create(true);
   FControls := TSardControls.Create;
-  FOperators := TSardOperators.Create;
   TrimSymbols := True;
 end;
 
@@ -455,7 +413,6 @@ destructor TLexer.Destroy;
 begin
   inherited Destroy;
   FreeAndNil(FControls);
-  FreeAndNil(FOperators);
 end;
 
 {function TLexer.IsKeyword(Keyword: string): Boolean;
@@ -465,7 +422,7 @@ end;}
 
 function TLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
 begin
-  Result := not isWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar);
+  Result := not isWhiteSpace(vChar) and not IsControl(vChar);
   if (vOpen) then
       Result := Result and not IsNumber(vChar, vOpen);
 end;
@@ -556,23 +513,6 @@ begin
   inherited Add(Result)
 end;
 
-{ TSardOperators }
-
-function TSardOperators.FindByTitle(const Title: string): TSardOperator;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if SameText(Items[i].Title, Title) then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
 { TTokenizer }
 
 procedure TTokenizer.Finish;
@@ -631,11 +571,6 @@ begin
 end;
 
 procedure TParser.SetControl(AControl: TSardControl);
-begin
-
-end;
-
-procedure TParser.SetOperator(AOperator: TSardOperator);
 begin
 
 end;

@@ -126,7 +126,6 @@ type
     function IsEOL(vChar: Char): Boolean; override;
     function IsWhiteSpace(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsControl(vChar: Char): Boolean; override;
-    function IsOperator(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
   end;
@@ -985,11 +984,6 @@ end;
 function TJSONLexer.IsControl(vChar: Char): Boolean;
 begin
   Result := Controls.IsOpenBy(vChar);
-end;
-
-function TJSONLexer.IsOperator(vChar: Char): Boolean;
-begin
-  Result := Operators.IsOpenBy(vChar);
 end;
 
 function TJSONLexer.IsNumber(const vChar: Char; vOpen: Boolean): Boolean;

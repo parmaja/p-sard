@@ -89,14 +89,6 @@ type
     function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
-  { TOperator_Tokenizer }
-
-  TOperator_Tokenizer = class(TTokenizer)
-  protected
-    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
-  end;
-
   { TLineComment_Tokenizer }
 
   TLineComment_Tokenizer = class(TTokenizer)
@@ -289,26 +281,6 @@ end;
 function TLineComment_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := ScanString('//', Text, Column);
-end;
-
-{ TOperator_Tokenizer }
-
-procedure TOperator_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
-var
-  AOperator: TSardOperator;
-begin
-  AOperator := Lexer.Operators.Scan(Text, Column);
-  if (AOperator <> nil) then
-    Column := Column + Length(AOperator.name)
-  else
-    RaiseError('Unkown operator started with ' + Text[Started]);
-  Lexer.Parser.SetOperator(AOperator);
-  Resume := false;
-end;
-
-function TOperator_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
-begin
-  Result := Lexer.IsOperator(Text[Column]);
 end;
 
 { TControl_Tokenizer }

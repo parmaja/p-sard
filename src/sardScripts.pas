@@ -38,7 +38,7 @@ type
     function IsEOL(vChar: Char): Boolean; override;
     function IsWhiteSpace(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsControl(vChar: Char): Boolean; override;
-    function IsOperator(vChar: Char): Boolean; override;
+    //function IsOperator(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
   end;
@@ -52,17 +52,15 @@ type
     procedure InternalSetObject(aObject: TNode);
   public
     Identifier: string;
-    AnOperator: TSardOperator;
     AnObject: TNode;
     //Return true if Identifier is not empty and object is nil
     function CheckIdentifier(raiseIt: Boolean = false): Boolean;
     //Return true if Object is not nil and Identifier is empty
     function CheckObject(raiseIt: Boolean = false): Boolean;
     //Return true if Operator is not nil
-    function CheckOperator(raiseIt: Boolean = false): Boolean;
+    //function CheckOperator(raiseIt: Boolean = false): Boolean;
 
     function IsEmpty: Boolean;
-    procedure SetOperator(AOperator: TSardOperator);
     procedure SetIdentifier(AIdentifier: string);
     function SetNumber(AIdentifier: string): TNumber_Node;
     function SetText(Text: string): TText_Node;
@@ -102,7 +100,6 @@ type
     procedure Next; virtual;
     procedure DoToken(Token: TSardToken); override;
     procedure DoControl(AControl: TSardControl); override;
-    procedure SetOperator(AOperator: TSardOperator); virtual;
 
     property Instruction: TInstruction read FInstruction;
   end;
@@ -189,7 +186,6 @@ type
 
     function IsKeyword(AIdentifier: string): Boolean; override;
     procedure SetToken(Token: TSardToken); override;
-    procedure SetOperator(AOperator: TSardOperator); override;
     procedure SetControl(AControl: TSardControl); override;
     procedure AfterPush; override;
     procedure BeforePop; override;
@@ -212,28 +208,28 @@ type
 
   TVersion_Const_Node = class(TNode)
   protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   end;
 
   { TPI_Const_Node }
 
   TPI_Const_Node = class(TNode)
   protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   end;
 
   { TTime_Const_Node }
 
   TTime_Const_Node = class(TNode)
   protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   end;
 
   { TPrint_Object_Node }
 
   TPrint_Object_Node = class(TNode)
   protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean); override;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   end;
 
   { TCodeScript }
@@ -324,11 +320,11 @@ procedure TCodeCollector.DoControl(AControl: TSardControl);
 begin
 end;
 
-procedure TCodeCollector.SetOperator(AOperator: TSardOperator);
+{procedure TCodeCollector.SetOperator(AOperator: TSardOperator);
 begin
   Post;
   Instruction.SetOperator(AOperator);
-end;
+end;}
 
 { TCodeLexer }
 
@@ -340,7 +336,6 @@ begin
   begin
     Add('', ctlNone);////TODO i feel it is so bad
     Add('', ctlToken);
-    Add('', ctlOperator);
     Add('', ctlStart);
     Add('', ctlStop);
     //Add('', ctlDeclare);
@@ -358,25 +353,6 @@ begin
     Add(':=', ctlAssign);
   end;
 
-  with Operators do
-  begin
-    Add(TOpPlus.Create);
-    Add(TOpSub.Create);
-    Add(TOpMultiply.Create);
-    Add(TOpDivide.Create);
-
-    Add(TOpEqual.Create);
-    Add(TOpNotEqual.Create);
-    Add(TOpAnd.Create);
-    Add(TOpOr.Create);
-    Add(TOpNot.Create);
-
-    Add(TOpGreater.Create);
-    Add(TOpLesser.Create);
-
-    Add(TOpPower.Create);
-  end;
-
   with (Self) do
   begin
       Add(TWhitespace_Tokenizer.Create);
@@ -388,7 +364,6 @@ begin
       Add(TDQString_Tokenizer.Create);
       Add(TEscape_Tokenizer.Create);
       Add(TControl_Tokenizer.Create);
-      Add(TOperator_Tokenizer.Create); //Register it after comment because comment take /*
       Add(TIdentifier_Tokenizer.Create);//Sould be last one
   end;
 end;
@@ -406,11 +381,6 @@ end;
 function TCodeLexer.IsControl(vChar: Char): Boolean;
 begin
   Result := Controls.IsOpenBy(vChar);
-end;
-
-function TCodeLexer.IsOperator(vChar: Char): Boolean;
-begin
-  Result := Operators.IsOpenBy(vChar);
 end;
 
 function TCodeLexer.IsNumber(const vChar: Char; vOpen: Boolean): Boolean;
@@ -471,7 +441,7 @@ begin
   end;
 end;
 
-procedure TCodeParser.SetOperator(AOperator: TSardOperator);
+{procedure TCodeParser.SetOperator(AOperator: TSardOperator);
 var
   o: TSardOperator;
 begin
@@ -483,7 +453,7 @@ begin
   DoQueue();
   FActions := [];
   LastControl := ctlOperator;
-end;
+end;}
 
 procedure TCodeParser.SetControl(AControl: TSardControl);
 begin
@@ -690,7 +660,7 @@ end;
 
 { TPrint_Object_Node }
 
-procedure TPrint_Object_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TPrint_Object_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
   v: TRunValue;
 begin
@@ -704,7 +674,7 @@ end;
 
 { TTime_Const_Node }
 
-procedure TTime_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TTime_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   Env.Results.Current.Result.Value := TReal_Node.Create(Now);
   Done := True;
@@ -712,7 +682,7 @@ end;
 
 { TPI_Const_Node }
 
-procedure TPI_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TPI_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   Env.Results.Current.Result.Value := TReal_Node.Create(Pi);
   Done := True;
@@ -720,7 +690,7 @@ end;
 
 { TVersion_Const_Node }
 
-procedure TVersion_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; AOperator: TSardOperator; var Done: Boolean);
+procedure TVersion_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   Env.Results.Current.Result.Value := TText_Node.Create(sSardVersion);
   Done := True;
@@ -992,7 +962,7 @@ end;
 procedure TCollectorStatement.InternalPost;
 begin
   inherited;
-  Statement.Add(Instruction.AnOperator, Instruction.AnObject);
+  Statement.Add(Instruction.AnObject);
 end;
 
 constructor TCollectorStatement.Create(AParser: TParser; AStatement: TStatement);
@@ -1060,25 +1030,18 @@ begin
     RaiseError('Identifier is already set!');
 end;
 
-function TInstruction.CheckOperator(raiseIt: Boolean): Boolean;
-begin
-  Result := AnOperator <> nil;
-  if RaiseIt and not Result then
-    RaiseError('Operator is not set!');
-end;
-
 function TInstruction.IsEmpty: Boolean;
 begin
-  Result := not((Identifier <> '') or (AnObject <> nil) or (AnOperator <> nil));
+  Result := not((Identifier <> '') or (AnObject <> nil));
   //TODO and attributes
 end;
 
-procedure TInstruction.SetOperator(AOperator: TSardOperator);
+{procedure TInstruction.SetOperator(AOperator: TSardOperator);
 begin
   if (AnOperator <> nil) then
       RaiseError('Operator is already set');
   AnOperator := AOperator;
-end;
+end;}
 
 procedure TInstruction.SetIdentifier(AIdentifier: string);
 begin
