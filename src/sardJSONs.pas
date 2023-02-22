@@ -965,7 +965,8 @@ begin
     Add(TComment_Tokenizer.Create);
     //Add(TLineComment_Tokenizer.Create);
     Add(TNumber_Tokenizer.Create);
-    Add(TDQString_Tokenizer.Create);
+    Add(TSL_String_Tokenizer.Create);
+    //Add(TDQString_Tokenizer.Create);
     Add(TControl_Tokenizer.Create);
     Add(TIdentifier_Tokenizer.Create);//Sould be last one
   end;

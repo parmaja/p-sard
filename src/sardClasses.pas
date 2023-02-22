@@ -159,7 +159,7 @@ function ScanCompare(const S: string; const Text: string; Index: Integer): Boole
 
 function StringRepeat(const S: string; C: Integer): string;
 function FormatColLine(Column, Line: Integer): string;
-//If index can less than str length
+//If index can less than str length, usefull to port it to another language like c,d
 function IndexInStr(Index: Integer; const Str: string): Boolean; inline;
 //AToIndex not included
 function SliceText(const AText: String; const AFromIndex, AToIndex: Integer): String;

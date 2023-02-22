@@ -113,6 +113,7 @@ type
     procedure Finish; virtual;
     //This function call when switched to it
     procedure Switched;
+    procedure SetToken(Token: TSardToken); virtual;
   public
     property Lexer: TLexer read FLexer;
     constructor Create; virtual;
@@ -136,7 +137,7 @@ type
     function SelectTokenizer(AClass: TSardTokenizerClass): TTokenizer;
     procedure Added(Item: TTokenizer); override;
   public
-    TrimSymbols: Boolean; //ommit send open and close tags when setToken
+    TrimToken: Boolean; //ommit send open and close tags when SetToken
     constructor Create; virtual;
     destructor Destroy; override;
 
@@ -239,7 +240,7 @@ type
     procedure DoStop; virtual;
     function CreateParser: TParser; virtual; abstract;
   public
-    procedure ScanLine(const Text: String; Line: Integer);
+    procedure ScanChunk(const Text: String; Line: Integer);
     procedure Scan(Lines: TStringList); overload;
     procedure Start;
     procedure Stop;
@@ -275,7 +276,19 @@ procedure TScanner.DoStop;
 begin
 end;
 
-procedure TScanner.ScanLine(const Text: String; Line: Integer);
+procedure TScanner.Scan(Lines: TStringList);
+var
+  i: Integer;
+begin
+  Start;
+  for i := 0 to Lines.Count -1 do
+  begin
+    ScanChunk(Lines[i]+#13, i + 1); //DO not use TRIM
+  end;
+  Stop;
+end;
+
+procedure TScanner.ScanChunk(const Text: String; Line: Integer);
 var
   Column: Integer;
 begin
@@ -285,18 +298,6 @@ begin
   Column := 1;
   //Column := 0; when convert it to C, D
   Current.ScanLine(Text, Line, Column);
-end;
-
-procedure TScanner.Scan(Lines: TStringList);
-var
-  i: Integer;
-begin
-  Start;
-  for i := 0 to Lines.Count -1 do
-  begin
-    ScanLine(Lines[i], i + 1); //DO not use TRIM
-  end;
-  Stop;
 end;
 
 procedure TScanner.Start;
@@ -406,7 +407,7 @@ constructor TLexer.Create;
 begin
   inherited Create(true);
   FControls := TSardControls.Create;
-  TrimSymbols := True;
+  TrimToken := True;
 end;
 
 destructor TLexer.Destroy;
@@ -517,6 +518,11 @@ end;
 
 procedure TTokenizer.Finish;
 begin
+end;
+
+procedure TTokenizer.SetToken(Token: TSardToken);
+begin
+  Lexer.Parser.SetToken(Token);
 end;
 
 procedure TTokenizer.Switched;

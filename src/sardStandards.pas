@@ -4,7 +4,7 @@ unit sardStandards;
  *
  * @license   The MIT License (MIT)
  *            Included in this distribution
- * @author    Zaher Dirkey 
+ * @author    Zaher Dirkey
  *}
 
 {$IFDEF FPC}
@@ -32,8 +32,8 @@ type
   protected
     OpenSymbol: string;
     CloseSymbol: string;
-    procedure Collected; virtual; abstract;
-    procedure Collect(Text: string); virtual; abstract;
+    procedure Appended; virtual; abstract;
+    procedure Append(const Text: string); virtual; abstract;
 
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(const Text: string; Column: Integer): Boolean; override;
@@ -45,16 +45,16 @@ type
   private
     Buffer: string;
   protected
-    procedure SetToken(const Text: string); virtual; abstract;
-    procedure Collect(Text: string); override;
-    procedure Collected; override;
+    procedure InternalSetToken(const Text: string); virtual; abstract;
+    procedure Append(const Text: string); override;
+    procedure Appended; override;
   end;
 
   { TString_Tokenizer }
 
   TString_Tokenizer = class abstract(TBufferedMultiLine_Tokenizer)
   public
-    procedure SetToken(const Text: string); override;
+    procedure InternalSetToken(const Text: string); override;
   end;
 
   { TWhitespace_Tokenizer }
@@ -112,7 +112,7 @@ type
   TComment_Tokenizer = class(TBufferedMultiLine_Tokenizer)
   public
     constructor Create; override;
-    procedure SetToken(const Text: string); override;
+    procedure InternalSetToken(const Text: string); override;
   end;
 
   {* Single Quote String *}
@@ -131,6 +131,25 @@ type
   TDQString_Tokenizer = class(TString_Tokenizer)
   public
     constructor Create; override;
+  end;
+
+  TStringState = (ssNone, ssEscape);
+
+  { SL_String_Tokenizer }
+
+  TSL_String_Tokenizer = class(TTokenizer)
+  public
+    Buffer: String;
+    State: TStringState;
+    QuoteChar: Char;
+    EscapeChar: Char;
+    constructor Create; override;
+
+    procedure Appended; virtual;
+    procedure Append(const Text: string); virtual;
+
+    function Accept(const Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
   end;
 
   { TEscape_Tokenizer }
@@ -154,23 +173,23 @@ begin
     Column := Column + Length(openSymbol);
   end;
 
-  while (IndexInStr(Column, Text)) do //Use < instead of <= in C, D
+  while (IndexInStr(Column, Text)) do
   begin
     if ScanCompare(CloseSymbol, Text, Column) then
     begin
-      if (not Lexer.TrimSymbols) then
+      if (not Lexer.TrimToken) then
         Column := Column + Length(CloseSymbol);
-      Collect(SliceText(Text, Started, Column));
-      if (Lexer.TrimSymbols) then
+      Append(SliceText(Text, Started, Column));
+      if (Lexer.TrimToken) then
           Column := Column + Length(CloseSymbol);
-      Collected;
+      Appended;
       Resume := False;
       exit;
     end;
     Inc(Column);
   end;
-  collect(SliceText(text, Started, Column));
-  Resume := true;
+  Append(SliceText(Text, Started, Column));
+  Resume := True;
 end;
 
 function TMultiLine_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
@@ -180,20 +199,20 @@ end;
 
 { TBufferedMultiLine_Tokenizer }
 
-procedure TBufferedMultiLine_Tokenizer.Collect(Text: string);
+procedure TBufferedMultiLine_Tokenizer.Append(const Text: string);
 begin
   Buffer := Buffer + Text;
 end;
 
-procedure TBufferedMultiLine_Tokenizer.Collected;
+procedure TBufferedMultiLine_Tokenizer.Appended;
 begin
-  SetToken(Buffer);
+  InternalSetToken(Buffer);
   Buffer := '';
 end;
 
-procedure TString_Tokenizer.SetToken(const Text: string);
+procedure TString_Tokenizer.InternalSetToken(const Text: string);
 begin
-  Lexer.Parser.SetToken(Token(ctlToken, typeString, Text));
+  SetToken(Token(ctlToken, typeString, Text));
 end;
 
 { TEscape_Tokenizer }
@@ -204,7 +223,7 @@ begin
   //print("Hello "\n"World"); //but add " to the world
   while (IndexInStr(Column, text) and (Lexer.isIdentifier(Text[Column], False))) do
     Inc(Column);
-  Lexer.Parser.SetToken(Token(ctlToken, typeEscape, SliceText(Text, Started, Column)));
+  SetToken(Token(ctlToken, typeEscape, SliceText(Text, Started, Column)));
   Resume := False;
 end;
 
@@ -240,9 +259,9 @@ begin
   CloseSymbol := '*}';
 end;
 
-procedure TComment_Tokenizer.SetToken(const Text: string);
+procedure TComment_Tokenizer.InternalSetToken(const Text: string);
 begin
-  Lexer.Parser.SetToken(Token(ctlToken, typeComment, text));
+  SetToken(Token(ctlToken, typeComment, text));
 end;
 
 { TBlockComment_Tokenizer }
@@ -310,7 +329,7 @@ begin
   Inc(Column);
   while (IndexInStr(Column, Text) and (Lexer.IsNumber(Text[Column], False))) do
     inc(Column);
-  Lexer.Parser.SetToken(Token(ctlToken, typeNumber, SliceText(Text, Started, Column)));
+  SetToken(Token(ctlToken, typeNumber, SliceText(Text, Started, Column)));
   Resume := false;
 end;
 
@@ -326,7 +345,7 @@ begin
   Inc(Column);
   while (IndexInStr(Column, Text) and (Lexer.IsIdentifier(Text[Column], False))) do
     inc(Column);
-  Lexer.Parser.SetToken(Token(ctlToken, typeIdentifier, SliceText(Text, Started, Column)));
+  SetToken(Token(ctlToken, typeIdentifier, SliceText(Text, Started, Column)));
   Resume := false;
 end;
 
@@ -348,6 +367,76 @@ end;
 function TWhitespace_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := Lexer.isWhiteSpace(Text[Column]);
+end;
+
+{ TSL_String_Tokenizer }
+
+function TSL_String_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+begin
+  Result := Text[Column] = QuoteChar;
+end;
+
+procedure TSL_String_Tokenizer.Append(const Text: string);
+begin
+  Buffer := Buffer + Text;
+end;
+
+procedure TSL_String_Tokenizer.Appended;
+begin
+  SetToken(Token(ctlToken, typeString, Buffer));
+  Buffer := '';
+end;
+
+constructor TSL_String_Tokenizer.Create;
+begin
+  inherited;
+  QuoteChar := '"';
+  EscapeChar := '\';
+end;
+
+procedure TSL_String_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+begin
+  if not Resume then //we already take it from accept
+  begin
+    Column := Column + 1;
+    Started := Started + 1;
+  end;
+
+  while (IndexInStr(Column, Text)) do
+  begin
+    if State = ssEscape then
+    begin
+      case Text[Column] of
+        'n': Append(#13);
+        'r': Append(#10);
+        '0': Append(#0);
+        else
+          Append(Text[Column]);
+      end;
+      Started := Column + 1;
+      State := ssNone;
+    end
+    else if (Text[Column] = EscapeChar) then
+    begin
+      Append(SliceText(Text, Started, Column));
+      Started := Column;
+      State := ssEscape;
+    end
+    else if Text[Column] = QuoteChar then
+    begin
+      Append(SliceText(Text, Started, Column));
+      Appended;
+      Inc(Column);
+      Resume := False;
+      exit;
+    end
+    else if Lexer.IsEOL(Text[Column]) then
+    begin
+      RaiseError('String not end!');
+    end;
+    Inc(Column);
+  end;
+  Resume := True;
 end;
 
 end.

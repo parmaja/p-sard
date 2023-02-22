@@ -104,6 +104,7 @@ begin
           Scanner.Compile(Lines);
           LogEndTick('SardJSON');
           {$ifdef DOM}
+          //WriteLn('Name: ', JSONRoot.Name);
 {          Lines.Clear;
           Writer := TStringSourceWriter.Create(Lines);
           JSONRoot.WriteTo(Writer, True, 0);
@@ -138,6 +139,7 @@ begin
         Writeln(E.ClassName, ': ', E.Message);
     end;
   finally
+    WriteLn('Press Enter to exit');
     Readln;
   end;
 end.
