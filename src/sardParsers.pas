@@ -115,12 +115,6 @@ type
   public
   end;
 
-  { TSardSymbols }
-
-  TSardSymbols = class(TSardNamedObjects<TSardSymbol>)
-  public
-  end;
-
   TParser = class;
   TLexer = class;
   TScanner = class;
@@ -162,7 +156,6 @@ type
     FCurrent: TTokenizer;
     FControls: TSardControls;
     FOperators: TSardOperators;
-    FSymbols: TSardSymbols;
     procedure SetParser(AValue: TParser);
   protected
     function DetectTokenizer(const Text: String; Column: integer): TTokenizer;
@@ -177,7 +170,6 @@ type
 
     function IsEOL(vChar: Char): Boolean; virtual; abstract;
     function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
-    function IsSymbol(vChar: Char): Boolean; virtual; abstract;
     function IsControl(vChar: Char): Boolean; virtual; abstract;
     function IsOperator(vChar: Char): Boolean; virtual; abstract;
     function IsNumber(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
@@ -192,7 +184,6 @@ type
     property Scanner: TScanner read FScanner;
     property Current: TTokenizer read FCurrent;
     property Parser: TParser read FParser write SetParser;
-    property Symbols: TSardSymbols read FSymbols;
     property Controls: TSardControls read FControls;
     property Operators: TSardOperators read FOperators;
   end;
@@ -457,7 +448,6 @@ begin
   inherited Create(true);
   FControls := TSardControls.Create;
   FOperators := TSardOperators.Create;
-  FSymbols := TSardSymbols.Create;
   TrimSymbols := True;
 end;
 
@@ -466,7 +456,6 @@ begin
   inherited Destroy;
   FreeAndNil(FControls);
   FreeAndNil(FOperators);
-  FreeAndNil(FSymbols);
 end;
 
 {function TLexer.IsKeyword(Keyword: string): Boolean;
@@ -476,7 +465,7 @@ end;}
 
 function TLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
 begin
-  Result := not isWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar) and not IsSymbol(vChar);
+  Result := not isWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar);
   if (vOpen) then
       Result := Result and not IsNumber(vChar, vOpen);
 end;

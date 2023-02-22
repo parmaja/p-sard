@@ -7,16 +7,16 @@ program sard;
 uses
   SysUtils, Classes,
   mnClasses, mnUtils,
-  sardClasses, sardLexers, sardObjects, sardScanners, sardParsers, sardScripts;
+  sardClasses, sardObjects, sardParsers, sardScripts;
 
 procedure Run;
 var
-  Script: TSardScript;
+  Script: TCodeScript;
   Lines: TStringList;
 begin
   if ParamCount > 0 then
   begin
-    Script := TSardScript.Create;
+    Script := TCodeScript.Create;
     try
       Lines := TStringList.Create;
       try

@@ -40,7 +40,6 @@ type
     function IsControl(vChar: Char): Boolean; override;
     function IsOperator(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
-    function IsSymbol(vChar: Char): Boolean; override;
     function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
   end;
 
@@ -336,9 +335,6 @@ end;
 constructor TCodeLexer.Create;
 begin
   inherited;
-  with Symbols do
-  begin
-  end;
 
   with Controls do
   begin
@@ -423,11 +419,6 @@ begin
     Result := CharInSet(vChar, sNumberOpenChars)
   else
     Result := CharInSet(vChar, sNumberChars);
-end;
-
-function TCodeLexer.IsSymbol(vChar: Char): Boolean;
-begin
-  Result := CharInSet(vChar, sSymbolChars) or Symbols.IsOpenBy(vChar);
 end;
 
 function TCodeLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
