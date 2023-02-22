@@ -79,7 +79,7 @@
         <DCC_UnitSearchPath>..\..\src;W:\source\delphi\lib\prim\source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>(None)</Manifest_File>
-        <Debugger_RunParams>data.json</Debugger_RunParams>
+        <Debugger_RunParams>test.json</Debugger_RunParams>
         <DCC_ExeOutput>.</DCC_ExeOutput>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
     </PropertyGroup>

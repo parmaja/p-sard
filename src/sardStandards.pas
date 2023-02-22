@@ -137,7 +137,7 @@ type
 
   { SL_String_Tokenizer }
 
-  TSL_String_Tokenizer = class(TTokenizer)
+  TSL_DQ_String_Tokenizer = class(TTokenizer)
   public
     Buffer: String;
     State: TStringState;
@@ -369,32 +369,32 @@ begin
   Result := Lexer.isWhiteSpace(Text[Column]);
 end;
 
-{ TSL_String_Tokenizer }
+{ TSL_DQ_String_Tokenizer }
 
-function TSL_String_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TSL_DQ_String_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := Text[Column] = QuoteChar;
 end;
 
-procedure TSL_String_Tokenizer.Append(const Text: string);
+procedure TSL_DQ_String_Tokenizer.Append(const Text: string);
 begin
   Buffer := Buffer + Text;
 end;
 
-procedure TSL_String_Tokenizer.Appended;
+procedure TSL_DQ_String_Tokenizer.Appended;
 begin
   SetToken(Token(ctlToken, typeString, Buffer));
   Buffer := '';
 end;
 
-constructor TSL_String_Tokenizer.Create;
+constructor TSL_DQ_String_Tokenizer.Create;
 begin
   inherited;
   QuoteChar := '"';
   EscapeChar := '\';
 end;
 
-procedure TSL_String_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TSL_DQ_String_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   if not Resume then //we already take it from accept
   begin

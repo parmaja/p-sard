@@ -423,7 +423,7 @@ end;}
 
 function TLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
 begin
-  Result := not isWhiteSpace(vChar) and not IsControl(vChar);
+  Result := not isWhiteSpace(vChar) and not IsControl(vChar) and not IsEOL(vChar);
   if (vOpen) then
       Result := Result and not IsNumber(vChar, vOpen);
 end;

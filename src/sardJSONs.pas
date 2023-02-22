@@ -14,9 +14,8 @@ unit sardJSONs;
 
     "statue" = []
 
-    escape
-
-    "name": "Poselok Turisticheskogo pansionata \"Klyazminskoe vodohranilische\"",
+    --escape--
+    "name": "The \"Escape",
 }
 
 {$IFDEF FPC}
@@ -699,12 +698,7 @@ begin
     end;
     ctlCloseArray:
     begin
-      if (Expect = valNext) or not Parser.Strict then
-      begin
-        Parser.SetAction([paPass, paPop]);
-      end
-      else
-        inherited;
+      Parser.SetAction([paPass, paPop]);//pass it to parent
     end;
     ctlStop: //ctlStop using stop if file ended after value, we treat it as comma, but in Element collector we will check if that error
     begin
@@ -965,7 +959,7 @@ begin
     Add(TComment_Tokenizer.Create);
     //Add(TLineComment_Tokenizer.Create);
     Add(TNumber_Tokenizer.Create);
-    Add(TSL_String_Tokenizer.Create);
+    Add(TSL_DQ_String_Tokenizer.Create);
     //Add(TDQString_Tokenizer.Create);
     Add(TControl_Tokenizer.Create);
     Add(TIdentifier_Tokenizer.Create);//Sould be last one
