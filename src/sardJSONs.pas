@@ -7,6 +7,18 @@ unit sardJSONs;
 * @author    Zaher Dirkey 
 *}
 
+{
+  bugs:
+
+    empty array
+
+    "statue" = []
+
+    escape
+
+    "name": "Poselok Turisticheskogo pansionata \"Klyazminskoe vodohranilische\"",
+}
+
 {$IFDEF FPC}
 {$mode delphi}
 {$WARN 5024 off : Parameter "$1" not used}
@@ -112,12 +124,12 @@ type
   public
     constructor Create; override;
     function IsEOL(vChar: Char): Boolean; override;
-    function IsWhiteSpace(vChar: char; vOpen: Boolean =true): Boolean; override;
+    function IsWhiteSpace(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsControl(vChar: Char): Boolean; override;
     function IsOperator(vChar: Char): Boolean; override;
-    function IsNumber(vChar: Char; vOpen: Boolean =true): Boolean; override;
+    function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsSymbol(vChar: Char): Boolean; override;
-    function IsIdentifier(vChar: Char; vOpen: Boolean =true): Boolean;
+    function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
   end;
 
   TJSONType = (
@@ -956,7 +968,7 @@ begin
   begin
     Add(TWhitespace_Tokenizer.Create);
     Add(TComment_Tokenizer.Create);
-    Add(TLineComment_Tokenizer.Create);
+    //Add(TLineComment_Tokenizer.Create);
     Add(TNumber_Tokenizer.Create);
     Add(TDQString_Tokenizer.Create);
     Add(TControl_Tokenizer.Create);
@@ -969,7 +981,7 @@ begin
   Result := CharInSet(vChar, sEOL);
 end;
 
-function TJSONLexer.IsWhiteSpace(vChar: char; vOpen: Boolean): Boolean;
+function TJSONLexer.IsWhiteSpace(const vChar: Char; vOpen: Boolean): Boolean;
 begin
   Result := CharInSet(vChar, sWhitespace);
 end;
@@ -984,7 +996,7 @@ begin
   Result := Operators.IsOpenBy(vChar);
 end;
 
-function TJSONLexer.IsNumber(vChar: Char; vOpen: Boolean): Boolean;
+function TJSONLexer.IsNumber(const vChar: Char; vOpen: Boolean): Boolean;
 begin
   if (vOpen) then
     Result := CharInSet(vChar, sNumberOpenChars)
@@ -997,7 +1009,7 @@ begin
   Result := CharInSet(vChar, sSymbolChars) or Symbols.IsOpenBy(vChar);
 end;
 
-function TJSONLexer.IsIdentifier(vChar: Char; vOpen: Boolean): Boolean;
+function TJSONLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
 begin
   Result := inherited isIdentifier(vChar, vOpen); //we do not need to override it, but it is nice to see it here
 end;

@@ -136,13 +136,13 @@ type
 
   { TTokenizer }
 
-  TTokenizer = class(TSardObject)
+  TTokenizer = class abstract(TSardObject)
   private
     FLexer: TLexer;
   protected
     //Return true if it done, next will auto detect it detect
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); virtual; abstract;
-    function Accept(Text: string; Column: Integer): Boolean; virtual; abstract;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); virtual; abstract;
+    function Accept(const Text: string; Column: Integer): Boolean; virtual; abstract;
     procedure Finish; virtual;
     //This function call when switched to it
     procedure Switched;
@@ -155,7 +155,7 @@ type
 
   { TLexer }
 
-  TLexer = class(TSardObjects<TTokenizer>)
+  TLexer = class abstract(TSardObjects<TTokenizer>)
   private
     FParser: TParser;
     FScanner: TScanner;
@@ -165,7 +165,7 @@ type
     FSymbols: TSardSymbols;
     procedure SetParser(AValue: TParser);
   protected
-    function DetectTokenizer(Text: String; Column: integer): TTokenizer;
+    function DetectTokenizer(const Text: String; Column: integer): TTokenizer;
     procedure SwitchTokenizer(NextTokenizer: TTokenizer);
     function FindClass(AClass: TSardTokenizerClass): TTokenizer;
     function SelectTokenizer(AClass: TSardTokenizerClass): TTokenizer;
@@ -176,16 +176,16 @@ type
     destructor Destroy; override;
 
     function IsEOL(vChar: Char): Boolean; virtual; abstract;
-    function IsWhiteSpace(vChar: char; vOpen: Boolean = true): Boolean; virtual; abstract;
+    function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
     function IsSymbol(vChar: Char): Boolean; virtual; abstract;
     function IsControl(vChar: Char): Boolean; virtual; abstract;
     function IsOperator(vChar: Char): Boolean; virtual; abstract;
-    function IsNumber(vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
+    function IsNumber(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
 
 //    function IsKeyword(Keyword: string): Boolean;
-    function IsIdentifier(vChar: Char; vOpen: Boolean = true): Boolean;
+    function IsIdentifier(const vChar: Char; vOpen: Boolean = true): Boolean;
 
-    procedure ScanLine(Text: String; Line: Integer; var Column: Integer);
+    procedure ScanLine(const Text: String; Line: Integer; var Column: Integer);
     procedure Start;
     procedure Stop;
 
@@ -199,7 +199,7 @@ type
 
   { TController }
 
-  TController = class(TSardObject)
+  TController = class abstract(TSardObject)
   private
     FCollector: TCollector;
   public
@@ -247,7 +247,7 @@ type
     FActions: TParserActions;
     FNextCollector: TCollector;
   public
-    constructor Create(OwnItems: Boolean);
+    constructor Create(OwnItems: Boolean); override;
     procedure Start; virtual;
     procedure Stop; virtual;
     function IsKeyword(AIdentifier: string): Boolean; virtual;
@@ -255,7 +255,6 @@ type
     procedure SetToken(Token: TSardToken); virtual;
     procedure SetControl(AControl: TSardControl); virtual;
     procedure SetOperator(AOperator: TSardOperator); virtual;
-    procedure SetWhiteSpaces(Whitespaces: string); virtual;
     procedure SetAction(AActions: TParserActions = []; ANextCollector: TCollector = nil); virtual;
 
     property Actions: TParserActions read FActions;
@@ -280,7 +279,7 @@ type
     procedure DoStop; virtual;
     function CreateParser: TParser; virtual; abstract;
   public
-    procedure ScanLine(Text: String; Line: Integer);
+    procedure ScanLine(const Text: String; Line: Integer);
     procedure Scan(Lines: TStringList); overload;
     procedure Start;
     procedure Stop;
@@ -326,7 +325,7 @@ procedure TScanner.DoStop;
 begin
 end;
 
-procedure TScanner.ScanLine(Text: String; Line: Integer);
+procedure TScanner.ScanLine(const Text: String; Line: Integer);
 var
   Column: Integer;
 begin
@@ -345,7 +344,7 @@ begin
   Start;
   for i := 0 to Lines.Count -1 do
   begin
-    ScanLine(trim(Lines[i]), i + 1); //TODO REMOVE TRIM
+    ScanLine(Lines[i], i + 1); //DO not use TRIM
   end;
   Stop;
 end;
@@ -387,7 +386,7 @@ begin
   end;
 end;
 
-function TLexer.DetectTokenizer(Text: String; Column: integer): TTokenizer;
+function TLexer.DetectTokenizer(const Text: String; Column: integer): TTokenizer;
 var
   itm: TTokenizer;
 begin
@@ -475,14 +474,14 @@ begin
   Result := false;
 end;}
 
-function TLexer.IsIdentifier(vChar: Char; vOpen: Boolean): Boolean;
+function TLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
 begin
   Result := not isWhiteSpace(vChar) and not IsControl(vChar) and not IsOperator(vChar) and not IsSymbol(vChar);
   if (vOpen) then
       Result := Result and not IsNumber(vChar, vOpen);
 end;
 
-procedure TLexer.ScanLine(Text: String; Line: Integer; var Column: Integer);
+procedure TLexer.ScanLine(const Text: String; Line: Integer; var Column: Integer);
 var
   len: Integer;
   Resume: Boolean;
@@ -490,7 +489,7 @@ var
   OldTokenizer: TTokenizer;
 begin
   len := Length(Text);
-  Resume := false;
+  Resume := False;
   while (Column <= len) do
   begin
     OldColumn := Column;
@@ -500,6 +499,9 @@ begin
         DetectTokenizer(Text, Column)
       else
         Resume := True;
+
+      if Current = nil then
+        raise ESardParserException.Create('Tokenizer not detected', Line, Column);
 
       Current.Scan(Text, Column, Column, Resume);
 
@@ -645,11 +647,6 @@ begin
 end;
 
 procedure TParser.SetOperator(AOperator: TSardOperator);
-begin
-
-end;
-
-procedure TParser.SetWhiteSpaces(Whitespaces: string);
 begin
 
 end;

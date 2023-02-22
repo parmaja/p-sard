@@ -47,6 +47,19 @@ type
   { TSardObject }
 
   TSardObject = TmnObject;
+
+  TSardString = record
+  private
+    FStartPos: Integer;
+    FEndPos: Integer;
+    FValue: string;
+  public
+    constructor Create(const AValue: String; AStartPos: Integer = 1; AEndPos: Integer = -1);
+    property StartPos: Integer read FStartPos;
+    property EndPos: Integer read FEndPos;
+    property Value: string read FValue;
+  end;
+
   TSourceWriter = class;
 
   { TSardObjects }
@@ -60,12 +73,9 @@ type
 
   TSardNamedObject = class(TmnNamedObject)
   private
-    FName: string;
   protected
-    procedure SetName(AValue: string); virtual;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
   public
-    property Name: string read FName write SetName;
   end;
 
   { TsardNamedObjectList }
@@ -143,9 +153,11 @@ type
 
 procedure RaiseError(AError: string; Line: Integer = 0; Column: Integer = 0);
 
-function ScanCompare(S: string; const Text: string; Index: Integer): Boolean;
-function ScanText(const S: string; const Text: string; var Index: Integer): Boolean;
-function StringRepeat(S: string; C: Integer): string;
+function ScanText1(const S: string; const Text: string; var Index: Integer): Boolean;
+function ScanString(const S: string; const Text: string; var Index: Integer): Boolean;
+function ScanCompare(const S: string; const Text: string; Index: Integer): Boolean;
+
+function StringRepeat(const S: string; C: Integer): string;
 function FormatColLine(Column, Line: Integer): string;
 //If index can less than str length
 function IndexInStr(Index: Integer; const Str: string): Boolean; inline;
@@ -191,12 +203,12 @@ begin
   end;
 end;
 
-function ScanCompare(S: string; const Text: string; Index: Integer): Boolean;
+function ScanCompare(const S: string; const Text: string; Index: Integer): Boolean;
 begin
-  Result := ScanText(S, Text, Index);
+  Result := ScanString(S, Text, Index);
 end;
 
-function ScanText(const S: string; const Text: string; var Index: Integer): Boolean;
+function ScanText1(const S: string; const Text: string; var Index: Integer): Boolean;
 begin
   if S = '' then
     Result := False
@@ -213,7 +225,33 @@ begin
   end;
 end;
 
-function StringRepeat(S: string; C: Integer): string;
+function ScanString(const S: string; const Text: string; var Index: Integer): Boolean;
+var
+  i: Integer;
+begin
+  if S = '' then
+    Result := False
+  else
+  begin
+    Result := (Length(Text) - (Index - 1)) >= length(S);
+    //Result := (Length(Text) - Index) >= length(S); //when convert to C, D
+    if Result then
+    begin
+      for i := 1 to Length(S) do
+      begin
+        if Text[Index+ i - 1] <> s[i] then
+        begin
+          Result := False;
+          break;
+        end;
+      end;
+      if Result then
+        Index := Index + Length(S);
+    end;
+  end;
+end;
+
+function StringRepeat(const S: string; C: Integer): string;
 begin
   Result := '';
   while C > 0 do
@@ -249,22 +287,15 @@ function TSardNamedObjects<_Object_>.IsOpenBy(C: Char): Boolean;
 var
   item: TSardNamedObject;
 begin
-  C := UPCase(C);
   for item in Self do
   begin
-    if (item.Name <> '') and (UPCase(item.Name[1]) = C) then
+    if (item.Name <> '') and (item.Name[1] = C) then
     begin
       Result := True;
       exit;
     end;
   end;
   Result := False;
-end;
-
-procedure TSardNamedObject.SetName(AValue: string);
-begin
-  if FName =AValue then Exit;
-  FName :=AValue;
 end;
 
 procedure TSardNamedObject.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
@@ -437,6 +468,15 @@ procedure TStringSourceWriter.NewLine;
 begin
   FStrings.Add(FLine);
   FLine := '';
+end;
+
+{ TSardString }
+
+constructor TSardString.Create(const AValue: String; AStartPos: Integer = 1; AEndPos: Integer = -1);
+begin
+  FValue := AValue;
+  FStartPos := AStartPos;
+  FEndPos := AEndPos;
 end;
 
 end.

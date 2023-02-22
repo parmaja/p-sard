@@ -151,7 +151,7 @@ type
     function GetAsText: Text;
     procedure SetParent(AValue: TNode);
   protected
-    procedure SetName(AValue: string); override;
+    procedure SetName(const AValue: string); override;
   public
     function ToBool(out outValue: Boolean): Boolean; virtual;
     function ToText(out outValue: Text): Boolean; virtual;
@@ -1009,7 +1009,7 @@ begin
   FParent := AValue;
 end;
 
-procedure TNode.SetName(AValue: string);
+procedure TNode.SetName(const AValue: string);
 begin
   if Name <> '' then
     RaiseError('Already Named!');
@@ -1738,7 +1738,6 @@ begin
   Associative := asLeft;
   Description := '';
 end;
-
 
 { TOpNone }
 

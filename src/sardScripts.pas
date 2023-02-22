@@ -36,12 +36,12 @@ type
   public
     constructor Create; override;
     function IsEOL(vChar: Char): Boolean; override;
-    function IsWhiteSpace(vChar: char; vOpen: Boolean =true): Boolean; override;
+    function IsWhiteSpace(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsControl(vChar: Char): Boolean; override;
     function IsOperator(vChar: Char): Boolean; override;
-    function IsNumber(vChar: Char; vOpen: Boolean =true): Boolean; override;
+    function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsSymbol(vChar: Char): Boolean; override;
-    function IsIdentifier(vChar: Char; vOpen: Boolean =true): Boolean;
+    function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
   end;
 
   TCodeParser = class;
@@ -185,14 +185,13 @@ type
     Lexer: TLexer;
     procedure DoQueue;
   public
-    constructor Create(ALexer: TLexer; AStatements: TStatements);
+    constructor Create(ALexer: TLexer; AStatements: TStatements); reintroduce;
     destructor Destroy; override;
 
     function IsKeyword(AIdentifier: string): Boolean; override;
     procedure SetToken(Token: TSardToken); override;
     procedure SetOperator(AOperator: TSardOperator); override;
     procedure SetControl(AControl: TSardControl); override;
-    procedure SetWhiteSpaces(Whitespaces: string); override;
     procedure AfterPush; override;
     procedure BeforePop; override;
     procedure Start; override;
@@ -403,7 +402,7 @@ begin
   Result := CharInSet(vChar, sEOL);
 end;
 
-function TCodeLexer.IsWhiteSpace(vChar: char; vOpen: Boolean): Boolean;
+function TCodeLexer.IsWhiteSpace(const vChar: Char; vOpen: Boolean): Boolean;
 begin
   Result := CharInSet(vChar, sWhitespace);
 end;
@@ -418,7 +417,7 @@ begin
   Result := Operators.IsOpenBy(vChar);
 end;
 
-function TCodeLexer.IsNumber(vChar: Char; vOpen: Boolean): Boolean;
+function TCodeLexer.IsNumber(const vChar: Char; vOpen: Boolean): Boolean;
 begin
   if (vOpen) then
     Result := CharInSet(vChar, sNumberOpenChars)
@@ -431,7 +430,7 @@ begin
   Result := CharInSet(vChar, sSymbolChars) or Symbols.IsOpenBy(vChar);
 end;
 
-function TCodeLexer.IsIdentifier(vChar: Char; vOpen: Boolean): Boolean;
+function TCodeLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
 begin
   Result := inherited isIdentifier(vChar, vOpen); //we do not need to override it, but it is nice to see it here
 end;
@@ -517,12 +516,6 @@ begin
       break;
   end;
   LastControl := aControl.Code;
-end;
-
-procedure TCodeParser.SetWhiteSpaces(Whitespaces: string);
-begin
-  inherited;
-  //nothing to do
 end;
 
 procedure TCodeParser.AfterPush;

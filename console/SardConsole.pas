@@ -42,7 +42,6 @@ implementation
 
 procedure TSardConsole.Run;
 var
-  ErrorMsg: String;
   Script: TCodeScript;
   Lines: TStringList;
   FileName: string;

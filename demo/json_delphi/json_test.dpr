@@ -5,11 +5,12 @@ program json_test;
 {$R *.res}
 
 uses
-  System.SysUtils, Classes,
+  System.SysUtils, Classes, Json,
+  mnUtils, prmClasses,
   sardClasses, sardObjects, sardParsers, sardScripts,
   sardJSONs, sardJSONRTTIs;
 
-{.$define DOM}
+{$define DOM}
 
 type
   {$ifdef DOM}
@@ -70,6 +71,7 @@ var
   Lines: TStringList;
   FileName: string;
   {$ifdef DOM}
+  i: Integer;
   JSONRoot: TMyDOM;
   Writer: TStringSourceWriter;
   {$else}
@@ -80,26 +82,34 @@ begin
     if ParamCount > 0 then
     begin
       FileName := ParamStr(1);
-      {$ifdef DOM}
-      JSONRoot:= TMyDOM.Create;
-      Scanner := TJSONScanner.Create(JSONRoot, TDataJSONParser);
-      //Scanner.Strict := False;
-      {$else}
-      JSONRoot:=TMyJSONObject.Create;
-      Scanner := TJSONScanner.Create(JSONRoot, TRTTIJSONParser);
-      {$endif}
       try
         Lines := TStringList.Create;
         try
           Lines.LoadFromFile(FileName);
-          Scanner.Compile(Lines);
+          var s := Lines.Text;
+          LogBeginTick;
+          var Json := Json.TJSONObject.ParseJsonValue(s);
+          LogEndTick('Delphi JSON');
+          Json.Free;
           {$ifdef DOM}
-          Lines.Clear;
+          JSONRoot:= TMyDOM.Create;
+          Scanner := TJSONScanner.Create(JSONRoot, TDataJSONParser);
+          //Scanner.Strict := False;
+          {$else}
+          JSONRoot:=TMyJSONObject.Create;
+          Scanner := TJSONScanner.Create(JSONRoot, TRTTIJSONParser);
+          {$endif}
+
+          LogBeginTick;
+          Scanner.Compile(Lines);
+          LogEndTick('SardJSON');
+          {$ifdef DOM}
+{          Lines.Clear;
           Writer := TStringSourceWriter.Create(Lines);
           JSONRoot.WriteTo(Writer, True, 0);
           Writer.Free;
           for i := 0 to Lines.Count -1 do
-            WriteLn(Lines[i]);
+            WriteLn(Lines[i]);}
           {$else}
           WriteLn('Name: ', JSONRoot.Name);
           WriteLn('Value: ', JSONRoot.Value);
@@ -107,7 +117,7 @@ begin
           WriteLn('Tag: ', JSONRoot.Tag);
           {$endif}
           FreeAndNil(JSONRoot);
-          ReadLn;
+          //ReadLn;
         finally
           FreeAndNil(Lines);
         end;

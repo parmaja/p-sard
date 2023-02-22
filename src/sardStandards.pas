@@ -35,8 +35,8 @@ type
     procedure Collected; virtual; abstract;
     procedure Collect(Text: string); virtual; abstract;
 
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
   { TBufferedMultiLine_Tokenizer }
@@ -45,7 +45,7 @@ type
   private
     Buffer: string;
   protected
-    procedure SetToken(Text: string); virtual; abstract;
+    procedure SetToken(const Text: string); virtual; abstract;
     procedure Collect(Text: string); override;
     procedure Collected; override;
   end;
@@ -54,63 +54,63 @@ type
 
   TString_Tokenizer = class abstract(TBufferedMultiLine_Tokenizer)
   public
-    procedure SetToken(Text: string); override;
+    procedure SetToken(const Text: string); override;
   end;
 
   { TWhitespace_Tokenizer }
 
   TWhitespace_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
   { TIdentifier_Tokenizer }
 
   TIdentifier_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
   { TNumber_Tokenizer }
 
   TNumber_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
   { TControl_Tokenizer }
 
   TControl_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
   { TOperator_Tokenizer }
 
   TOperator_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
   { TLineComment_Tokenizer }
 
   TLineComment_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
   { TBlockComment_Tokenizer }
 
   TBlockComment_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
   //Comment object {* *}
@@ -120,7 +120,7 @@ type
   TComment_Tokenizer = class(TBufferedMultiLine_Tokenizer)
   public
     constructor Create; override;
-    procedure SetToken(Text: string); override;
+    procedure SetToken(const Text: string); override;
   end;
 
   {* Single Quote String *}
@@ -145,8 +145,8 @@ type
 
   TEscape_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(Text: string; Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
   public
   end;
 
@@ -155,7 +155,7 @@ implementation
 
 { TMultiLine_Tokenizer }
 
-procedure TMultiLine_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TMultiLine_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   if not Resume then
   begin
@@ -181,9 +181,9 @@ begin
   Resume := true;
 end;
 
-function TMultiLine_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+function TMultiLine_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
-  Result := ScanText(openSymbol, text, column);
+  Result := ScanString(openSymbol, text, column);
 end;
 
 { TBufferedMultiLine_Tokenizer }
@@ -199,14 +199,14 @@ begin
   Buffer := '';
 end;
 
-procedure TString_Tokenizer.SetToken(Text: string);
+procedure TString_Tokenizer.SetToken(const Text: string);
 begin
   Lexer.Parser.SetToken(Token(ctlToken, typeString, Text));
 end;
 
 { TEscape_Tokenizer }
 
-procedure TEscape_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TEscape_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   Inc(Column); //not need first char, it is not pass from isIdentifier
   //print("Hello "\n"World"); //but add " to the world
@@ -216,7 +216,7 @@ begin
   Resume := False;
 end;
 
-function TEscape_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+function TEscape_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := Text[Column] = sEscape;
 end;
@@ -248,18 +248,18 @@ begin
   CloseSymbol := '*}';
 end;
 
-procedure TComment_Tokenizer.SetToken(Text: string);
+procedure TComment_Tokenizer.SetToken(const Text: string);
 begin
   Lexer.Parser.SetToken(Token(ctlToken, typeComment, text));
 end;
 
 { TBlockComment_Tokenizer }
 
-procedure TBlockComment_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TBlockComment_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   while IndexInStr(Column, text) do
   begin
-      if (ScanText('*/', Text, Column)) then
+      if (ScanString('*/', Text, Column)) then
       begin
           Resume := False;
           exit;
@@ -270,14 +270,14 @@ begin
   Resume := True;
 end;
 
-function TBlockComment_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+function TBlockComment_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
-  Result := ScanText('/*', Text, Column);
+  Result := ScanString('/*', Text, Column);
 end;
 
 { TLineComment_Tokenizer }
 
-procedure TLineComment_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TLineComment_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   Inc(Column);
   while IndexInStr(Column, Text) and (not Lexer.IsEOL(Text[Column])) do
@@ -286,14 +286,14 @@ begin
   Resume := False;
 end;
 
-function TLineComment_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+function TLineComment_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
-  Result := ScanText('//', Text, Column);
+  Result := ScanString('//', Text, Column);
 end;
 
 { TOperator_Tokenizer }
 
-procedure TOperator_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TOperator_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 var
   AOperator: TSardOperator;
 begin
@@ -306,14 +306,19 @@ begin
   Resume := false;
 end;
 
-function TOperator_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+function TOperator_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := Lexer.IsOperator(Text[Column]);
 end;
 
 { TControl_Tokenizer }
 
-procedure TControl_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+function TControl_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+begin
+  Result := Lexer.IsControl(Text[Column]);
+end;
+
+procedure TControl_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 var
   AControl: TSardControl;
 begin
@@ -326,14 +331,9 @@ begin
   Resume := False;
 end;
 
-function TControl_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
-begin
-  Result := Lexer.IsControl(Text[Column]);
-end;
-
 { TNumber_Tokenizer }
 
-procedure TNumber_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TNumber_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   Inc(Column);
   while (IndexInStr(Column, Text) and (Lexer.IsNumber(Text[Column], False))) do
@@ -342,14 +342,14 @@ begin
   Resume := false;
 end;
 
-function TNumber_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+function TNumber_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := Lexer.IsNumber(Text[Column], True);
 end;
 
 { TIdentifier_tokenizer }
 
-procedure TIdentifier_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TIdentifier_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   Inc(Column);
   while (IndexInStr(Column, Text) and (Lexer.IsIdentifier(Text[Column], False))) do
@@ -358,23 +358,22 @@ begin
   Resume := false;
 end;
 
-function TIdentifier_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+function TIdentifier_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := Lexer.IsIdentifier(Text[Column], True);
 end;
 
 { TWhitespace_Tokenizer }
 
-procedure TWhitespace_Tokenizer.Scan(Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TWhitespace_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   Inc(Column);
   while (IndexInStr(Column, Text) and (Lexer.IsWhiteSpace(Text[Column]))) do
     inc(Column);
-  Lexer.Parser.SetWhiteSpaces(SliceText(text, Started, Column));
   Resume := false;
 end;
 
-function TWhitespace_Tokenizer.Accept(Text: string; Column: Integer): Boolean;
+function TWhitespace_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := Lexer.isWhiteSpace(Text[Column]);
 end;
