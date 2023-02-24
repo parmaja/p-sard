@@ -7,10 +7,12 @@ unit SardConsole;
  * @author    Zaher Dirkey
  *}
 
-{$IFDEF FPC}
+{$ifdef fpc}
 {$mode delphi}
 {$WARN 5024 off : Parameter "$1" not used}
-{$ENDIF}
+{$else }
+{$define delphi}
+{$endif}
 {$H+}{$M+}
 
 interface
@@ -29,6 +31,9 @@ type
     FParams: TStringList;
     Verbose: Boolean;
   public
+    {$ifdef delphi}
+    function Location: string;
+    {$endif}
     procedure Run;
     constructor Create;
     destructor Destroy; override;
@@ -46,6 +51,25 @@ var
   Lines: TStringList;
   FileName: string;
   FileNames: TArray<String>;
+
+  procedure LoadFile;
+  begin
+    Lines.LoadFromFile(FileName);
+  end;
+
+  procedure LoadTestFile;
+  begin
+    Lines.LoadFromFile(Location + 'test.sard');
+  end;
+
+
+  procedure TestAdd;
+  begin
+    Lines.Text := '10+10;';
+    //Lines.Text := 'x:{:=10};';
+    //Lines.Text := 'print(10);print(20)';
+  end;
+
 begin
   if GetArgumentSwitch(FParams, 'h', 'help') then
   begin
@@ -69,10 +93,8 @@ begin
         try
           Lines := TStringList.Create;
           try
-            Lines.LoadFromFile(FileName);
-            //Lines.LoadFromFile(Location + 'test.sard');
-            //Lines.Text := 'x:{:=10};';
-            //Lines.Text := 'print(10);print(20)';
+            //LoadFile;
+            TestAdd;
             Script.RegisterInternals := False;
             if Verbose then
               Writeln('Compile');
@@ -87,7 +109,9 @@ begin
 
             if Verbose then
               Writeln('Run');
-            Script.Run;
+
+            if GetArgumentSwitch(FParams, 'r', 'run') then
+              Script.Run;
 
             if Verbose then
               Writeln('Result:');
@@ -124,6 +148,13 @@ begin
   FreeAndNil(FParams);
   inherited Destroy;
 end;
+
+{$ifdef delphi}
+function TSardConsole.Location: string;
+begin
+  Result := ExtractFilePath(ParamStr(0));
+end;
+{$endif}
 
 function TSardConsole.WaitKey: Boolean;
 begin

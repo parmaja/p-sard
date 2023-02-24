@@ -4,7 +4,7 @@ unit sardScripts;
 *
 * @license   The MIT License (MIT)
 *            Included in this distribution
-* @author    Zaher Dirkey 
+* @author    Zaher Dirkey
 *}
 
 {$IFDEF FPC}
@@ -184,7 +184,7 @@ type
     constructor Create(ALexer: TLexer; AStatements: TStatements); reintroduce;
     destructor Destroy; override;
 
-    function IsKeyword(AIdentifier: string): Boolean; override;
+    function IsKeyword(const AIdentifier: string): Boolean; override;
     procedure SetToken(Token: TSardToken); override;
     procedure SetControl(AControl: TSardControl); override;
     procedure AfterPush; override;
@@ -360,9 +360,9 @@ begin
       Add(TComment_Tokenizer.Create);
       Add(TLineComment_Tokenizer.Create);
       Add(TNumber_Tokenizer.Create);
-      Add(TSQString_Tokenizer.Create);
-      Add(TDQString_Tokenizer.Create);
-      Add(TEscape_Tokenizer.Create);
+      Add(TML_SQString_Tokenizer.Create);
+      Add(TML_DQString_Tokenizer.Create);
+      Add(TOut_Escape_Tokenizer.Create);
       Add(TControl_Tokenizer.Create);
       Add(TIdentifier_Tokenizer.Create);//Sould be last one
   end;
@@ -398,7 +398,7 @@ end;
 
 { TCodeParser }
 
-function TCodeParser.IsKeyword(AIdentifier: string): Boolean;
+function TCodeParser.IsKeyword(const AIdentifier: string): Boolean;
 begin
   //example just for fun
   {

@@ -78,6 +78,7 @@ var
   JSONRoot: TMyJSONObject;
   {$endif}
 begin
+  DebugMode := True;
   try
     if ParamCount > 0 then
     begin
@@ -85,6 +86,7 @@ begin
       try
         Lines := TStringList.Create;
         try
+          WriteLn('Loading: ' + FileName);
           Lines.LoadFromFile(FileName);
           var s := Lines.Text;
           LogBeginTick;
@@ -101,16 +103,19 @@ begin
           {$endif}
 
           LogBeginTick;
-          Scanner.Compile(Lines);
+          Scanner.Compile(S);
           LogEndTick('SardJSON');
           {$ifdef DOM}
           //WriteLn('Name: ', JSONRoot.Name);
-{          Lines.Clear;
+          Lines.Clear;
+             {
           Writer := TStringSourceWriter.Create(Lines);
           JSONRoot.WriteTo(Writer, True, 0);
           Writer.Free;
           for i := 0 to Lines.Count -1 do
-            WriteLn(Lines[i]);}
+            WriteLn(Lines[i]);
+            }
+
           {$else}
           WriteLn('Name: ', JSONRoot.Name);
           WriteLn('Value: ', JSONRoot.Value);

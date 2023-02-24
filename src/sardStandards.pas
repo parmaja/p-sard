@@ -26,9 +26,9 @@ const
   sEscape = '\';
 
 type
-  { TMultiLine_Tokenizer }
+  { TEnclosed_Tokenizer }
 
-  TMultiLine_Tokenizer = class abstract(TTokenizer)
+  TEnclosed_Tokenizer = class abstract(TTokenizer)
   protected
     OpenSymbol: string;
     CloseSymbol: string;
@@ -39,9 +39,9 @@ type
     function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
-  { TBufferedMultiLine_Tokenizer }
+  { TBufferedEnclosed_Tokenizer }
 
-  TBufferedMultiLine_Tokenizer = class(TMultiLine_Tokenizer)
+  TBufferedEnclosed_Tokenizer = class(TEnclosed_Tokenizer)
   private
     Buffer: string;
   protected
@@ -50,9 +50,9 @@ type
     procedure Appended; override;
   end;
 
-  { TString_Tokenizer }
+  { TML_String_Tokenizer }
 
-  TString_Tokenizer = class abstract(TBufferedMultiLine_Tokenizer)
+  TML_String_Tokenizer = class abstract(TBufferedEnclosed_Tokenizer)
   public
     procedure InternalSetToken(const Text: string); override;
   end;
@@ -81,14 +81,6 @@ type
     function Accept(const Text: string; Column: Integer): Boolean; override;
   end;
 
-  { TControl_Tokenizer }
-
-  TControl_Tokenizer = class(TTokenizer)
-  protected
-    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
-  end;
-
   { TLineComment_Tokenizer }
 
   TLineComment_Tokenizer = class(TTokenizer)
@@ -109,9 +101,9 @@ type
 
   { TComment_Tokenizer }
 
-  TComment_Tokenizer = class(TBufferedMultiLine_Tokenizer)
+  TComment_Tokenizer = class(TBufferedEnclosed_Tokenizer)
   public
-    constructor Create; override;
+    constructor Create;
     procedure InternalSetToken(const Text: string); override;
   end;
 
@@ -119,7 +111,7 @@ type
 
   { TSQString_Tokenizer }
 
-  TSQString_Tokenizer = class(TString_Tokenizer)
+  TML_SQString_Tokenizer = class(TML_String_Tokenizer)
   public
     constructor Create; override;
   end;
@@ -128,7 +120,7 @@ type
 
   { DQString_Tokenizer }
 
-  TDQString_Tokenizer = class(TString_Tokenizer)
+  TML_DQString_Tokenizer = class(TML_String_Tokenizer)
   public
     constructor Create; override;
   end;
@@ -152,21 +144,20 @@ type
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
   end;
 
-  { TEscape_Tokenizer }
+  { TOut_Escape_Tokenizer }
 
-  TEscape_Tokenizer = class(TTokenizer)
+  TOut_Escape_Tokenizer = class(TTokenizer)
   protected
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(const Text: string; Column: Integer): Boolean; override;
   public
   end;
 
-
 implementation
 
-{ TMultiLine_Tokenizer }
+{ TEnclosed_Tokenizer }
 
-procedure TMultiLine_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TEnclosed_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   if not Resume then
   begin
@@ -192,32 +183,32 @@ begin
   Resume := True;
 end;
 
-function TMultiLine_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TEnclosed_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := ScanString(openSymbol, text, column);
 end;
 
-{ TBufferedMultiLine_Tokenizer }
+{ TBufferedEnclosed_Tokenizer }
 
-procedure TBufferedMultiLine_Tokenizer.Append(const Text: string);
+procedure TBufferedEnclosed_Tokenizer.Append(const Text: string);
 begin
   Buffer := Buffer + Text;
 end;
 
-procedure TBufferedMultiLine_Tokenizer.Appended;
+procedure TBufferedEnclosed_Tokenizer.Appended;
 begin
   InternalSetToken(Buffer);
   Buffer := '';
 end;
 
-procedure TString_Tokenizer.InternalSetToken(const Text: string);
+procedure TML_String_Tokenizer.InternalSetToken(const Text: string);
 begin
   SetToken(Token(ctlToken, typeString, Text));
 end;
 
-{ TEscape_Tokenizer }
+{ TOut_Escape_Tokenizer }
 
-procedure TEscape_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TOut_Escape_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   Inc(Column); //not need first char, it is not pass from isIdentifier
   //print("Hello "\n"World"); //but add " to the world
@@ -227,23 +218,23 @@ begin
   Resume := False;
 end;
 
-function TEscape_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TOut_Escape_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := Text[Column] = sEscape;
 end;
 
-{ TDQString_Tokenizer }
+{ TML_DQString_Tokenizer }
 
-constructor TDQString_Tokenizer.Create;
+constructor TML_DQString_Tokenizer.Create;
 begin
   inherited;
   OpenSymbol := '"';
   CloseSymbol := '"';
 end;
 
-{ TSQString_Tokenizer }
+{ TML_SQString_Tokenizer }
 
-constructor TSQString_Tokenizer.Create;
+constructor TML_SQString_Tokenizer.Create;
 begin
   inherited;
   OpenSymbol := '''';
@@ -300,26 +291,6 @@ end;
 function TLineComment_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
   Result := ScanString('//', Text, Column);
-end;
-
-{ TControl_Tokenizer }
-
-function TControl_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
-begin
-  Result := Lexer.IsControl(Text[Column]);
-end;
-
-procedure TControl_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
-var
-  AControl: TSardControl;
-begin
-  AControl := Lexer.Controls.Scan(Text, Column);
-  if AControl <> nil then
-    Column := Column + Length(AControl.Name)
-  else
-    RaiseError('Unkown control started with ' + Text[Started]);
-  Lexer.Parser.SetControl(AControl);
-  Resume := False;
 end;
 
 { TNumber_Tokenizer }
@@ -407,8 +378,10 @@ begin
     if State = ssEscape then
     begin
       case Text[Column] of
-        'n': Append(#13);
-        'r': Append(#10);
+        'b': Append(#8);
+        't': Append(#9);
+        'n': Append(#10);
+        'r': Append(#13);
         '0': Append(#0);
         else
           Append(Text[Column]);

@@ -76,6 +76,7 @@ type
   protected
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
   public
+    function IsOpenBy(C: Char): Boolean;
   end;
 
   { TsardNamedObjectList }
@@ -132,7 +133,7 @@ type
   public
     TabWidth: Integer;
     constructor Create;
-    procedure Add(S: string); overload; virtual; abstract;
+    procedure Add(const S: string); overload; virtual; abstract;
     procedure Add(Level: Integer = 1; S: string = ''); overload;
     procedure NewLine; virtual; abstract;
   end;
@@ -147,7 +148,7 @@ type
     constructor Create(Strings: TStrings);
     destructor Destroy; override;
     procedure Flush;
-    procedure Add(S: string); override;
+    procedure Add(const S: string); override;
     procedure NewLine; override;
   end;
 
@@ -289,7 +290,7 @@ var
 begin
   for item in Self do
   begin
-    if (item.Name <> '') and (item.Name[1] = C) then
+    if item.IsOpenBy(C) then
     begin
       Result := True;
       exit;
@@ -459,7 +460,7 @@ begin
     NewLine;
 end;
 
-procedure TStringSourceWriter.Add(S: string);
+procedure TStringSourceWriter.Add(const S: string);
 begin
   FLine := FLine + S;
 end;
@@ -477,6 +478,11 @@ begin
   FValue := AValue;
   FStartPos := AStartPos;
   FEndPos := AEndPos;
+end;
+
+function TSardNamedObject.IsOpenBy(C: Char): Boolean;
+begin
+  Result := (Name <> '') and (Name[1] = C);
 end;
 
 end.

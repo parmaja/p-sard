@@ -27,7 +27,8 @@ begin
         Script.Compile(Lines);
         Script.Run;
         WriteLn(Script.Result);
-        WriteLn;
+        //WriteLn('Press Enter to exit');
+        //ReadLn;
       finally
         FreeAndNil(Lines);
       end;

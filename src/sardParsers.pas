@@ -41,12 +41,14 @@ type
     ctlClosePreprocessor, //* ?>
     ctlOpenArray, // [
     ctlCloseArray, // ]
+//    ctlObject
     ctlToken//* Token like Identifier, Keyword or Number
   );
 
   TSardTokenType = (
     typeNone,
     typeIdentifier,
+    typeOperator,
     typeNumber,
     typeString,
     typeEscape, //Strings escape outside
@@ -61,7 +63,7 @@ type
     Control: TsardControlID;
     TokenType: TSardTokenType;
     Value: string;
-    procedure Init(AControl: TsardControlID; ATokenType: TSardTokenType; AValue: string);
+    procedure Init(AControl: TsardControlID; ATokenType: TSardTokenType; const AValue: string);
   end;
 
   TSardSymbolicObject = class abstract(TSardNamedObject)
@@ -74,9 +76,8 @@ type
   TSardControl = class(TSardSymbolicObject)
   public
     Code: TSardControlID;
-    Level: Integer;
     Description: string;
-    constructor Create(AName: string; ACode: TsardControlID; ADescription: string = '');
+    constructor Create(const AName: string; ACode: TsardControlID; const ADescription: string = '');
   end;
 
   { TSardControls }
@@ -85,7 +86,7 @@ type
   public
     function FindControl(Code: TsardControlID): TSardControl;
     function GetControl(Code: TsardControlID): TSardControl;
-    function Add(AName: string; ACode: TsardControlID; ADescription: string = ''): TSardControl;
+    function Add(const AName: string; ACode: TsardControlID; const ADescription: string = ''): TSardControl;
   end;
 
   TParser = class;
@@ -106,7 +107,9 @@ type
   TTokenizer = class abstract(TSardObject)
   private
     FLexer: TLexer;
+    procedure SetLexer(const Value: TLexer);
   protected
+    procedure LexerChanged; virtual;
     //Return true if it done, next will auto detect it detect
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); virtual; abstract;
     function Accept(const Text: string; Column: Integer): Boolean; virtual; abstract;
@@ -115,7 +118,7 @@ type
     procedure Switched;
     procedure SetToken(Token: TSardToken); virtual;
   public
-    property Lexer: TLexer read FLexer;
+    property Lexer: TLexer read FLexer write SetLexer;
     constructor Create; virtual;
   end;
 
@@ -129,6 +132,7 @@ type
     FScanner: TScanner;
     FCurrent: TTokenizer;
     FControls: TSardControls;
+    FControlsOpens: TSysCharSet;
     procedure SetParser(AValue: TParser);
   protected
     function DetectTokenizer(const Text: String; Column: integer): TTokenizer;
@@ -143,7 +147,7 @@ type
 
     function IsEOL(vChar: Char): Boolean; virtual; abstract;
     function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
-    function IsControl(vChar: Char): Boolean; virtual; abstract;
+    function IsControl(vChar: Char): Boolean; virtual;
     function IsNumber(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
 
 //    function IsKeyword(Keyword: string): Boolean;
@@ -157,6 +161,19 @@ type
     property Current: TTokenizer read FCurrent;
     property Parser: TParser read FParser write SetParser;
     property Controls: TSardControls read FControls;
+  end;
+
+  { TControl_Tokenizer }
+
+  TControl_Tokenizer = class(TTokenizer)
+  protected
+    procedure LexerChanged; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; Column: Integer): Boolean; override;
+  public
+    Control: TSardControl;
+    constructor Create(const AName: string; ACode: TsardControlID; const ADescription: string = ''); overload;
+    constructor Create(AControl: TSardControl = nil); overload;
   end;
 
   { TController }
@@ -212,7 +229,7 @@ type
     constructor Create(OwnItems: Boolean); override;
     procedure Start; virtual;
     procedure Stop; virtual;
-    function IsKeyword(AIdentifier: string): Boolean; virtual;
+    function IsKeyword(const AIdentifier: string): Boolean; virtual;
 
     procedure SetToken(Token: TSardToken); virtual;
     procedure SetControl(AControl: TSardControl); virtual;
@@ -242,6 +259,7 @@ type
   public
     procedure ScanChunk(const Text: String; Line: Integer);
     procedure Scan(Lines: TStringList); overload;
+    procedure Scan(const Text: string); overload;
     procedure Start;
     procedure Stop;
 
@@ -253,7 +271,7 @@ type
     property Parser: TParser read FParser;
   end;
 
-function Token(AControl: TsardControlID; ATokenType: TSardTokenType; AValue: string): TSardToken;
+function Token(AControl: TsardControlID; ATokenType: TSardTokenType; const AValue: string): TSardToken;
 
 implementation
 
@@ -285,6 +303,13 @@ begin
   begin
     ScanChunk(Lines[i]+#13, i + 1); //DO not use TRIM
   end;
+  Stop;
+end;
+
+procedure TScanner.Scan(const Text: string);
+begin
+  Start;
+  ScanChunk(Text, 0);
   Stop;
 end;
 
@@ -400,7 +425,7 @@ end;
 procedure TLexer.Added(Item: TTokenizer);
 begin
   inherited;
-  Item.FLexer := Self;
+  Item.Lexer := Self;
 end;
 
 constructor TLexer.Create;
@@ -420,6 +445,11 @@ end;
 begin
   Result := false;
 end;}
+
+function TLexer.IsControl(vChar: Char): Boolean;
+begin
+  Result := CharInSet(vChar, FControlsOpens);
+end;
 
 function TLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
 begin
@@ -480,6 +510,63 @@ begin
   Parser.Stop;
 end;
 
+{ TControl_Tokenizer }
+
+function TControl_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+begin
+  if Control = nil then
+    Result := Lexer.IsControl(Text[Column])
+  else
+  begin
+    Result := Control.IsOpenBy(Text[Column]);
+    if Result then
+    begin
+      Column := Column + Length(Control.Name);
+      Lexer.Parser.SetControl(Control);
+    end;
+  end;
+end;
+
+constructor TControl_Tokenizer.Create(AControl: TSardControl);
+begin
+  inherited Create;
+  Control := AControl;
+end;
+
+procedure TControl_Tokenizer.LexerChanged;
+begin
+  inherited;
+  if Control <> nil then
+    Lexer.FControlsOpens := Lexer.FControlsOpens + [Control.Name[1]];
+end;
+
+constructor TControl_Tokenizer.Create(const AName: string; ACode: TsardControlID; const ADescription: string);
+begin
+  Create(TSardControl.Create(AName, ACode, ADescription));
+end;
+
+procedure TControl_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+var
+  AControl: TSardControl;
+begin
+  if Control = nil then
+  begin
+    AControl := Lexer.Controls.Scan(Text, Column);
+    if AControl <> nil then
+      Column := Column + Length(AControl.Name)
+    else
+      RaiseError('Unkown control started with ' + Text[Started]);
+    Lexer.Parser.SetControl(AControl);
+    Resume := False;
+  end
+  else
+  begin
+    Column := Column + Length(Control.Name);
+    Lexer.Parser.SetControl(Control);
+    Resume := False;
+  end;
+end;
+
 { TSardControls }
 
 function TSardControls.FindControl(Code: TsardControlID): TSardControl;
@@ -506,7 +593,7 @@ begin
     raise EsardException.Create('Control not found');
 end;
 
-function TSardControls.Add(AName: string; ACode: TsardControlID; ADescription: string): TSardControl;
+function TSardControls.Add(const AName: string; ACode: TsardControlID; const ADescription: string): TSardControl;
 begin
   if FindControl(ACode) <> nil then
     RaiseError('Control already exists');
@@ -518,6 +605,16 @@ end;
 
 procedure TTokenizer.Finish;
 begin
+end;
+
+procedure TTokenizer.LexerChanged;
+begin
+end;
+
+procedure TTokenizer.SetLexer(const Value: TLexer);
+begin
+  FLexer := Value;
+  LexerChanged;
 end;
 
 procedure TTokenizer.SetToken(Token: TSardToken);
@@ -537,7 +634,7 @@ end;
 
 { TSardControl }
 
-constructor TSardControl.Create(AName: string; ACode: TsardControlID; ADescription: string);
+constructor TSardControl.Create(const AName: string; ACode: TsardControlID; const ADescription: string);
 begin
   inherited Create;
   Name := AName;
@@ -547,14 +644,14 @@ end;
 
 { TSardToken }
 
-procedure TSardToken.Init(AControl: TsardControlID; ATokenType: TSardTokenType; AValue: string);
+procedure TSardToken.Init(AControl: TsardControlID; ATokenType: TSardTokenType; const AValue: string);
 begin
   Control := AControl;
   TokenType := ATokenType;
   Value := AValue;
 end;
 
-function Token(AControl: TsardControlID; ATokenType: TSardTokenType; AValue: string): TSardToken;
+function Token(AControl: TsardControlID; ATokenType: TSardTokenType; const AValue: string): TSardToken;
 begin
   with Result do
   begin
@@ -566,7 +663,7 @@ end;
 
 { TParser }
 
-function TParser.IsKeyword(AIdentifier: string): Boolean;
+function TParser.IsKeyword(const AIdentifier: string): Boolean;
 begin
   Result := False;
 end;
