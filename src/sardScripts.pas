@@ -30,13 +30,9 @@ type
     const
       sNumberOpenChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
       sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
-      sSymbolChars = ['"', '''', '\']; //deprecated;
-      sIdentifierSeparator = '.';
   public
     constructor Create; override;
-    function IsEOL(vChar: Char): Boolean; override;
     function IsControl(vChar: Char): Boolean; override;
-    //function IsOperator(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
   end;
@@ -364,11 +360,6 @@ begin
       Add(TControl_Tokenizer.Create);
       Add(TIdentifier_Tokenizer.Create);//Sould be last one
   end;
-end;
-
-function TCodeLexer.IsEOL(vChar: Char): Boolean;
-begin
-  Result := CharInSet(vChar, sEOL);
 end;
 
 function TCodeLexer.IsControl(vChar: Char): Boolean;

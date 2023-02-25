@@ -20,11 +20,6 @@ uses
   mnUtils,
   mnClasses, sardClasses, sardParsers;
 
-
-const
-  sEOL = [#0, #13, #10];
-  sEscape = '\';
-
 type
   { TEnclosed_Tokenizer }
 

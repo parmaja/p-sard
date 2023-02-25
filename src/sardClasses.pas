@@ -19,7 +19,13 @@ uses
   Classes, SysUtils, Contnrs,
   mnClasses, mnUtils;
 
+const
+  sEOL = [#0, #13, #10];
+  sEscape = '\';
+
 type
+  SardString = UTF8String;
+
   Bool = Boolean;
   Text = string;
   //Integer = Integer;

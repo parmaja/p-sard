@@ -132,7 +132,6 @@ type
     FScanner: TScanner;
     FCurrent: TTokenizer;
     FControls: TSardControls;
-    FControlsOpens: TSysCharSet;
     procedure SetParser(AValue: TParser);
   protected
     function DetectTokenizer(const Text: String; Column: integer): TTokenizer;
@@ -141,16 +140,17 @@ type
     function SelectTokenizer(AClass: TSardTokenizerClass): TTokenizer;
     procedure Added(Item: TTokenizer); override;
   public
+    WhiteSpaces: TSysCharSet;
+    Symbols: TSysCharSet; //Symbols is chars that break scanning identifier, collected from Controls, Number
     TrimToken: Boolean; //ommit send open and close tags when SetToken
     constructor Create; virtual;
     destructor Destroy; override;
 
-    function IsEOL(vChar: Char): Boolean; virtual; abstract;
+    function IsEOL(vChar: Char): Boolean; inline;
     function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; inline;
     function IsControl(vChar: Char): Boolean; virtual;
     function IsNumber(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
 
-//    function IsKeyword(Keyword: string): Boolean;
     function IsIdentifier(const vChar: Char; vOpen: Boolean = true): Boolean;
 
     procedure ScanLine(const Text: String; Line: Integer; var Column: Integer);
@@ -431,6 +431,7 @@ end;
 constructor TLexer.Create;
 begin
   inherited Create(true);
+  WhiteSpaces := [' ', #8, #9, #10, #13];
   FControls := TSardControls.Create;
   TrimToken := True;
 end;
@@ -448,7 +449,12 @@ end;}
 
 function TLexer.IsControl(vChar: Char): Boolean;
 begin
-  Result := CharInSet(vChar, FControlsOpens);
+  Result := CharInSet(vChar, Symbols);
+end;
+
+function TLexer.IsEOL(vChar: Char): Boolean;
+begin
+  Result := CharInSet(vChar, sEOL);
 end;
 
 function TLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
@@ -460,7 +466,7 @@ end;
 
 function TLexer.IsWhiteSpace(const vChar: Char; vOpen: Boolean): Boolean;
 begin
-  Result := CharInSet(vChar, [' ', #8, #9, #10, #13]);
+  Result := CharInSet(vChar, WhiteSpaces);
 end;
 
 procedure TLexer.ScanLine(const Text: String; Line: Integer; var Column: Integer);
@@ -541,8 +547,8 @@ end;
 procedure TControl_Tokenizer.LexerChanged;
 begin
   inherited;
-  if Control <> nil then
-    Lexer.FControlsOpens := Lexer.FControlsOpens + [Control.Name[1]];
+  if (Control <> nil) and (CharInSet(Control.Name[1], Lexer.Symbols)) then
+    Lexer.Symbols := Lexer.Symbols + [Control.Name[1]];
 end;
 
 constructor TControl_Tokenizer.Create(const AName: string; ACode: TsardControlID; const ADescription: string);

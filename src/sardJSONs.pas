@@ -57,6 +57,10 @@ type
 
   { TJSONCollectorElement }
 
+  {
+    Element is Name and Value, Value can be String/Object/Array
+  }
+
   TJSONCollectorElement = class(TJSONCollector)
   private
     Name: string;
@@ -66,7 +70,7 @@ type
     var
       Expect: TExpect;
     ParentElement: TObject;
-    CurrentValue: TObject;
+    CurrentObject: TObject;
   public
     constructor Create(AParser: TParser; AParentObject: TObject; ACurrentObject: TObject = nil);
     procedure Reset; override;
@@ -117,11 +121,8 @@ type
     const
       sNumberOpenChars = ['-', '+', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
       sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
-      sSymbolChars = ['"', '''', '\']; //deprecated;
-      sIdentifierSeparator = '.';
   public
     constructor Create; override;
-    function IsEOL(vChar: Char): Boolean; override;
     function IsControl(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
@@ -730,7 +731,7 @@ constructor TJSONCollectorElement.Create(AParser: TParser; AParentObject: TObjec
 begin
   inherited Create(AParser);
   ParentElement := AParentObject;
-  CurrentValue := ACurrentObject;
+  CurrentObject := ACurrentObject;
 end;
 
 procedure TJSONCollectorElement.Reset;
@@ -768,7 +769,7 @@ begin
     begin
       if Expect = elmName then
       begin
-        Parser.RequireElement(CurrentValue, Name, AObject);
+        Parser.RequireElement(CurrentObject, Name, AObject);
         Parser.Push(TJSONCollectorValue.Create(Parser, Name, AObject));
         Inc(Expect);
       end
@@ -963,13 +964,8 @@ begin
   Add(TNumber_Tokenizer.Create);
   Add(TSL_DQ_String_Tokenizer.Create);
   //Add(TDQString_Tokenizer.Create);
-    Add(TControl_Tokenizer.Create);
+  Add(TControl_Tokenizer.Create);
   Add(TIdentifier_Tokenizer.Create);//Sould be last one
-end;
-
-function TJSONLexer.IsEOL(vChar: Char): Boolean;
-begin
-  Result := CharInSet(vChar, sEOL);
 end;
 
 function TJSONLexer.IsControl(vChar: Char): Boolean;
