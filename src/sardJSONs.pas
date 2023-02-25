@@ -115,7 +115,6 @@ type
   TJSONLexer = class(TLexer)
   protected
     const
-      sWhitespace = sEOL + [' ', #8];
       sNumberOpenChars = ['-', '+', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
       sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
       sSymbolChars = ['"', '''', '\']; //deprecated;
@@ -123,7 +122,6 @@ type
   public
     constructor Create; override;
     function IsEOL(vChar: Char): Boolean; override;
-    function IsWhiteSpace(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsControl(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
@@ -648,7 +646,7 @@ begin
   if Expect = valValue then
   begin
     if (Token.TokenType = typeString) then
-      Parser.SetObjectValue(CurrentObject, Name, DequoteStr(Token.Value), jtString)
+      Parser.SetObjectValue(CurrentObject, Name, Token.Value, jtString)
     else if (Token.TokenType = typeIdentifier) then
     begin
       if (Token.Value = 'true') or (Token.Value = 'false') then
@@ -657,7 +655,7 @@ begin
         Parser.SetObjectValue(CurrentObject, Name, Token.Value, jtIdentifier)
     end
     else if (Token.TokenType = typeNumber) then
-      Parser.SetObjectValue(CurrentObject, Name, DequoteStr(Token.Value), jtNumber);
+      Parser.SetObjectValue(CurrentObject, Name, Token.Value, jtNumber);
     Inc(Expect);
   end
   else
@@ -750,7 +748,7 @@ begin
     begin
       if Name <> '' then
         RaiseError('Name already set: ' + Name);
-      Name := DequoteStr(Token.Value, '"');
+      Name := Token.Value;
     end
     else
       RaiseError('Name expected');
@@ -972,11 +970,6 @@ end;
 function TJSONLexer.IsEOL(vChar: Char): Boolean;
 begin
   Result := CharInSet(vChar, sEOL);
-end;
-
-function TJSONLexer.IsWhiteSpace(const vChar: Char; vOpen: Boolean): Boolean;
-begin
-  Result := CharInSet(vChar, sWhitespace);
 end;
 
 function TJSONLexer.IsControl(vChar: Char): Boolean;

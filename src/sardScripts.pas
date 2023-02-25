@@ -28,7 +28,6 @@ type
   TCodeLexer = class(TLexer)
   protected
     const
-      sWhitespace = sEOL + [' ', #8];
       sNumberOpenChars = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
       sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
       sSymbolChars = ['"', '''', '\']; //deprecated;
@@ -36,7 +35,6 @@ type
   public
     constructor Create; override;
     function IsEOL(vChar: Char): Boolean; override;
-    function IsWhiteSpace(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsControl(vChar: Char): Boolean; override;
     //function IsOperator(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
@@ -371,11 +369,6 @@ end;
 function TCodeLexer.IsEOL(vChar: Char): Boolean;
 begin
   Result := CharInSet(vChar, sEOL);
-end;
-
-function TCodeLexer.IsWhiteSpace(const vChar: Char; vOpen: Boolean): Boolean;
-begin
-  Result := CharInSet(vChar, sWhitespace);
 end;
 
 function TCodeLexer.IsControl(vChar: Char): Boolean;

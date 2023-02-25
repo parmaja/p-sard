@@ -286,11 +286,11 @@ end;
 
 function TSardNamedObjects<_Object_>.IsOpenBy(C: Char): Boolean;
 var
-  item: TSardNamedObject;
+  i: Integer;
 begin
-  for item in Self do
+  for i := 0 to Count -1 do
   begin
-    if item.IsOpenBy(C) then
+    if Items[i].IsOpenBy(C) then
     begin
       Result := True;
       exit;

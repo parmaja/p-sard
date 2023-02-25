@@ -5,10 +5,80 @@ program json_test;
 {$R *.res}
 
 uses
-  System.SysUtils, Classes, Json,
-  mnUtils, prmClasses,
-  sardClasses, sardObjects, sardParsers, sardScripts,
-  sardJSONs, sardJSONRTTIs;
+  System.SysUtils,
+  Windows,
+  Classes,
+  Json,
+  ioUtils,
+  mnUtils,
+  prmClasses,
+  sardClasses,
+  sardObjects,
+  sardParsers,
+  sardScripts,
+  sardJSONs,
+  sardJSONRTTIs,
+  JsonDataObjects in '..\..\..\..\JsonDataObjects\Source\JsonDataObjects.pas';
+
+var
+  Application: TObject;
+  FObjCount: Integer = 0;
+  s: string = '';
+
+function HookCode(const ACodeAddress, AHookAddress: Pointer): Boolean;
+const
+  SIZE_OF_JUMP = 5;
+  JMP_RELATIVE = $E9;
+
+var
+  OldProtect: DWORD;
+  P: PByte;
+  Displacement: Integer;
+begin
+  Result := VirtualProtect(ACodeAddress, SIZE_OF_JUMP,
+    PAGE_EXECUTE_READWRITE, OldProtect);
+
+  if (Result) then
+  begin
+    P := ACodeAddress;
+    P^ := JMP_RELATIVE;
+    Inc(P);
+
+    Displacement := UIntPtr(AHookAddress) -
+      (UIntPtr(ACodeAddress) + SIZE_OF_JUMP);
+    PInteger(P)^ := Displacement;
+
+    VirtualProtect(ACodeAddress, SIZE_OF_JUMP, OldProtect, OldProtect);
+  end;
+end;
+
+procedure HookedObjectFreeInstance(const Self: TObject);
+begin
+  Dec(FObjCount);
+
+  Self.CleanupInstance;
+  FreeMem(Pointer(Self));
+end;
+
+function HookedObjectNewInstance(const Self: TClass): TObject;
+var
+  Instance: Pointer;
+begin
+  GetMem(Instance, Self.InstanceSize);
+  Result := Self.InitInstance(Instance);
+  {$IFDEF AUTOREFCOUNT}
+  TObjectOpener(Result).FRefCount := 1;
+  {$ENDIF}
+
+  Inc(FObjCount);
+
+  System.TMonitor.Enter(Application);
+  try
+    s := s + #13 + Result.ClassName;
+  finally
+    System.TMonitor.Exit(Application);
+  end;
+end;
 
 {$define DOM}
 
@@ -80,9 +150,9 @@ var
 begin
   DebugMode := True;
   try
-    if ParamCount > 0 then
+//    if ParamCount > 0 then
     begin
-      FileName := ParamStr(1);
+      FileName := ExtractFilePath(ParamStr(0))+ 'test.json';// ParamStr(1);
       try
         Lines := TStringList.Create;
         try
@@ -93,6 +163,13 @@ begin
           var Json := Json.TJSONObject.ParseJsonValue(s);
           LogEndTick('Delphi JSON');
           Json.Free;
+
+
+          LogBeginTick;
+          var Json2 := JsonDataObjects.TJSONObject.Parse(s);
+          LogEndTick('JSONObject');
+          Json2.Free;
+
           {$ifdef DOM}
           JSONRoot:= TMyDOM.Create;
           Scanner := TJSONScanner.Create(JSONRoot, TDataJSONParser);
@@ -136,6 +213,9 @@ begin
 end;
 
 begin
+  Application := TObject.Create;
+  HookCode(@TObject.NewInstance, @HookedObjectNewInstance);
+  HookCode(@TObject.FreeInstance, @HookedObjectFreeInstance);
   try
     try
       Run;
@@ -147,4 +227,6 @@ begin
     WriteLn('Press Enter to exit');
     Readln;
   end;
+  TFile.AppendAllText('object.txt', S);
+  Application.Free;
 end.

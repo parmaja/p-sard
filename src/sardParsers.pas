@@ -146,7 +146,7 @@ type
     destructor Destroy; override;
 
     function IsEOL(vChar: Char): Boolean; virtual; abstract;
-    function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
+    function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; inline;
     function IsControl(vChar: Char): Boolean; virtual;
     function IsNumber(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
 
@@ -364,7 +364,7 @@ end;
 
 function TLexer.DetectTokenizer(const Text: String; Column: integer): TTokenizer;
 var
-  itm: TTokenizer;
+  i: Integer;
 begin
   Result := nil;
   if (Column > Length(Text)) then //>= in C,D
@@ -375,11 +375,11 @@ begin
   end
   else
   begin
-    for itm in Self do
+    for i := 0 to Count -1 do
     begin
-      if itm.Accept(Text, Column) then
+      if Items[i].Accept(Text, Column) then
       begin
-        Result := itm;
+        Result := Items[i];
         break;
       end;
     end;
@@ -401,14 +401,14 @@ end;
 
 function TLexer.FindClass(AClass: TSardTokenizerClass): TTokenizer;
 var
-  itm: TTokenizer;
+  i: Integer;
 begin
   Result := nil;
-  for itm in Self do
+  for i := 0 to Count -1 do
   begin
-    if itm.ClassType = AClass then
+    if Items[i].ClassType = AClass then
     begin
-      Result := itm;
+      Result := Items[i];
       break;
     end;
   end;
@@ -456,6 +456,11 @@ begin
   Result := not isWhiteSpace(vChar) and not IsControl(vChar) and not IsEOL(vChar);
   if (vOpen) then
       Result := Result and not IsNumber(vChar, vOpen);
+end;
+
+function TLexer.IsWhiteSpace(const vChar: Char; vOpen: Boolean): Boolean;
+begin
+  Result := CharInSet(vChar, [' ', #8, #9, #10, #13]);
 end;
 
 procedure TLexer.ScanLine(const Text: String; Line: Integer; var Column: Integer);
