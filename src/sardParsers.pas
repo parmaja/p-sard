@@ -73,21 +73,15 @@ type
 
   { TSardControl }
 
-  TSardControl = class(TSardSymbolicObject)
+  TSardControl = record
   public
+    Name: string;
     Code: TSardControlID;
     Description: string;
     constructor Create(const AName: string; ACode: TsardControlID; const ADescription: string = '');
   end;
 
   { TSardControls }
-
-  TSardControls = class(TSardNamedObjects<TSardControl>)
-  public
-    function FindControl(Code: TsardControlID): TSardControl;
-    function GetControl(Code: TsardControlID): TSardControl;
-    function Add(const AName: string; ACode: TsardControlID; const ADescription: string = ''): TSardControl;
-  end;
 
   TParser = class;
   TLexer = class;
@@ -131,7 +125,6 @@ type
     FParser: TParser;
     FScanner: TScanner;
     FCurrent: TTokenizer;
-    FControls: TSardControls;
     procedure SetParser(AValue: TParser);
   protected
     function DetectTokenizer(const Text: String; Column: integer): TTokenizer;
@@ -150,7 +143,6 @@ type
     function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; inline;
     function IsSymbol(vChar: Char): Boolean; inline;
 
-    function IsControl(vChar: Char): Boolean;
     function IsNumber(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
 
     function IsIdentifier(const vChar: Char; vOpen: Boolean = true): Boolean;
@@ -162,7 +154,6 @@ type
     property Scanner: TScanner read FScanner;
     property Current: TTokenizer read FCurrent;
     property Parser: TParser read FParser write SetParser;
-    property Controls: TSardControls read FControls;
   end;
 
   { TControl_Tokenizer }
@@ -175,7 +166,7 @@ type
   public
     Control: TSardControl;
     constructor Create(const AName: string; ACode: TsardControlID; const ADescription: string = ''); overload;
-    constructor Create(AControl: TSardControl = nil); overload;
+    constructor Create(AControl: TSardControl); overload;
   end;
 
   { TController }
@@ -228,6 +219,8 @@ type
     FActions: TParserActions;
     FNextCollector: TCollector;
   public
+    ControlStart: TSardControl;
+    ControlStop: TSardControl;
     constructor Create(OwnItems: Boolean); override;
     procedure Start; virtual;
     procedure Stop; virtual;
@@ -434,19 +427,12 @@ constructor TLexer.Create;
 begin
   inherited Create(true);
   WhiteSpaces := [' ', #8, #9, #10, #13];
-  FControls := TSardControls.Create;
   TrimToken := True;
 end;
 
 destructor TLexer.Destroy;
 begin
   inherited Destroy;
-  FreeAndNil(FControls);
-end;
-
-function TLexer.IsControl(vChar: Char): Boolean;
-begin
-  Result := Controls.IsOpenBy(vChar);
 end;
 
 function TLexer.IsEOL(vChar: Char): Boolean;
@@ -527,12 +513,7 @@ end;
 
 function TControl_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
 begin
-  if Control = nil then
-    Result := Lexer.IsControl(Text[Column])
-  else
-  begin
-    Result := Control.IsOpenBy(Text[Column]);
-  end;
+  Result := Control.Name[1] = Text[Column];
 end;
 
 constructor TControl_Tokenizer.Create(AControl: TSardControl);
@@ -544,7 +525,7 @@ end;
 procedure TControl_Tokenizer.LexerChanged;
 begin
   inherited;
-  if (Control <> nil) and not (CharInSet(Control.Name[1], Lexer.Symbols)) then
+  if not (CharInSet(Control.Name[1], Lexer.Symbols)) then
     Lexer.Symbols := Lexer.Symbols + [Control.Name[1]];
 end;
 
@@ -554,59 +535,10 @@ begin
 end;
 
 procedure TControl_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
-var
-  AControl: TSardControl;
 begin
-  if Control = nil then
-  begin
-    AControl := Lexer.Controls.Scan(Text, Column);
-    if AControl <> nil then
-      Column := Column + Length(AControl.Name)
-    else
-      RaiseError('Unkown control started with ' + Text[Started]);
-    Lexer.Parser.SetControl(AControl);
-    Resume := False;
-  end
-  else
-  begin
-    Column := Column + Length(Control.Name);
-    Lexer.Parser.SetControl(Control);
-    Resume := False;
-  end;
-end;
-
-{ TSardControls }
-
-function TSardControls.FindControl(Code: TsardControlID): TSardControl;
-var
-  i: Integer;
-begin
-  Result := nil;
-  for i := 0 to Count - 1 do
-  begin
-    if Items[i].Code = Code then
-    begin
-      Result := Items[i];
-      break;
-    end;
-  end;
-end;
-
-function TSardControls.GetControl(Code: TsardControlID): TSardControl;
-begin
-  if Count = 0 then
-    raise EsardException.Create('No controls is added');
-  Result := FindControl(Code);
-  if Result = nil then
-    raise EsardException.Create('Control not found');
-end;
-
-function TSardControls.Add(const AName: string; ACode: TsardControlID; const ADescription: string): TSardControl;
-begin
-  if FindControl(ACode) <> nil then
-    RaiseError('Control already exists');
-  Result := TSardControl.Create(AName, ACode, ADescription);
-  inherited Add(Result)
+  Column := Column + Length(Control.Name);
+  Lexer.Parser.SetControl(Control);
+  Resume := False;
 end;
 
 { TTokenizer }
@@ -644,7 +576,6 @@ end;
 
 constructor TSardControl.Create(const AName: string; ACode: TsardControlID; const ADescription: string);
 begin
-  inherited Create;
   Name := AName;
   Code := ACode;
   Description := ADescription;
@@ -706,6 +637,8 @@ end;
 constructor TParser.Create(OwnItems: Boolean);
 begin
   inherited;
+  ControlStart := TSardControl.Create('', ctlStart, '');
+  ControlStop := TSardControl.Create('', ctlStop, '');
 end;
 
 { TController }

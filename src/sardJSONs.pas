@@ -926,14 +926,14 @@ procedure TJSONParser.Start;
 begin
   inherited;
   if Current <> nil then
-    SetControl(Lexer.Controls.GetControl(ctlStart));
+    SetControl(ControlStart);
 end;
 
 procedure TJSONParser.Stop;
 begin
   inherited;
   if Current <> nil then //not already finished
-    SetControl(Lexer.Controls.GetControl(ctlStop));
+    SetControl(ControlStop);
 end;
 
 { TJSONLexer }
@@ -941,22 +941,6 @@ end;
 constructor TJSONLexer.Create;
 begin
   inherited;
-
-  with Controls do
-  begin
-    Add('', ctlStart, 'Start');
-    Add('', ctlStop, 'Stop');
-
-    Add('(', ctlOpenParams);
-    Add('[', ctlOpenArray);
-    Add('{', ctlOpenBlock);
-    Add(')', ctlCloseParams);
-    Add(']', ctlCloseArray);
-    Add('}', ctlCloseBlock);
-    Add(',', ctlNext);
-    Add(':', ctlAssign);
-
-  end;
 
   Add(TWhitespace_Tokenizer.Create);
   Add(TComment_Tokenizer.Create);

@@ -171,6 +171,7 @@ type
     Lexer: TLexer;
     procedure DoQueue;
   public
+    ControlEnd: TSardControl;
     constructor Create(ALexer: TLexer; AStatements: TStatements); reintroduce;
     destructor Destroy; override;
 
@@ -322,6 +323,7 @@ constructor TCodeLexer.Create;
 begin
   inherited;
 
+(*
   with Controls do
   begin
     Add('', ctlNone);////TODO i feel it is so bad
@@ -329,6 +331,7 @@ begin
     Add('', ctlStart);
     Add('', ctlStop);
   end;
+*)
 
   with (Self) do
   begin
@@ -405,7 +408,7 @@ begin
     if (LastControl = ctlCloseBlock) then
     begin
       LastControl := ctlNone;//prevent loop
-      SetControl(Lexer.Controls.GetControl(ctlEnd));
+      SetControl(ControlEnd);
     end;
     Current.SetToken(Token);
     DoQueue();
@@ -434,7 +437,7 @@ begin
   if (LastControl = ctlCloseBlock) then //see setToken
   begin
       LastControl := ctlNone;//prevent loop
-      SetControl(Lexer.Controls.GetControl(ctlEnd)); //TODO check if we need it
+      SetControl(ControlEnd); //TODO check if we need it
   end;
 
   Current.SetControl(AControl);
@@ -480,6 +483,7 @@ end;
 constructor TCodeParser.Create(ALexer: TLexer; AStatements: TStatements);
 begin
   inherited Create(False); //TODO Check if own
+  ControlEnd := TSardControl.Create('', ctlEnd, '');
   Lexer := ALexer;
   if (AStatements = nil) then
     RaiseError('You should set Parser.Statements!');
@@ -495,13 +499,13 @@ end;
 procedure TCodeParser.Start;
 begin
   inherited;
-  SetControl(Lexer.Controls.GetControl(ctlStart));
+  SetControl(ControlStart);
 end;
 
 procedure TCodeParser.Stop;
 begin
   inherited;
-  SetControl(Lexer.Controls.GetControl(ctlStop));
+  SetControl(ControlStop);
 end;
 
 { TCodeScanner }
