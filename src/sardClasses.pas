@@ -24,8 +24,6 @@ const
   sEscape = '\';
 
 type
-  SardString = UTF8String;
-
   Bool = Boolean;
   Text = string;
   //Integer = Integer;

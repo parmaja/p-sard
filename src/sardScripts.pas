@@ -19,9 +19,6 @@ uses
   Classes, SysUtils,
   sardClasses, sardObjects, sardParsers, sardStandards;
 
-  //sColorOpenChars = ['#'];
-  //sColorChars = sColorOpenChars + ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
-
 type
   { TCodeLexer }
 
@@ -32,7 +29,6 @@ type
       sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
   public
     constructor Create; override;
-    function IsControl(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
   end;
@@ -332,19 +328,6 @@ begin
     Add('', ctlToken);
     Add('', ctlStart);
     Add('', ctlStop);
-    //Add('', ctlDeclare);
-    //Add('', ctlAssign);
-
-    Add('(', ctlOpenParams);
-    Add('[', ctlOpenArray);
-    Add('{', ctlOpenBlock);
-    Add(')', ctlCloseParams);
-    Add(']', ctlCloseArray);
-    Add('}', ctlCloseBlock);
-    Add(';', ctlEnd);
-    Add(',', ctlNext);
-    Add(':', ctlDeclare);
-    Add(':=', ctlAssign);
   end;
 
   with (Self) do
@@ -357,14 +340,20 @@ begin
       Add(TML_SQString_Tokenizer.Create);
       Add(TML_DQString_Tokenizer.Create);
       Add(TOut_Escape_Tokenizer.Create);
-      Add(TControl_Tokenizer.Create);
+
+      Add(TControl_Tokenizer.Create(':=', ctlAssign)); // Logner is first please
+      Add(TControl_Tokenizer.Create(':', ctlDeclare));
+      Add(TControl_Tokenizer.Create('(', ctlOpenParams));
+      Add(TControl_Tokenizer.Create('[', ctlOpenArray));
+      Add(TControl_Tokenizer.Create('{', ctlOpenBlock));
+      Add(TControl_Tokenizer.Create(')', ctlCloseParams));
+      Add(TControl_Tokenizer.Create(']', ctlCloseArray));
+      Add(TControl_Tokenizer.Create('}', ctlCloseBlock));
+      Add(TControl_Tokenizer.Create(';', ctlEnd));
+      Add(TControl_Tokenizer.Create(',', ctlNext));
+
       Add(TIdentifier_Tokenizer.Create);//Sould be last one
   end;
-end;
-
-function TCodeLexer.IsControl(vChar: Char): Boolean;
-begin
-  Result := Controls.IsOpenBy(vChar);
 end;
 
 function TCodeLexer.IsNumber(const vChar: Char; vOpen: Boolean): Boolean;

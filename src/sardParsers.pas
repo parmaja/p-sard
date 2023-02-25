@@ -148,7 +148,9 @@ type
 
     function IsEOL(vChar: Char): Boolean; inline;
     function IsWhiteSpace(const vChar: Char; vOpen: Boolean = true): Boolean; inline;
-    function IsControl(vChar: Char): Boolean; virtual;
+    function IsSymbol(vChar: Char): Boolean; inline;
+
+    function IsControl(vChar: Char): Boolean;
     function IsNumber(const vChar: Char; vOpen: Boolean = true): Boolean; virtual; abstract;
 
     function IsIdentifier(const vChar: Char; vOpen: Boolean = true): Boolean;
@@ -442,14 +444,9 @@ begin
   FreeAndNil(FControls);
 end;
 
-{function TLexer.IsKeyword(Keyword: string): Boolean;
-begin
-  Result := false;
-end;}
-
 function TLexer.IsControl(vChar: Char): Boolean;
 begin
-  Result := CharInSet(vChar, Symbols);
+  Result := Controls.IsOpenBy(vChar);
 end;
 
 function TLexer.IsEOL(vChar: Char): Boolean;
@@ -459,9 +456,14 @@ end;
 
 function TLexer.IsIdentifier(const vChar: Char; vOpen: Boolean): Boolean;
 begin
-  Result := not isWhiteSpace(vChar) and not IsControl(vChar) and not IsEOL(vChar);
+  Result := not isWhiteSpace(vChar) and not IsSymbol(vChar) and not IsEOL(vChar);
   if (vOpen) then
       Result := Result and not IsNumber(vChar, vOpen);
+end;
+
+function TLexer.IsSymbol(vChar: Char): Boolean;
+begin
+  Result := CharInSet(vChar, Symbols);
 end;
 
 function TLexer.IsWhiteSpace(const vChar: Char; vOpen: Boolean): Boolean;
@@ -530,11 +532,6 @@ begin
   else
   begin
     Result := Control.IsOpenBy(Text[Column]);
-    if Result then
-    begin
-      Column := Column + Length(Control.Name);
-      Lexer.Parser.SetControl(Control);
-    end;
   end;
 end;
 
@@ -547,7 +544,7 @@ end;
 procedure TControl_Tokenizer.LexerChanged;
 begin
   inherited;
-  if (Control <> nil) and (CharInSet(Control.Name[1], Lexer.Symbols)) then
+  if (Control <> nil) and not (CharInSet(Control.Name[1], Lexer.Symbols)) then
     Lexer.Symbols := Lexer.Symbols + [Control.Name[1]];
 end;
 

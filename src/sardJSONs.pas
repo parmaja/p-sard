@@ -123,7 +123,6 @@ type
       sNumberChars = sNumberOpenChars + ['.', 'x', 'h', 'a', 'b', 'c', 'd', 'e', 'f'];
   public
     constructor Create; override;
-    function IsControl(vChar: Char): Boolean; override;
     function IsNumber(const vChar: Char; vOpen: Boolean =true): Boolean; override;
     function IsIdentifier(const vChar: Char; vOpen: Boolean =true): Boolean;
   end;
@@ -956,6 +955,7 @@ begin
     Add('}', ctlCloseBlock);
     Add(',', ctlNext);
     Add(':', ctlAssign);
+
   end;
 
   Add(TWhitespace_Tokenizer.Create);
@@ -964,13 +964,19 @@ begin
   Add(TNumber_Tokenizer.Create);
   Add(TSL_DQ_String_Tokenizer.Create);
   //Add(TDQString_Tokenizer.Create);
-  Add(TControl_Tokenizer.Create);
-  Add(TIdentifier_Tokenizer.Create);//Sould be last one
-end;
 
-function TJSONLexer.IsControl(vChar: Char): Boolean;
-begin
-  Result := Controls.IsOpenBy(vChar);
+//  Add(TControl_Tokenizer.Create);
+
+  Add(TControl_Tokenizer.Create('(', ctlOpenParams));
+  Add(TControl_Tokenizer.Create('[', ctlOpenArray));
+  Add(TControl_Tokenizer.Create('{', ctlOpenBlock));
+  Add(TControl_Tokenizer.Create(')', ctlCloseParams));
+  Add(TControl_Tokenizer.Create(']', ctlCloseArray));
+  Add(TControl_Tokenizer.Create('}', ctlCloseBlock));
+  Add(TControl_Tokenizer.Create(',', ctlNext));
+  Add(TControl_Tokenizer.Create(':', ctlAssign));
+
+  Add(TIdentifier_Tokenizer.Create);//Sould be last one
 end;
 
 function TJSONLexer.IsNumber(const vChar: Char; vOpen: Boolean): Boolean;
