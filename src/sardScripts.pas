@@ -47,9 +47,6 @@ type
     function CheckIdentifier(raiseIt: Boolean = false): Boolean;
     //Return true if Object is not nil and Identifier is empty
     function CheckObject(raiseIt: Boolean = false): Boolean;
-    //Return true if Operator is not nil
-    //function CheckOperator(raiseIt: Boolean = false): Boolean;
-
     function IsEmpty: Boolean;
     procedure SetIdentifier(AIdentifier: string);
     function SetNumber(AIdentifier: string): TNumber_Node;
@@ -323,22 +320,12 @@ constructor TCodeLexer.Create;
 begin
   inherited;
 
-(*
-  with Controls do
-  begin
-    Add('', ctlNone);////TODO i feel it is so bad
-    Add('', ctlToken);
-    Add('', ctlStart);
-    Add('', ctlStop);
-  end;
-*)
-
   with (Self) do
   begin
       Add(TWhitespace_Tokenizer.Create);
-      Add(TBlockComment_Tokenizer.Create);
-      Add(TComment_Tokenizer.Create);
-      Add(TLineComment_Tokenizer.Create);
+      Add(TML_Comment_Tokenizer.Create);
+      Add(TSardComment_Tokenizer.Create);
+      Add(TSL_Comment_Tokenizer.Create);
       Add(TNumber_Tokenizer.Create);
       Add(TML_SQString_Tokenizer.Create);
       Add(TML_DQString_Tokenizer.Create);

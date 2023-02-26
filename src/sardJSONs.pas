@@ -9,13 +9,6 @@ unit sardJSONs;
 
 {
   bugs:
-
-    empty array
-
-    "statue" = []
-
-    --escape--
-    "name": "The \"Escape",
 }
 
 {$IFDEF FPC}
@@ -324,6 +317,8 @@ type
     constructor Create(ARoot: TObject; AParserClass: TJSONParserClass);
     procedure Compile(Lines: TStringList); overload;
     procedure Compile(const Text: string); overload;
+    procedure CompileStream(const Stream: TStream); overload;
+    procedure CompileFile(const FileName: string); overload;
     property Root: TObject read FRoot;
     property Strict: Boolean read FStrict write FStrict default true;
   end;
@@ -842,9 +837,31 @@ begin
   (Result as TJSONParser).Strict := Strict;
 end;
 
-procedure TJSONScanner.Compile(const Text: string);
+procedure TJSONScanner.Compile(Lines: TStringList);
 begin
-  Scan(Text);
+  Scan(Lines);
+  //Scan(Lines);
+end;
+
+procedure TJSONScanner.Compile(const Text: string);
+var
+  p: TPointerStream;
+begin
+  //Scan(Text);
+  //exit;
+  p := TPointerStream.Create(PByte(Text), ByteLength(Text), True);
+  Scan(p);
+  p.Free;
+end;
+
+procedure TJSONScanner.CompileFile(const FileName: string);
+begin
+  ScanFile(FileName);
+end;
+
+procedure TJSONScanner.CompileStream(const Stream: TStream);
+begin
+  Scan(Stream);
 end;
 
 constructor TJSONScanner.Create(ARoot: TObject; AParserClass: TJSONParserClass);
@@ -854,11 +871,6 @@ begin
   FRoot := ARoot;
   FParserClass := AParserClass;
   Add(TJSONLexer.Create);
-end;
-
-procedure TJSONScanner.Compile(Lines: TStringList);
-begin
-  Scan(Lines);
 end;
 
 { TJSONParser }
@@ -932,8 +944,13 @@ end;
 procedure TJSONParser.Stop;
 begin
   inherited;
-  if Current <> nil then //not already finished
-    SetControl(ControlStop);
+  try
+    if Current <> nil then //not already finished
+      SetControl(ControlStop);
+  except
+    on E: Exception do
+      RaiseError(E.Message, Lexer.Scanner.Line)
+  end;
 end;
 
 { TJSONLexer }
@@ -943,14 +960,10 @@ begin
   inherited;
 
   Add(TWhitespace_Tokenizer.Create);
-  Add(TComment_Tokenizer.Create);
-  //Add(TLineComment_Tokenizer.Create);
   Add(TNumber_Tokenizer.Create);
   Add(TSL_DQ_String_Tokenizer.Create);
-  //Add(TDQString_Tokenizer.Create);
-
-//  Add(TControl_Tokenizer.Create);
-
+  //Add(TML_Comment_Tokenizer.Create);
+  //Add(TSL_Comment_Tokenizer.Create);
   Add(TControl_Tokenizer.Create('(', ctlOpenParams));
   Add(TControl_Tokenizer.Create('[', ctlOpenArray));
   Add(TControl_Tokenizer.Create('{', ctlOpenBlock));

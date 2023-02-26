@@ -31,7 +31,7 @@ type
     procedure Append(const Text: string); virtual; abstract;
 
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
   { TBufferedEnclosed_Tokenizer }
@@ -54,10 +54,18 @@ type
 
   { TWhitespace_Tokenizer }
 
+  TEOL_Tokenizer = class(TTokenizer)
+  protected
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
+  end;
+
+  { TWhitespace_Tokenizer }
+
   TWhitespace_Tokenizer = class(TTokenizer)
   protected
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
   { TIdentifier_Tokenizer }
@@ -65,7 +73,7 @@ type
   TIdentifier_Tokenizer = class(TTokenizer)
   protected
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
   { TNumber_Tokenizer }
@@ -73,30 +81,30 @@ type
   TNumber_Tokenizer = class(TTokenizer)
   protected
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
-  { TLineComment_Tokenizer }
+  { TSL_Comment_Tokenizer }
 
-  TLineComment_Tokenizer = class(TTokenizer)
+  TSL_Comment_Tokenizer = class(TTokenizer)
   protected
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
-  { TBlockComment_Tokenizer }
+  { TML_Comment_Tokenizer }
 
-  TBlockComment_Tokenizer = class(TTokenizer)
+  TML_Comment_Tokenizer = class(TTokenizer)
   protected
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
   end;
 
   //Comment object {* *}
 
-  { TComment_Tokenizer }
+  { TSardComment_Tokenizer }
 
-  TComment_Tokenizer = class(TBufferedEnclosed_Tokenizer)
+  TSardComment_Tokenizer = class(TBufferedEnclosed_Tokenizer)
   public
     constructor Create;
     procedure InternalSetToken(const Text: string); override;
@@ -135,7 +143,7 @@ type
     procedure Appended; virtual;
     procedure Append(const Text: string); virtual;
 
-    function Accept(const Text: string; Column: Integer): Boolean; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
   end;
 
@@ -144,7 +152,7 @@ type
   TOut_Escape_Tokenizer = class(TTokenizer)
   protected
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
   public
   end;
 
@@ -178,7 +186,7 @@ begin
   Resume := True;
 end;
 
-function TEnclosed_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TEnclosed_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanString(openSymbol, text, column);
 end;
@@ -213,9 +221,11 @@ begin
   Resume := False;
 end;
 
-function TOut_Escape_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TOut_Escape_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := Text[Column] = sEscape;
+  if Result then
+    Inc(Column);
 end;
 
 { TML_DQString_Tokenizer }
@@ -236,23 +246,23 @@ begin
   CloseSymbol := '''';
 end;
 
-{ TComment_Tokenizer }
+{ TSardComment_Tokenizer }
 
-constructor TComment_Tokenizer.Create;
+constructor TSardComment_Tokenizer.Create;
 begin
   inherited;
   OpenSymbol := '{*';
   CloseSymbol := '*}';
 end;
 
-procedure TComment_Tokenizer.InternalSetToken(const Text: string);
+procedure TSardComment_Tokenizer.InternalSetToken(const Text: string);
 begin
   SetToken(Token(ctlToken, typeComment, text));
 end;
 
-{ TBlockComment_Tokenizer }
+{ TML_Comment_Tokenizer }
 
-procedure TBlockComment_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TML_Comment_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
   while IndexInStr(Column, text) do
   begin
@@ -267,28 +277,32 @@ begin
   Resume := True;
 end;
 
-function TBlockComment_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TML_Comment_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanString('/*', Text, Column);
 end;
 
-{ TLineComment_Tokenizer }
+{ TSL_Comment_Tokenizer }
 
-procedure TLineComment_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+procedure TSL_Comment_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
-  Inc(Column);
   while IndexInStr(Column, Text) and (not Lexer.IsEOL(Text[Column])) do
     inc(Column);
   inc(Column);//Eat the EOF char
   Resume := False;
 end;
 
-function TLineComment_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TSL_Comment_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := ScanString('//', Text, Column);
 end;
 
 { TNumber_Tokenizer }
+
+function TNumber_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
+begin
+  Result := Lexer.IsNumber(Text[Column], True);
+end;
 
 procedure TNumber_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
@@ -299,12 +313,12 @@ begin
   Resume := false;
 end;
 
-function TNumber_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
-begin
-  Result := Lexer.IsNumber(Text[Column], True);
-end;
-
 { TIdentifier_tokenizer }
+
+function TIdentifier_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
+begin
+  Result := Lexer.IsIdentifier(Text[Column], True);
+end;
 
 procedure TIdentifier_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
@@ -315,12 +329,25 @@ begin
   Resume := false;
 end;
 
-function TIdentifier_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+{ TEOL_Tokenizer }
+
+function TEOL_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := Lexer.IsIdentifier(Text[Column], True);
+  Result := Lexer.IsEOL(Text[Column]);
+end;
+
+procedure TEOL_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
+begin
+  Inc(Column);
+  Resume := False;
 end;
 
 { TWhitespace_Tokenizer }
+
+function TWhitespace_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
+begin
+  Result := Lexer.isWhiteSpace(Text[Column]);
+end;
 
 procedure TWhitespace_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
 begin
@@ -330,16 +357,13 @@ begin
   Resume := false;
 end;
 
-function TWhitespace_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
-begin
-  Result := Lexer.isWhiteSpace(Text[Column]);
-end;
-
 { TSL_DQ_String_Tokenizer }
 
-function TSL_DQ_String_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TSL_DQ_String_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
 begin
   Result := Text[Column] = QuoteChar;
+  if Result then
+    Inc(Column);
 end;
 
 procedure TSL_DQ_String_Tokenizer.Append(const Text: string);
@@ -368,7 +392,7 @@ begin
     Started := Started + 1;
   end;
 
-  while (IndexInStr(Column, Text)) do
+  while (IndexInStr(Column, Text)) and not Lexer.IsEOL(Text[Column]) do
   begin
     if State = ssEscape then
     begin
@@ -397,14 +421,11 @@ begin
       Inc(Column);
       Resume := False;
       exit;
-    end
-    else if Lexer.IsEOL(Text[Column]) then
-    begin
-      RaiseError('String not end!');
     end;
     Inc(Column);
   end;
-  Resume := True;
+  Resume := False;
+  RaiseError('String not end!');
 end;
 
 end.

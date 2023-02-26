@@ -4,7 +4,7 @@ unit sardParsers;
  *
  * @license   The MIT License (MIT)
  *            Included in this distribution
- * @author    Zaher Dirkey 
+ * @author    Zaher Dirkey
  *}
 
 {$IFDEF FPC}
@@ -20,7 +20,7 @@ interface
 
 uses
   Classes, SysUtils,
-  mnUtils,
+  mnUtils, mnStreams,
   sardClasses;
 
 type
@@ -106,7 +106,7 @@ type
     procedure LexerChanged; virtual;
     //Return true if it done, next will auto detect it detect
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); virtual; abstract;
-    function Accept(const Text: string; Column: Integer): Boolean; virtual; abstract;
+    function Accept(const Text: string; var Column: Integer): Boolean; virtual; abstract;
     procedure Finish; virtual;
     //This function call when switched to it
     procedure Switched;
@@ -161,8 +161,8 @@ type
   TControl_Tokenizer = class(TTokenizer)
   protected
     procedure LexerChanged; override;
+    function Accept(const Text: string; var Column: Integer): Boolean; override;
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
-    function Accept(const Text: string; Column: Integer): Boolean; override;
   public
     Control: TSardControl;
     constructor Create(const AName: string; ACode: TsardControlID; const ADescription: string = ''); overload;
@@ -252,9 +252,11 @@ type
     procedure DoStop; virtual;
     function CreateParser: TParser; virtual; abstract;
   public
-    procedure ScanChunk(const Text: String; Line: Integer);
+    procedure ScanLine(const Text: String);
     procedure Scan(Lines: TStringList); overload;
     procedure Scan(const Text: string); overload;
+    procedure Scan(const Stream: TStream); overload;
+    procedure ScanFile(const FileName: string); overload;
     procedure Start;
     procedure Stop;
 
@@ -296,7 +298,7 @@ begin
   Start;
   for i := 0 to Lines.Count -1 do
   begin
-    ScanChunk(Lines[i]+#13, i + 1); //DO not use TRIM
+    ScanLine(Lines[i]); //DO not use TRIM
   end;
   Stop;
 end;
@@ -304,17 +306,46 @@ end;
 procedure TScanner.Scan(const Text: string);
 begin
   Start;
-  ScanChunk(Text, 0);
+  ScanLine(Text);
   Stop;
 end;
 
-procedure TScanner.ScanChunk(const Text: String; Line: Integer);
+procedure TScanner.Scan(const Stream: TStream);
+var
+  w: TmnWrapperStream;
+begin
+  Start;
+  w := TmnWrapperStream.Create(Stream, False);
+  try
+    while not (cloRead in w.Done) do
+    begin
+      ScanLine(w.ReadLine(False));
+    end;
+    Stop;
+  finally
+    w.Free;
+  end;
+end;
+
+procedure TScanner.ScanFile(const FileName: string);
+var
+  fs: TFileStream;
+begin
+  fs := TFileStream.Create(FileName, fmOpenRead);
+  try
+    Scan(fs);
+  finally
+    fs.Free;
+  end;
+end;
+
+procedure TScanner.ScanLine(const Text: String);
 var
   Column: Integer;
 begin
   if (not Active) then
     RaiseError('Should be started first');
-  FLine := Line;
+  Inc(FLine);
   Column := 1;
   //Column := 0; when convert it to C, D
   Current.ScanLine(Text, Line, Column);
@@ -329,6 +360,7 @@ begin
   FActive := True;
   FCurrent := Self[0]; //First one
 
+  FLine := 0;
   FParser := CreateParser;
   FCurrent.Parser := Parser;
   FCurrent.Start;
@@ -511,9 +543,9 @@ end;
 
 { TControl_Tokenizer }
 
-function TControl_Tokenizer.Accept(const Text: string; Column: Integer): Boolean;
+function TControl_Tokenizer.Accept(const Text: string; var Column: Integer): Boolean;
 begin
-  Result := Control.Name[1] = Text[Column];
+  Result := ScanString(Control.Name, Text, Column);
 end;
 
 constructor TControl_Tokenizer.Create(AControl: TSardControl);

@@ -209,8 +209,27 @@ begin
 end;
 
 function ScanCompare(const S: string; const Text: string; Index: Integer): Boolean;
+var
+  i: Integer;
 begin
-  Result := ScanString(S, Text, Index);
+  if S = '' then
+    Result := False
+  else
+  begin
+    Result := (Length(Text) - (Index - 1)) >= length(S);
+    //Result := (Length(Text) - Index) >= length(S); //when convert to C, D
+    if Result then
+    begin
+      for i := 1 to Length(S) do
+      begin
+        if Text[Index+ i - 1] <> s[i] then
+        begin
+          Result := False;
+          break;
+        end;
+      end;
+    end;
+  end;
 end;
 
 function ScanText1(const S: string; const Text: string; var Index: Integer): Boolean;
@@ -231,29 +250,10 @@ begin
 end;
 
 function ScanString(const S: string; const Text: string; var Index: Integer): Boolean;
-var
-  i: Integer;
 begin
-  if S = '' then
-    Result := False
-  else
-  begin
-    Result := (Length(Text) - (Index - 1)) >= length(S);
-    //Result := (Length(Text) - Index) >= length(S); //when convert to C, D
-    if Result then
-    begin
-      for i := 1 to Length(S) do
-      begin
-        if Text[Index+ i - 1] <> s[i] then
-        begin
-          Result := False;
-          break;
-        end;
-      end;
-      if Result then
-        Index := Index + Length(S);
-    end;
-  end;
+  Result := ScanCompare(S, Text, Index);
+  if Result then
+    Index := Index + Length(S);
 end;
 
 function StringRepeat(const S: string; C: Integer): string;
