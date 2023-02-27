@@ -166,7 +166,6 @@ type
   protected
     LastControl: TSardControlID;
     Lexer: TLexer;
-    procedure DoQueue;
   public
     ControlEnd: TSardControl;
     constructor Create(ALexer: TLexer; AStatements: TStatements); reintroduce;
@@ -177,8 +176,6 @@ type
     procedure SetControl(AControl: TSardControl); override;
     procedure AfterPush; override;
     procedure BeforePop; override;
-    procedure Start; override;
-    procedure Stop; override;
   end;
 
   { TCodeScanner }
@@ -397,9 +394,8 @@ begin
       LastControl := ctlNone;//prevent loop
       SetControl(ControlEnd);
     end;
-    Current.SetToken(Token);
-    DoQueue();
-    FActions := [];
+
+    inherited;
     LastControl := ctlToken;
   end;
 end;
@@ -420,25 +416,14 @@ end;}
 
 procedure TCodeParser.SetControl(AControl: TSardControl);
 begin
-  inherited;
   if (LastControl = ctlCloseBlock) then //see setToken
   begin
       LastControl := ctlNone;//prevent loop
       SetControl(ControlEnd); //TODO check if we need it
   end;
 
-  Current.SetControl(AControl);
-  while true do
-  begin
-    DoQueue();
-    if (paPass in Actions) then
-    begin
-      FActions := FActions - [paPass];
-      Current.SetControl(AControl)
-    end
-    else
-      break;
-  end;
+  inherited;
+
   LastControl := aControl.Code;
 end;
 
@@ -450,21 +435,6 @@ end;
 procedure TCodeParser.BeforePop;
 begin
   inherited;
-end;
-
-procedure TCodeParser.DoQueue;
-begin
-  if (paPop in actions) then
-  begin
-      FActions := FActions - [paPop];
-      Pop();
-  end;
-
-  if (NextCollector <> nil) then
-  begin
-      Push(NextCollector);
-      FNextCollector := nil;
-  end
 end;
 
 constructor TCodeParser.Create(ALexer: TLexer; AStatements: TStatements);
@@ -481,18 +451,6 @@ destructor TCodeParser.Destroy;
 begin
   Pop;
   inherited;
-end;
-
-procedure TCodeParser.Start;
-begin
-  inherited;
-  SetControl(ControlStart);
-end;
-
-procedure TCodeParser.Stop;
-begin
-  inherited;
-  SetControl(ControlStop);
 end;
 
 { TCodeScanner }

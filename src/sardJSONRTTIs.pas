@@ -25,7 +25,7 @@ type
 
   TRTTIJSONParser = class(TJSONParser)
   protected
-    procedure RequireElement(AParentObject: TObject; const AName: string; out AObject: TObject); override;
+    procedure RequirePair(AParentObject: TObject; const AName: string; out AObject: TObject); override;
     function SetObjectValue(AObject: TObject; const AName: string; const AValue: string; AType: TJSONType): TObject; override;
   end;
 
@@ -36,7 +36,7 @@ uses
 
 { TRTTIJSONParser }
 
-procedure TRTTIJSONParser.RequireElement(AParentObject: TObject; const AName: string; out AObject: TObject);
+procedure TRTTIJSONParser.RequirePair(AParentObject: TObject; const AName: string; out AObject: TObject);
 begin
   AObject := AParentObject;
 end;

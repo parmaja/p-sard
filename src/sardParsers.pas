@@ -216,8 +216,10 @@ type
 
   TParser = class(TSardStack<TCollector>)
   protected
+    FLine: Integer;
     FActions: TParserActions;
     FNextCollector: TCollector;
+    procedure Queue; virtual;
   public
     ControlStart: TSardControl;
     ControlStop: TSardControl;
@@ -232,6 +234,8 @@ type
 
     property Actions: TParserActions read FActions;
     property NextCollector: TCollector read FNextCollector;
+
+    property Line: Integer read FLine;
   end;
 
   TParserClass = class of TParser;
@@ -242,7 +246,6 @@ type
   private
     FActive: Boolean;
     FCharset: string;
-    FLine: Integer;
     FVer: string;
     FCurrent: TLexer;
     FParser: TParser;
@@ -263,7 +266,6 @@ type
     property Active: Boolean read FActive;
     property Ver: string read FVer;
     property Charset: string read FCharset;
-    property Line: Integer read FLine;
     property Current: TLexer read FCurrent;
     property Parser: TParser read FParser;
   end;
@@ -345,10 +347,10 @@ var
 begin
   if (not Active) then
     RaiseError('Should be started first');
-  Inc(FLine);
+  Inc(Parser.FLine);
   Column := 1;
   //Column := 0; when convert it to C, D
-  Current.ScanLine(Text, Line, Column);
+  Current.ScanLine(Text, Parser.Line, Column);
 end;
 
 procedure TScanner.Start;
@@ -360,7 +362,6 @@ begin
   FActive := True;
   FCurrent := Self[0]; //First one
 
-  FLine := 0;
   FParser := CreateParser;
   FCurrent.Parser := Parser;
   FCurrent.Start;
@@ -639,25 +640,60 @@ begin
   Result := False;
 end;
 
+procedure TParser.Queue;
+begin
+  if (paPop in actions) then
+  begin
+      FActions := FActions - [paPop];
+      Pop();
+  end;
+
+  if (NextCollector <> nil) then
+  begin
+      Push(NextCollector);
+      FNextCollector := nil;
+  end
+end;
+
 procedure TParser.SetToken(Token: TSardToken);
 begin
-
+  Current.SetToken(Token);
+  Queue;
+  FActions := [];
 end;
 
 procedure TParser.SetControl(AControl: TSardControl);
 begin
-
+  if Current = nil then
+    RaiseError('There is no current collector');
+  Current.SetControl(AControl);
+  while true do
+  begin
+    Queue;
+    if (paPass in Actions) then
+    begin
+      FActions := FActions - [paPass];
+      Current.SetControl(AControl)
+    end
+    else
+      break;
+  end;
 end;
 
 procedure TParser.Start;
 begin
-  if Current = nil then
-    RaiseError('At last you need one collector push');
+  SetControl(ControlStart);
 end;
 
 procedure TParser.Stop;
 begin
-
+  try
+    if Current <> nil then //not already finished
+      SetControl(ControlStop);
+  except
+    on E: Exception do
+      RaiseError(E.Message, Line)
+  end;
 end;
 
 procedure TParser.SetAction(AActions: TParserActions; ANextCollector: TCollector);

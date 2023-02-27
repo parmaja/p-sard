@@ -80,16 +80,16 @@ type
 
   TNumber_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
   end;
 
   { TSL_Comment_Tokenizer }
 
   TSL_Comment_Tokenizer = class(TTokenizer)
   protected
-    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
     function Accept(const Text: string; var Column: Integer): Boolean; override;
+    procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
   end;
 
   { TML_Comment_Tokenizer }
@@ -259,7 +259,6 @@ procedure TSardComment_Tokenizer.InternalSetToken(const Text: string);
 begin
   SetToken(Token(ctlToken, typeComment, text));
 end;
-
 { TML_Comment_Tokenizer }
 
 procedure TML_Comment_Tokenizer.Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean);
