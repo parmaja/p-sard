@@ -529,9 +529,9 @@ begin
     //Env.Root.AnObject := Main;
     Main.Execute(Env.Root, Env, nil);
 
-    if (Env.Results.Current <> nil) and (Env.Results.Current.Result.Value <> nil) then
+    if (Env.Results.Current <> nil) and (Env.Results.Current.Value <> nil) then
     begin
-      Value := Env.Results.Current.Result.Value.AsText;
+      Value := Env.Results.Current.Value.AsText;
     end;
 //    Env.Results.Pop;
   finally
@@ -602,7 +602,7 @@ end;
 
 procedure TTime_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
-  Env.Results.Current.Result.Value := TReal_Node.Create(Now);
+  Env.Results.Current.Value := TReal_Node.Create(Now);
   Done := True;
 end;
 
@@ -610,7 +610,7 @@ end;
 
 procedure TPI_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
-  Env.Results.Current.Result.Value := TReal_Node.Create(Pi);
+  Env.Results.Current.Value := TReal_Node.Create(Pi);
   Done := True;
 end;
 
@@ -618,7 +618,7 @@ end;
 
 procedure TVersion_Const_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
-  Env.Results.Current.Result.Value := TText_Node.Create(sSardVersion);
+  Env.Results.Current.Value := TText_Node.Create(sSardVersion);
   Done := True;
 end;
 

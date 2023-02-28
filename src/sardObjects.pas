@@ -456,20 +456,9 @@ type
     function Register(AName: string; ARunKind: TRunVarKinds): TRunVariable;
   end;
 
-  { TRunResult }
-
-  TRunResult = class(TSardStackObject)
-  private
-  public
-    ID: Int64;
-    Result: TRunVariable;
-    constructor Create;
-    destructor Destroy; override;
-  end;
-
   { TRunResults }
 
-  TRunResults = class(TSardStack<TRunResult>)
+  TRunResults = class(TSardStack<TRunVariable>)
   public
     procedure Push; overload;
   end;
@@ -654,13 +643,6 @@ begin
   inherited Push(TRunStackObject.Create);
 end;
 
-{ TRunResults }
-
-procedure TRunResults.Push;
-begin
-  inherited Push(TRunResult.Create);
-end;
-
 { TRunEnv }
 
 constructor TRunEnv.Create;
@@ -780,21 +762,6 @@ begin
   Result := AnObject.ExecuteObject.Execute(Self, Env, AnObject.Defines, Arguments, Blocks);
 end;
 
-{ TRunResult }
-
-constructor TRunResult.Create;
-begin
-  inherited Create;
-  ID := AtomicIncrement(ResultLastID);
-  Result := TRunVariable.Create;
-end;
-
-destructor TRunResult.Destroy;
-begin
-  FreeAndNil(Result);
-  inherited;
-end;
-
 { TRunVariable }
 
 procedure TRunVariable.SetValue(AValue: TNode);
@@ -889,7 +856,7 @@ begin
 
         p := Parameters[i];
         v := Env.Stack.Current.Variables.Register(p.name, [rkLocal, rkArgument]); //TODO but must find it locally
-        v.Value := Env.Results.Current.Result.Value;
+        v.Value := Env.Results.Current.Value;
       end;
       Env.Results.Pop;
       Inc(i);
@@ -1140,14 +1107,14 @@ begin
   //* if not have a name, assign it to parent result
   Done := true;
   if (Name = '') then
-    Env.Results.Current.Result := Env.Results.Parent.Result
+    Env.Results.SetCurrent(Env.Results.Parent, False)
   else
   begin
     //Ok let is declare it locally
     v := Env.Stack.Current.Variables.Register(Name, [rkLocal]);
     if (v = nil) then
       RaiseError('Variable not found!');
-    Env.Results.Current.Result := v;
+    Env.Results.SetCurrent(v, True);
   end;
 end;
 
@@ -1464,16 +1431,16 @@ procedure TConst_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean)
 begin
   if (Env.results.Current = nil) then
       RaiseError('There is no stack results!');
-  if (Env.Results.Current.Result.Value = nil) then
+  if (Env.Results.Current.Value = nil) then
   begin
-      Env.Results.Current.Result.Value := Clone();
+      Env.Results.Current.Value := Clone();
       Done := true;
   end
   else
   begin
-      if (Env.Results.current.Result.Value = nil) then
-        Env.Results.Current.Result.Value := Clone(False);
-      Done := Env.Results.Current.Result.Value.Operate(Self);
+      if (Env.Results.Current.Value = nil) then
+        Env.Results.Current.Value := Clone(False);
+      Done := Env.Results.Current.Value.Operate(Self);
   end;
 end;
 
@@ -1522,7 +1489,7 @@ end;
 
 procedure TStatements_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
-  t: TRunResult;
+  t: TRunVariable;
 begin
   {if (env.stack.current.data.object !is this)
       error("Can not execute block directly, data.object must set to this encloser");}
@@ -1536,8 +1503,8 @@ begin
   * it return 25
   * here 20.execute with +
 *)
-  if (t.Result.Value <> nil) then
-      t.Result.Value.Execute(Data, Env);
+  if (t.Value <> nil) then
+      t.Value.Execute(Data, Env);
   Done := True;
 end;
 
@@ -1571,12 +1538,12 @@ end;
 
 procedure TEnclose_Node.AfterExecute(Data: TRunData; Env: TRunEnv);
 var
-  t: TRunResult;
+  t: TRunVariable;
 begin
   inherited;
   t := Env.Results.Pull;
-  if (t.Result.Value <> nil) then
-    t.Result.Value.Execute(Data, Env);
+  if (t.Value <> nil) then
+    t.Value.Execute(Data, Env);
 end;
 
 procedure TEnclose_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
@@ -1736,6 +1703,13 @@ end;
 procedure TAdd_Operator.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
   inherited;
+end;
+
+{ TRunResults }
+
+procedure TRunResults.Push;
+begin
+  Push(TRunVariable.Create);
 end;
 
 end.
