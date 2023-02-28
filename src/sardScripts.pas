@@ -225,9 +225,10 @@ type
   public
     Main: TMain_Node;
     Scanner: TScanner;
-    Result: string;
+    Value: string;
     RegisterInternals: Boolean;
     destructor Destroy; override;
+    procedure Init;
     procedure Compile(Lines: TStringList); overload;
     procedure Compile(Text: string); overload;
     procedure Run;
@@ -499,13 +500,7 @@ end;
 procedure TCodeScript.Compile(Lines: TStringList);
 begin
   //writeln("-------------------------------");
-
-  FreeAndNil(Main);
-
-  Main := TMain_Node.Create; //destory the old compile and create new
-//  Main.Name := 'main';
-  if RegisterInternals then
-    RegisterStandard;
+  Init;
   // Compile
   Scanner := TCodeScanner.Create(Main);
   Scanner.Scan(Lines);
@@ -536,7 +531,7 @@ begin
 
     if (Env.Results.Current <> nil) and (Env.Results.Current.Result.Value <> nil) then
     begin
-      Result := Env.Results.Current.Result.Value.AsText;
+      Value := Env.Results.Current.Result.Value.AsText;
     end;
     Env.Results.Pop;
   finally
@@ -559,6 +554,15 @@ begin
     FreeAndNil(Writer);
     FreeAndNil(Strings);
   end
+end;
+
+procedure TCodeScript.Init;
+begin
+  FreeAndNil(Main);
+  Main := TMain_Node.Create; //destory the old compile and create new
+//  Main.Name := 'main';
+  if RegisterInternals then
+    RegisterStandard;
 end;
 
 procedure TCodeScript.ExportToConsole;
@@ -1050,8 +1054,7 @@ end;
 function TInstruction.SetAssign: TAssign_Node;
 begin
   //Do not check the Identifier if empty, becuase it is can be empty to assign to result of block
-  Result := TAssign_Node.Create;
-  Result.Name := Identifier;
+  Result := TAssign_Node.Create(Identifier);
   InternalSetObject(Result);
   Identifier := '';
 end;

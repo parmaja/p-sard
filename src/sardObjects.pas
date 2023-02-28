@@ -16,8 +16,8 @@ unit sardObjects;
   Object have Execute and Operate
   Some objects (like Section) have a Block, and some have one Statment
   Block have Statements
-    Statement: haves Clauses
-      Clause: Operator,Modifier,Object
+    Statement: haves Node
+      Node: Object
 
   Declare: is define how to call that object, it have Defines and link to the object to execute and call
       Declare is a object of Caluse that call external (or internal) object, until now this object freed by declare and it is wrong :(
@@ -33,11 +33,11 @@ unit sardObjects;
   Blocks
     Statements
       Statement
-        Clause: Operator,Modifier,Object
-        Clause: Operator,Modifier,Object
+        Node
+        Node
       Statement
-        Clause: Operator,Modifier,Object
-        Clause: Operator,Modifier,Object
+        Node
+        Node
 }
 
 {$IFDEF FPC}
@@ -89,25 +89,9 @@ type
   TDebugInfo = class(TSardObject)
   end;
 
-  { TClause }
-
-  TClause = class(TSardObject)
-  private
-    FAnObject: TNode;
-  protected
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
-  public
-    constructor Create(AObject: TNode); virtual;
-    destructor Destroy; override;
-
-    function Execute(Data: TRunData; Env: TRunEnv): Boolean;
-
-    property AnObject: TNode read FAnObject;
-  end;
-
   { TStatement }
 
-  TStatement = class(TSardObjects<TClause>)
+  TStatement = class(TSardObjects<TNode>)
   private
     FDebugInfo: TDebugInfo;
     FParent: TNode;
@@ -286,6 +270,22 @@ type
 
   { TConst_Node }
 
+  TOperator_Node = class abstract(TNode)
+  private
+  protected
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
+  public
+  end;
+
+
+  TAdd_Operator = class(TOperator_Node)
+  protected
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
+  public
+  end;
+
+  { TConst_Node }
+
   TConst_Node = class(TNode)
   private
   protected
@@ -412,6 +412,7 @@ type
 
   TAssign_Node = class(TNode)
   public
+    constructor Create(AName: string = ''); overload;
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   end;
@@ -949,12 +950,12 @@ begin
   if (AObject.Parent <> nil) then
     RaiseError('You can not add object to another parent!');
   AObject.FParent := Parent;
-  inherited Add(TClause.Create(AObject));
+  inherited Add(AObject);
 end;
 
 procedure TStatement.Execute(Data: TRunData; Env: TRunEnv);
 var
-  itm: TClause;
+  itm: TNode;
 begin
   //https://en.wikipedia.org/wiki/Shunting-yard_algorithm
   //:= "Result is " + 10 + 10 ;
@@ -966,7 +967,7 @@ end;
 
 procedure TStatement.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
 var
-  itm: TClause;
+  itm: TNode;
 begin
   inherited;
   //https://en.wikipedia.org/wiki/Shunting-yard_algorithm
@@ -1115,36 +1116,13 @@ begin
   inherited;
 end;
 
-{ TClause }
+{ TAssign_Node }
 
-constructor TClause.Create(AObject: TNode);
+constructor TAssign_Node.Create(AName: string);
 begin
   inherited Create;
-  if AObject = nil then
-    RaiseError('You can not create new clause with nil');
-  FAnObject := AObject;
+  Name := AName;
 end;
-
-destructor TClause.Destroy;
-begin
-  FreeAndNil(FAnObject);
-  inherited;
-end;
-
-function TClause.Execute(Data: TRunData; Env: TRunEnv): Boolean;
-begin
-  if FAnObject = nil then
-    RaiseError('Object not set!');
-  Result := FAnObject.Execute(Data, Env);
-end;
-
-procedure TClause.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
-begin
-  inherited;
-  FAnObject.ExportWrite(Writer, LastOne, Level);
-end;
-
-{ TAssign_Node }
 
 procedure TAssign_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
@@ -1738,4 +1716,17 @@ begin
   Title := 'None';
   Description := 'Nothing';
 end;
+{ TOperator_Node }
+
+procedure TOperator_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
+begin
+end;
+
+{ TAdd_Operator }
+
+procedure TAdd_Operator.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
+begin
+  inherited;
+end;
+
 end.
