@@ -182,7 +182,7 @@ type
 
   { TCollector }
 
-  TCollector = class abstract(TSardObject)
+  TCollector = class abstract(TSardStackObject)
   private
     FController: TController;
     FParser: TParser;
@@ -192,7 +192,7 @@ type
     procedure DoToken(Token: TSardToken); virtual; abstract;
     procedure DoControl(AControl: TSardControl); virtual; abstract;
   public
-    constructor Create(AParser: TParser);
+    constructor Create(AParser: TParser); overload;
     destructor Destroy; override;
 
     procedure Reset; virtual; abstract;
@@ -762,7 +762,7 @@ end;
 
 constructor TCollector.Create(AParser: TParser);
 begin
-  Inherited Create;
+  Create;
   FParser := AParser;
   FController := CreateController;
   Reset;

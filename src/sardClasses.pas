@@ -92,9 +92,14 @@ type
     function IsOpenBy(C: Char): Boolean;
   end;
 
+  TSardStackObject = class(TSardObject)
+  public
+    Level: Integer;
+  end;
+
   { TsardStack }
 
-  TSardStack<_Object_: class> = class(TSardObject)
+  TSardStack<_Object_: TSardStackObject> = class(TSardObject)
   protected
     Own: Boolean;
     type
@@ -122,6 +127,7 @@ type
     procedure Clear;
     function IsEmpty: Boolean;
     procedure Push(vObject: _Object_); overload;
+    procedure Push; overload;
     function Pull: _Object_; //Pop but do not delete the object
     procedure Pop;
     function Peek: _Object_;
@@ -334,6 +340,11 @@ begin
   BeforePop;
 end;
 
+procedure TSardStack<_Object_>.Push;
+begin
+  Push(TSardStackObject(_Object_).Create);
+end;
+
 procedure TSardStack<_Object_>.Pop;
 var
   aObject: _Object_;
@@ -425,6 +436,7 @@ begin
     aItem.Level := FCurrentItem.Level + 1;
   FCurrentItem := aItem;
   Inc(FCount);
+  vObject.Level := FCount;
   AfterPush;
   {$ifdef VERBOSE}
   WriteLn('PUSH: ' + Current.ClassName);

@@ -525,7 +525,7 @@ var
 begin
   Env := TRunEnv.Create;
   try
-    Env.Results.Push;
+//    Env.Results.Push;
     //Env.Root.AnObject := Main;
     Main.Execute(Env.Root, Env, nil);
 
@@ -533,7 +533,7 @@ begin
     begin
       Value := Env.Results.Current.Result.Value.AsText;
     end;
-    Env.Results.Pop;
+//    Env.Results.Pop;
   finally
     FreeAndNil(Env);
   end;
@@ -588,7 +588,7 @@ end;
 
 procedure TPrint_Object_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
-  v: TRunValue;
+  v: TRunVariable;
 begin
   v := Env.Stack.Current.Variables.Find('s');
   if (v <> nil) and (v.Value <> nil) then

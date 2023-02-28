@@ -123,7 +123,7 @@ type
 
   TNode = class abstract(TSardNamedObject)
   private
-    FID: Integer;
+    FID: Int64;
     FInternal: Boolean;
     FParent: TNode;
     //FRefCount: Integer;
@@ -155,11 +155,12 @@ type
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     constructor Create; overload; virtual;
+    destructor Destroy; override;
     constructor CreateInternal;
     function Operate(AObject: TNode): Boolean;
     function Execute(Data: TRunData; Env: TRunEnv; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
     property Parent: TNode read FParent write SetParent;
-    property ID: Integer read FID;
+    property ID: Int64 read FID;
     property Internal: Boolean read FInternal; //registered inside
   end;
 
@@ -432,9 +433,9 @@ type
 
   { TSardRunValue }
 
-  { TRunValue }
+  { TRunVariable }
 
-  TRunValue = class(TSardNamedObject)
+  TRunVariable = class(TSardNamedObject)
   private
     FValue: TNode; //RefObject maybe IObject_Node
     FRunKind: TRunVarKinds;
@@ -450,17 +451,18 @@ type
 
   { TRunVariables }
 
-  TRunVariables = class(TSardNamedObjects<TRunValue>)
+  TRunVariables = class(TSardNamedObjects<TRunVariable>)
   public
-    function Register(AName: string; ARunKind: TRunVarKinds): TRunValue;
+    function Register(AName: string; ARunKind: TRunVarKinds): TRunVariable;
   end;
 
   { TRunResult }
 
-  TRunResult = class(TSardObject)
+  TRunResult = class(TSardStackObject)
   private
   public
-    Result: TRunValue;
+    ID: Int64;
+    Result: TRunVariable;
     constructor Create;
     destructor Destroy; override;
   end;
@@ -502,7 +504,7 @@ type
 
   { TRunStackItem }
 
-  TRunStackItem = class(TSardObject)
+  TRunStackObject = class(TSardStackObject)
   public
     Variables: TRunVariables;
     constructor Create;
@@ -511,7 +513,7 @@ type
 
   { TRunStack }
 
-  TRunStack = Class(TSardStack<TRunStackItem>)
+  TRunStack = Class(TSardStack<TRunStackObject>)
   public
     procedure Push; overload;
   end;
@@ -634,6 +636,10 @@ type
 
 implementation
 
+var
+  NodeLastID: Int64 = 0;
+  ResultLastID: Int64 = 0;
+
 { TMain_Node }
 
 procedure TMain_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
@@ -645,7 +651,7 @@ end;
 
 procedure TRunStack.Push;
 begin
-  inherited Push(TRunStackItem.Create);
+  inherited Push(TRunStackObject.Create);
 end;
 
 { TRunResults }
@@ -673,15 +679,15 @@ begin
   inherited;
 end;
 
-{ TRunStackItem }
+{ TRunStackObject }
 
-constructor TRunStackItem.Create;
+constructor TRunStackObject.Create;
 begin
   inherited;
   Variables := TRunVariables.Create;
 end;
 
-destructor TRunStackItem.Destroy;
+destructor TRunStackObject.Destroy;
 begin
   FreeAndNil(Variables);
   inherited;
@@ -779,7 +785,8 @@ end;
 constructor TRunResult.Create;
 begin
   inherited Create;
-  Result := TRunValue.Create;
+  ID := AtomicIncrement(ResultLastID);
+  Result := TRunVariable.Create;
 end;
 
 destructor TRunResult.Destroy;
@@ -788,46 +795,46 @@ begin
   inherited;
 end;
 
-{ TRunValue }
+{ TRunVariable }
 
-procedure TRunValue.SetValue(AValue: TNode);
+procedure TRunVariable.SetValue(AValue: TNode);
 begin
   if FValue = AValue then
     Exit;
   FValue :=AValue;
 end;
 
-constructor TRunValue.Create;
+constructor TRunVariable.Create;
 begin
   inherited Create;
 end;
 
-destructor TRunValue.Destroy;
+destructor TRunVariable.Destroy;
 begin
   FreeAndNil(FValue);
   inherited;
 end;
 
-constructor TRunValue.Create(AName: string; ARunKind: TRunVarKinds);
+constructor TRunVariable.Create(AName: string; ARunKind: TRunVarKinds);
 begin
   inherited Create;
   Name := AName;
   FRunKind := ARunKind;
 end;
 
-procedure TRunValue.Clear;
+procedure TRunVariable.Clear;
 begin
   Value := nil;
 end;
 
 { TRunVariables }
 
-function TRunVariables.Register(AName: string; ARunKind: TRunVarKinds): TRunValue;
+function TRunVariables.Register(AName: string; ARunKind: TRunVarKinds): TRunVariable;
 begin
   Result := Find(AName);
   if Result = nil then
   begin
-    Result := TRunValue.Create(AName, ARunKind);
+    Result := TRunVariable.Create(AName, ARunKind);
     inherited Add(Result);
   end;
 end;
@@ -868,7 +875,7 @@ procedure TDefines.Execute(Data: TRunData; Env: TRunEnv; Arguments: TStatements)
 var
   i: Integer;
   p: TDefine;
-  v: TRunValue;
+  v: TRunVariable;
 begin
   if Arguments <> nil then
   begin //TODO we need to check if it is a block?
@@ -1080,6 +1087,11 @@ begin
     Result.Assign(Self);
 end;
 
+destructor TNode.Destroy;
+begin
+  inherited;
+end;
+
 function TNode.DoOperate(AObject: TNode): Boolean;
 begin
   Result := False;
@@ -1096,13 +1108,10 @@ begin
 
 end;
 
-var LastID: Integer = 0;
-
 constructor TNode.Create;
 begin
   inherited Create;
-  Inc(LastID);
-  FID := LastID;
+  FID := AtomicIncrement(NodeLastID);
 end;
 
 constructor TNode.CreateInternal;
@@ -1126,7 +1135,7 @@ end;
 
 procedure TAssign_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
-  v: TRunValue;
+  v: TRunVariable;
 begin
   //* if not have a name, assign it to parent result
   Done := true;
@@ -1165,7 +1174,7 @@ end;
 procedure TInstance_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 var
   d: TRunData;
-  v: TRunValue;
+  v: TRunVariable;
 begin
   d := Data.FindDeclare(name);
   if d <> nil then
