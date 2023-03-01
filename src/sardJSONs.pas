@@ -139,7 +139,7 @@ type
     procedure RequirePair(AParentObject: TObject; const AName: string; out AObject: TObject); virtual;
     function SetObjectValue(AObject: TObject; const AName: string; const AValue: string; AType: TJSONType): TObject; virtual; abstract;
   public
-    constructor Create(ALexer: TLexer; AObject: TObject); virtual;
+    constructor Create(ALexer: TLexer; AObject: TObject); overload; virtual;
     destructor Destroy; override;
 
     property Strict: Boolean read FStrict write FStrict default true;
@@ -723,8 +723,6 @@ begin
 end;
 
 procedure TJSONCollector_Pair.DoToken(Token: TSardToken);
-var
-  AObject: TObject;
 begin
   if (Expect = elmName) and ((Token.TokenType = typeIdentifier) or (Token.TokenType = typeString)) then
   begin

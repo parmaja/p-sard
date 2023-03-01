@@ -225,7 +225,6 @@ type
   public
     Main: TMain_Node;
     Scanner: TScanner;
-    Value: string;
     RegisterInternals: Boolean;
     destructor Destroy; override;
     procedure Init;
@@ -525,15 +524,7 @@ var
 begin
   Env := TRunEnv.Create;
   try
-//    Env.Results.Push;
-    //Env.Root.AnObject := Main;
     Main.Execute(Env.Root, Env, nil);
-
-    if (Env.Results.Current <> nil) and (Env.Results.Current.Value <> nil) then
-    begin
-      Value := Env.Results.Current.Value.AsText;
-    end;
-//    Env.Results.Pop;
   finally
     FreeAndNil(Env);
   end;

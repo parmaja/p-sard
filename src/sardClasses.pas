@@ -101,38 +101,40 @@ type
 
   TSardStack<_Node_: TSardObject> = class(TSardObject)
   protected
-    Own: Boolean;
     type
 
       TSardStackItem = class(TSardObject)
       protected
         OwnIt: Boolean;
-        Node: _Node_;
+        FNode: _Node_;
         Parent: TSardStackItem;
       public
         Owner: TSardStack<_Node_>;
         Level: Integer;
-        procedure SetObject(vNode:  _Node_; OwnIt: Boolean = False);
+        procedure SetObject(vNode:  _Node_; vOwnIt: Boolean = False);
+        destructor Destroy; override;
+        property Node: _Node_ read FNode;
       end;
 
   private
     FCount: Integer;
     FTop: TSardStackItem;
+    FOwnItems: Boolean;
   protected
     function GetParent: _Node_;
     function GetCurrent: _Node_;
     procedure AfterPush; virtual;
     procedure BeforePop; virtual;
   public
-    constructor Create(OwnItems: Boolean); virtual;
+    constructor Create(OwnItems: Boolean = True); virtual;
     destructor Destroy; override;
     procedure Clear;
     function IsEmpty: Boolean;
-    procedure Push(vObject: _Node_; OwnIt: Boolean = True); overload;
-    function Pull: _Node_; //Pop but do not delete the object
+    procedure Push(vNode: _Node_); overload;
+    function Pull(FreeIt: Boolean = False): _Node_; //Pop but do not delete the object
     procedure Pop;
     function Peek: _Node_;
-    procedure SetCurrent(vNode:  _Node_; OwnIt: Boolean = False);
+    procedure SetCurrent(vNode:  _Node_; vOwnIt: Boolean = False);
     property Current: _Node_ read GetCurrent;
     property Parent: _Node_ read GetParent;
     property Top: TSardStackItem read FTop;
@@ -327,44 +329,11 @@ end;
 
 { TSardStack }
 
-function TSardStack<_Node_>.Pull: _Node_;
-var
-  aItem: TSardStackItem;
-begin
-  if FTop = nil then
-    RaiseError('Stack is empty');
-  BeforePop;
-  Result := FTop.Node;
-  aItem := FTop;
-  FTop := aItem.Parent;
-  aItem.Free;
-  Dec(FCount);
-  BeforePop;
-end;
-
-procedure TSardStack<_Node_>.SetCurrent(vNode: _Node_; OwnIt: Boolean);
+procedure TSardStack<_Node_>.SetCurrent(vNode: _Node_; vOwnIt: Boolean);
 begin
   if Top = nil then
     RaiseError('Can'' set to current is nil');
-  Top.SetObject(vNode);
-end;
-
-procedure TSardStack<_Node_>.Pop;
-var
-  aNode: _Node_;
-begin
-  {$ifdef VERBOSE}
-  Write('POP: ' + Current.ClassName);
-  {$endif}
-  aNode := Pull;
-  if Own then
-    aNode.Free;
-  {$ifdef VERBOSE}
-  if Current <> nil then
-    WriteLn(' TO: ' + Current.ClassName)
-  else
-    WriteLn;
-  {$endif}
+  Top.SetObject(vNode, vOwnIt);
 end;
 
 function TSardStack<_Node_>.GetParent: _Node_;
@@ -393,16 +362,9 @@ procedure TSardStack<_Node_>.BeforePop;
 begin
 end;
 
-constructor TSardStack<_Node_>.Create(OwnItems: Boolean);
-begin
-  inherited Create;
-  Own := OwnItems;
-end;
-
 destructor TSardStack<_Node_>.Destroy;
 begin
-  if Own then
-    Clear;
+  Clear;
   inherited Destroy;
 end;
 
@@ -410,6 +372,12 @@ procedure TSardStack<_Node_>.Clear;
 begin
   while Top <> nil do
     Pop;
+end;
+
+constructor TSardStack<_Node_>.Create(OwnItems: Boolean);
+begin
+  inherited Create;
+  FOwnItems := OwnItems;
 end;
 
 function TSardStack<_Node_>.IsEmpty: Boolean;
@@ -424,11 +392,11 @@ begin
   Result := FTop.Node;
 end;
 
-procedure TSardStack<_Node_>.Push(vObject: _Node_; OwnIt: Boolean = True);
+procedure TSardStack<_Node_>.Push(vNode: _Node_);
 var
   aItem: TSardStackItem;
 begin
-  if vObject = nil then
+  if vNode = nil then
     RaiseError('Can'' push nil');
   aItem := TSardStackItem.Create;
   aItem.Parent := FTop;
@@ -439,13 +407,35 @@ begin
     aItem.Level := FTop.Level + 1;
   FTop := aItem;
   Inc(FCount);
-  SetCurrent(vObject, OwnIt);
-  if vObject is TSardStackObject then
-    TSardStackObject(vObject).Level := FCount;
+  SetCurrent(vNode, FOwnItems);
+  if vNode is TSardStackObject then
+    TSardStackObject(vNode).Level := FCount;
   AfterPush;
   {$ifdef VERBOSE}
   WriteLn('PUSH: ' + Current.ClassName);
   {$endif}
+end;
+
+function TSardStack<_Node_>.Pull(FreeIt: Boolean): _Node_;
+var
+  aItem: TSardStackItem;
+begin
+  if FTop = nil then
+    RaiseError('Stack is empty');
+  BeforePop;
+  Result := FTop.Node;
+  aItem := FTop;
+  aItem.FNode := nil;
+  FTop := FTop.Parent;
+  if aItem.OwnIt and FreeIt then
+    FreeAndNil(Result);
+  aItem.Free;
+  Dec(FCount);
+end;
+
+procedure TSardStack<_Node_>.Pop;
+begin
+  Pull(True);
 end;
 
 { TSourceWriter }
@@ -508,15 +498,22 @@ end;
 
 { TSardStack<_Node_>.TSardStackItem }
 
-procedure TSardStack<_Node_>.TSardStackItem.SetObject(vNode: _Node_; OwnIt: Boolean);
+destructor TSardStack<_Node_>.TSardStackItem.Destroy;
+begin
+  if OwnIt then
+    FreeAndNil(Node);
+  inherited;
+end;
+
+procedure TSardStack<_Node_>.TSardStackItem.SetObject(vNode: _Node_; vOwnIt: Boolean);
 var
   aNode: _Node_;
 begin
   aNode := Node;
   if OwnIt then
     FreeAndNil(aNode);
-  Node := vNode;
-  OwnIt := OwnIt;
+  OwnIt := vOwnIt;
+  FNode := vNode;
 end;
 
 end.

@@ -68,8 +68,8 @@ unit sardObjects;
   TsrdAddons: It have any kind of addon, parsing, preprocessor, or debugger
 
   TmdModifier: It is like operator but with one side can be in the context before the identifier like + !x %x $x
-
 }
+
 interface
 
 uses
@@ -240,7 +240,9 @@ type
   private
     FStatements: TStatements;
   protected
+    procedure BeforeExecute(Data: TRunData; Env: TRunEnv); override;
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
@@ -265,7 +267,10 @@ type
   { TMain_Node }
 
   TMain_Node = class(TBlock_Node)
+  protected
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
   public
+    Value: TNode;
     procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
   end;
 
@@ -445,6 +450,7 @@ type
     destructor Destroy; override;
     constructor Create(AName: string; ARunKind: TRunVarKinds); overload;
     procedure Clear;
+    function ReleaseValue: TNode;
     property RunKind: TRunVarKinds read FRunKind;
     property Value: TNode read FValue write SetValue;
   end;
@@ -631,6 +637,15 @@ var
 
 { TMain_Node }
 
+procedure TMain_Node.AfterExecute(Data: TRunData; Env: TRunEnv);
+begin
+  if (Env.Results.Current <> nil) and (Env.Results.Current.Value <> nil) then
+  begin
+    Value := Env.Results.Current.ReleaseValue;
+  end;
+  inherited;
+end;
+
 procedure TMain_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
 begin
   inherited;
@@ -648,9 +663,9 @@ end;
 constructor TRunEnv.Create;
 begin
   inherited Create;
-  FResults := TRunResults.Create(True);
+  FResults := TRunResults.Create;
   FRoot := TRunData.Create(nil);
-  FStack := TRunStack.Create(False); //TODO check if own (nop)
+  FStack := TRunStack.Create; //TODO check if own (nop)
 end;
 
 destructor TRunEnv.Destroy;
@@ -780,6 +795,12 @@ destructor TRunVariable.Destroy;
 begin
   FreeAndNil(FValue);
   inherited;
+end;
+
+function TRunVariable.ReleaseValue: TNode;
+begin
+  Result := FValue;
+  FValue := nil;
 end;
 
 constructor TRunVariable.Create(AName: string; ARunKind: TRunVarKinds);
@@ -1429,7 +1450,7 @@ end;
 
 procedure TConst_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
-  if (Env.results.Current = nil) then
+  if (Env.Results.Current = nil) then
       RaiseError('There is no stack results!');
   if (Env.Results.Current.Value = nil) then
   begin
@@ -1488,23 +1509,10 @@ end;
 { TStatements_Node }
 
 procedure TStatements_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
-var
-  t: TRunVariable;
 begin
   {if (env.stack.current.data.object !is this)
       error("Can not execute block directly, data.object must set to this encloser");}
-  Env.Results.Push; //<--here we can push a variable result or create temp result to drop it
-
   Statements.Execute(Data, Env);
-  t := Env.Results.Pull;
-  //I dont know what if there is an object there what we do???
-(*
-  * := 5 + { := 10 + 10 }
-  * it return 25
-  * here 20.execute with +
-*)
-  if (t.Value <> nil) then
-      t.Value.Execute(Data, Env);
   Done := True;
 end;
 
@@ -1514,6 +1522,30 @@ begin
   Statements.ExportWrite(Writer, LastOne, Level);
   Writer.Add(';');
   Writer.NewLine;
+end;
+
+procedure TStatements_Node.AfterExecute(Data: TRunData; Env: TRunEnv);
+begin
+  inherited;
+  Env.Results.Pop;
+//  t := Env.Results.Pull;
+  //I dont know what if there is an object there what we do???
+(*
+  * := 5 + { := 10 + 10 }
+  * it return 25
+  * here 20.execute with +
+*)
+{  if (t.Value <> nil) then
+  begin
+    t.Value.Execute(Data, Env);
+    t.Free;
+  end;}
+end;
+
+procedure TStatements_Node.BeforeExecute(Data: TRunData; Env: TRunEnv);
+begin
+  inherited;
+  Env.Results.Push; //<--here we can push a variable result or create temp result to drop it
 end;
 
 procedure TStatements_Node.Created;
