@@ -17,6 +17,7 @@ interface
 
 uses
   Classes, SysUtils,
+  mnDON,
   sardClasses, sardObjects, sardParsers, sardStandards;
 
 type
@@ -532,11 +533,11 @@ end;
 
 procedure TCodeScript.ExportToFile(FileName: string);
 var
-  Writer: TStringSourceWriter;
+  Writer: TStringsSerializer;
   Strings: TStringList;
 begin
   Strings := TStringList.Create;
-  Writer := TStringSourceWriter.Create(Strings);
+  Writer := TStringsSerializer.Create(Strings);
   try
     Main.ExportWrite(Writer, False, 0);
     Writer.Flush;
@@ -558,12 +559,12 @@ end;
 
 procedure TCodeScript.ExportToConsole;
 var
-  Writer: TStringSourceWriter;
+  Writer: TStringsSerializer;
   Strings: TStringList;
   s: string;
 begin
   Strings := TStringList.Create;
-  Writer := TStringSourceWriter.Create(Strings);
+  Writer := TStringsSerializer.Create(Strings);
   try
     Main.ExportWrite(Writer, False, 0);
     Writer.Flush;

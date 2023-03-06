@@ -62,7 +62,6 @@ var
     Lines.LoadFromFile(Location + 'test.sard');
   end;
 
-
   procedure TestAdd;
   begin
     Lines.Text := '10+10;';

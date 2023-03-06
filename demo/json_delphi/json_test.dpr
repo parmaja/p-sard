@@ -15,9 +15,12 @@ uses
   sardClasses,
   sardObjects,
   sardParsers,
+  sardStandards,
   sardScripts,
   sardJSONs,
   sardJSONRTTIs,
+  mnConfigs,
+  mnDON, mnJSON,
   JsonDataObjects in '..\..\..\..\JsonDataObjects\Source\JsonDataObjects.pas';
 
 var
@@ -80,12 +83,11 @@ begin
   end;
 end;
 
-{$define DOM}
+{$define DON}
 
-type
-  {$ifdef DOM}
-  TMyDOM = class(TJSONRoot);
+  {$ifdef DON}
   {$else}
+type
   { TMyJSONObject }
 
   TMyJSONObject = class(TPersistent)
@@ -106,7 +108,7 @@ type
   end;
   {$endif}
 
- {$ifdef DOM}
+ {$ifdef DON}
  {$else}
 { TMyJSONObject }
 
@@ -140,10 +142,10 @@ var
   Scanner: TJSONScanner;
   Lines: TStringList;
   FileName: string;
-  {$ifdef DOM}
+  {$ifdef DON}
   i: Integer;
-  JSONRoot: TMyDOM;
-  Writer: TStringSourceWriter;
+  JSONRoot: TDON_Pair;
+  Writer: TStringsSerializer;
   {$else}
   JSONRoot: TMyJSONObject;
   {$endif}
@@ -152,26 +154,62 @@ begin
   try
 //    if ParamCount > 0 then
     begin
-      FileName := ExtractFilePath(ParamStr(0))+ 'test.json';// ParamStr(1);
+      FileName := ExtractFilePath(ParamStr(0))+ 'data.json';// ParamStr(1);
       try
         Lines := TStringList.Create;
         try
           WriteLn('Loading: ' + FileName);
           Lines.LoadFromFile(FileName);
           var s := Lines.Text;
-          LogBeginTick;
-          var Json := Json.TJSONObject.ParseJsonValue(s);
-          LogEndTick('Delphi JSON');
-          Json.Free;
-
 
           LogBeginTick;
           var Json2 := JsonDataObjects.TJSONObject.Parse(s);
           LogEndTick('JSONObject');
           Json2.Free;
 
-          {$ifdef DOM}
-          JSONRoot:= TMyDOM.Create;
+          LogBeginTick;
+          var Json1 := Json.TJSONObject.ParseJsonValue(s, False, True);
+          LogEndTick('Delphi JSON');
+          Json1.Free;
+
+          LogBeginTick;
+          var Json3 := JsonParseStringValue(s);
+          LogEndTick('mnJSON');
+          Json3.Free;
+{
+          var v := Json3.AsString;
+          var v := Json3['"books.zaher'].AsString;
+          var v := Json3['books']['zaher'].AsString;
+}
+
+
+          var Json4 := JsonParseFileValue('test.json', []);
+          Writeln(Json4['Books']['Library'].AsString);
+          Writeln(Json4['Books']['Book1']['Title'].AsString);
+          Writeln(Json4.ByPath('Books.Book1.Title').AsString);
+          Writeln(Json4.ByPath('Books\Book1\Title', '\').AsString);
+          Writeln(Json4.ByPath(['Books','Book1','Title']).AsString);
+
+          Json4.ByPath(['Books']).AddObject('Book2');
+          Json4.ByPath(['Books', 'Book2']).AddPair('Title', 'No one care');
+          Json4.ByPath(['Books', 'Book2']).AddPair('ISPN', '545454610');
+//          Json4.ByPath(['Books', 'Book2']).Let('Pages', '10');
+          //Json4.ByPath(['Books','Book1']).Add('Ventors', ['10']);
+
+          Lines.Clear;
+
+          Writer := TStringsSerializer.Create(Lines);
+          JSon4.Serialize(Writer, True, 0);
+          Writer.Free;
+          for i := 0 to Lines.Count -1 do
+            WriteLn(Lines[i]);
+
+          Json4.Free;
+
+
+          (*
+          {$ifdef DON}
+          JSONRoot:= TMyDON.Create;
           Scanner := TJSONScanner.Create(JSONRoot, TDataJSONParser);
           //Scanner.Strict := False;
           {$else}
@@ -180,18 +218,23 @@ begin
           {$endif}
 
           LogBeginTick;
-          Scanner.Compile(S);
+          Scanner.Compile(Lines);
+          //Scanner.CompileFile(FileName);
+          //Scanner.Compile(s);
           LogEndTick('SardJSON');
-          {$ifdef DOM}
+          FreeAndNil(JSONRoot);
+          FreeAndNil(Scanner);
+          *)
+
+          {$ifdef DON}
           //WriteLn('Name: ', JSONRoot.Name);
           Lines.Clear;
-             {
-          Writer := TStringSourceWriter.Create(Lines);
+
+{          Writer := TStringsSerializer.Create(Lines);
           JSONRoot.WriteTo(Writer, True, 0);
           Writer.Free;
           for i := 0 to Lines.Count -1 do
-            WriteLn(Lines[i]);
-            }
+            WriteLn(Lines[i]);}
 
           {$else}
           WriteLn('Name: ', JSONRoot.Name);
@@ -199,13 +242,11 @@ begin
           WriteLn('Caption: ', JSONRoot.Caption);
           WriteLn('Tag: ', JSONRoot.Tag);
           {$endif}
-          FreeAndNil(JSONRoot);
-          //ReadLn;
+
         finally
           FreeAndNil(Lines);
         end;
       finally
-        FreeAndNil(Scanner);
       end;
     end;
   finally
@@ -214,8 +255,8 @@ end;
 
 begin
   Application := TObject.Create;
-  HookCode(@TObject.NewInstance, @HookedObjectNewInstance);
-  HookCode(@TObject.FreeInstance, @HookedObjectFreeInstance);
+  //HookCode(@TObject.NewInstance, @HookedObjectNewInstance);
+  //HookCode(@TObject.FreeInstance, @HookedObjectFreeInstance);
   try
     try
       Run;
@@ -227,6 +268,9 @@ begin
     WriteLn('Press Enter to exit');
     Readln;
   end;
-  TFile.AppendAllText('object.txt', S);
+
+  //TFile.Delete('object.txt');
+  //TFile.AppendAllText('object.txt', S);
   Application.Free;
 end.
+

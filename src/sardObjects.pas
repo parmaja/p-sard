@@ -74,6 +74,7 @@ interface
 
 uses
   Classes, SysUtils,
+  mnDON,
   sardClasses, sardParsers;
 
 const
@@ -96,7 +97,7 @@ type
     FDebugInfo: TDebugInfo;
     FParent: TNode;
   protected
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); virtual;
   public
     constructor Create(AParent: TNode);
     procedure Add(AObject: TNode);
@@ -110,7 +111,7 @@ type
   TStatements = class(TSardObjects<TStatement>)
   private
     FParent: TNode;
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); virtual;
   public
     constructor Create(AParent: TNode); virtual;
     function Add: TStatement;
@@ -152,7 +153,7 @@ type
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); virtual; abstract;
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv); virtual;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv); virtual;
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   public
     constructor Create; overload; virtual;
     destructor Destroy; override;
@@ -227,7 +228,7 @@ type
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv); override;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
     destructor Destroy; override;
@@ -243,7 +244,7 @@ type
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv); override;
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
     destructor Destroy; override;
@@ -257,7 +258,7 @@ type
   protected
     procedure BeforeExecute(Data: TRunData; Env: TRunEnv); override;
     procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   public
     procedure Created; override;
     destructor Destroy; override;
@@ -271,7 +272,7 @@ type
     procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
   public
     Value: TNode;
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   end;
 
   { TConst_Node }
@@ -281,13 +282,8 @@ type
   protected
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   public
-  end;
-
-
-  TAdd_Operator = class(TOperator_Node)
-  protected
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
-  public
+    Title: string;
+    Description: string;
   end;
 
   { TConst_Node }
@@ -332,7 +328,7 @@ type
 
   TInteger_Node = class(TNumber_Node)
   protected
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   public
     Value: Integer;
     constructor Create(AValue: Integer); overload;
@@ -406,9 +402,10 @@ type
   private
     FArguments: TStatements;
   protected
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
-  public
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
     procedure Created; override;
+  public
+    constructor Create(AName: string = '');
     destructor Destroy; override;
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     property Arguments: TStatements read FArguments;
@@ -420,7 +417,7 @@ type
   public
     constructor Create(AName: string = ''); overload;
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); override;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   end;
 
 {
@@ -529,104 +526,95 @@ type
     property Root: TRunData read FRoot;
   end;
 
-  { TSardOperator }
+  { TOpNone_Node }
 
-  TSardOperator = class(TSardNamedObject)
-  public
-    Title: string;
-    Description: string;
-  end;
-
-
-  { TOpNone }
-
-  TOpNone = class(TSardOperator)
+  TOpNone_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpAnd }
+  { TOpAnd_Node }
 
-  TOpAnd = class(TSardOperator)
+  TOpAnd_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpOr }
+  { TOpOr_Node }
 
-  TOpOr = class(TSardOperator)
+  TOpOr_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpPlus }
+  { TOpPlus_Node }
 
-  TOpPlus = class(TSardOperator)
+  TOpPlus_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpSub }
+  { TOpSub_Node }
 
-  TOpSub = class(TSardOperator)
+  TOpSub_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpMultiply }
+  { TOpMultiply_Node }
 
-  TOpMultiply = class(TSardOperator)
+  TOpMultiply_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpDivide }
+  { TOpDivide_Node }
 
-  TOpDivide = class(TSardOperator)
+  TOpDivide_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpPower }
+  { TOpPower_Node }
 
-  TOpPower = class(TSardOperator)
+  TOpPower_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpGreater }
+  { TOpGreater_Node }
 
-  TOpGreater = class(TSardOperator)
+  TOpGreater_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpLesser }
+  { TOpLesser_Node }
 
-  TOpLesser = class(TSardOperator)
+  TOpLesser_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpEqual }
+  { TOpEqual_Node }
 
-  TOpEqual = class(TSardOperator)
+  TOpEqual_Node = class(TOperator_Node)
   public
     constructor Create;
   end;
 
-  { TOpNotEqual }
+  { TOpNotEqual_Node }
 
-  TOpNotEqual = class(TSardOperator)
+  TOpNotEqual_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
-  { TOpNot }
+  { TOpNot_Node }
 
-  TOpNot = class(TSardOperator)
+  TOpNot_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
 implementation
@@ -646,7 +634,7 @@ begin
   inherited;
 end;
 
-procedure TMain_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TMain_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
 end;
@@ -925,7 +913,7 @@ begin
   end;
 end;
 
-procedure TStatements.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TStatements.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 var
   itm: TStatement;
 begin
@@ -960,7 +948,7 @@ begin
   end;
 end;
 
-procedure TStatement.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TStatement.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 var
   itm: TNode;
 begin
@@ -1108,7 +1096,7 @@ begin
   FInternal := True;
 end;
 
-procedure TNode.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TNode.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
 end;
@@ -1139,13 +1127,19 @@ begin
   end;
 end;
 
-procedure TAssign_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TAssign_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
   Writer.Add(Name + ' := ');
 end;
 
 { TInstance_Node }
+
+constructor TInstance_Node.Create(AName: string);
+begin
+  inherited Create;
+  Name := AName;
+end;
 
 procedure TInstance_Node.Created;
 begin
@@ -1178,7 +1172,7 @@ begin
   end;
 end;
 
-procedure TInstance_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TInstance_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
 end;
@@ -1360,7 +1354,7 @@ end;
 
 { TInteger_Node }
 
-procedure TInteger_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TInteger_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
   Writer.Add(IntToStr(Value));
@@ -1479,7 +1473,7 @@ begin
   Env.Stack.Pop;
 end;
 
-procedure TBlock_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TBlock_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
 end;
@@ -1516,7 +1510,7 @@ begin
   Done := True;
 end;
 
-procedure TStatements_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TStatements_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
   Statements.ExportWrite(Writer, LastOne, Level);
@@ -1596,7 +1590,7 @@ begin
   inherited;
 end;
 
-procedure TEnclose_Node.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TEnclose_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
   Writer.Add('(');
@@ -1608,133 +1602,127 @@ end;
           Operators
 ******************************}
 
-{ TOpEqual }
-
-constructor TOpEqual.Create;
-begin
-  Name := '=';
-  Title := 'Equal';
-  Description := '';
-end;
-
-{ TOpPower }
-
-constructor TOpPower.Create;
-begin
-  Name := '^';
-  Title := 'Power';
-  Description := '';
-end;
-
-{ TOpGreater }
-
-constructor TOpGreater.Create;
-begin
-  Name := '>';
-  Title := 'Greater';
-  Description := '';
-end;
-
-{ TOpLesser }
-
-constructor TOpLesser.Create;
-begin
-  Name := '<';
-  Title := 'Lesser';
-  Description := '';
-end;
-
-{ TOpNotEqual }
-
-constructor TOpNotEqual.Create;
-begin
-  Name := '<>';
-  Title := 'NotEqual';
-  Description := 'Check Equal';
-end;
-
-{ TOpNot }
-
-constructor TOpNot.Create;
-begin
-  Name := '!';
-  Title := 'not';
-  Description := 'Not';
-end;
-
-{ TOpDivide }
-
-constructor TOpDivide.Create;
-begin
-  Name := '/';
-  Title := 'Divide';
-  Description := 'Divide object on another object';
-end;
-
-{ TOpMultiply }
-
-constructor TOpMultiply.Create;
-begin
-  Name := '*';
-  Title := 'Multiply';
-  Description := 'Multiply object with another object';
-end;
-
-{ TOpSub }
-
-constructor TOpSub.Create;
-begin
-  Name := '-';
-  Title := 'Minus';
-  Description := 'Sub object from another object';
-end;
-
-{ TOpPlus }
-
-constructor TOpPlus.Create;
-begin
-  Name := '+';
-  Title := 'Plus';
-  Description := 'Add object to another object';
-end;
-
-{ TOpOr }
-
-constructor TOpOr.Create;
-begin
-  Name := '|';
-  Title := 'Or';
-  Description := '';
-end;
-
-{ TOpAnd }
-
-constructor TOpAnd.Create;
-begin
-  Name := '&';
-  Title := 'And';
-  Description := '';
-end;
-
-{ TOpNone }
-
-constructor TOpNone.Create;
-begin
-  Name := '';
-  Title := 'None';
-  Description := 'Nothing';
-end;
 { TOperator_Node }
 
 procedure TOperator_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
 begin
 end;
 
-{ TAdd_Operator }
+{ TOpEqual_Node }
 
-procedure TAdd_Operator.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
+constructor TOpEqual_Node.Create;
 begin
-  inherited;
+  Name := '=';
+  Title := 'Equal';
+  Description := '';
+end;
+
+{ TOpPower_Node }
+
+constructor TOpPower_Node.Create;
+begin
+  Name := '^';
+  Title := 'Power';
+  Description := '';
+end;
+
+{ TOpGreater_Node }
+
+constructor TOpGreater_Node.Create;
+begin
+  Name := '>';
+  Title := 'Greater';
+  Description := '';
+end;
+
+{ TOpLesser_Node }
+
+constructor TOpLesser_Node.Create;
+begin
+  Name := '<';
+  Title := 'Lesser';
+  Description := '';
+end;
+
+{ TOpNotEqual_Node }
+
+constructor TOpNotEqual_Node.Create;
+begin
+  Name := '<>';
+  Title := 'NotEqual';
+  Description := 'Check Equal';
+end;
+
+{ TOpNot_Node }
+
+constructor TOpNot_Node.Create;
+begin
+  Name := '!';
+  Title := 'not';
+  Description := 'Not';
+end;
+
+{ TOpDivide_Node }
+
+constructor TOpDivide_Node.Create;
+begin
+  Name := '/';
+  Title := 'Divide';
+  Description := 'Divide object on another object';
+end;
+
+{ TOpMultiply_Node }
+
+constructor TOpMultiply_Node.Create;
+begin
+  Name := '*';
+  Title := 'Multiply';
+  Description := 'Multiply object with another object';
+end;
+
+{ TOpSub_Node }
+
+constructor TOpSub_Node.Create;
+begin
+  Name := '-';
+  Title := 'Minus';
+  Description := 'Sub object from another object';
+end;
+
+{ TOpPlus_Node }
+
+constructor TOpPlus_Node.Create;
+begin
+  Name := '+';
+  Title := 'Plus';
+  Description := 'Add object to another object';
+end;
+
+{ TOpOr_Node }
+
+constructor TOpOr_Node.Create;
+begin
+  Name := '|';
+  Title := 'Or';
+  Description := '';
+end;
+
+{ TOpAnd_Node }
+
+constructor TOpAnd_Node.Create;
+begin
+  Name := '&';
+  Title := 'And';
+  Description := '';
+end;
+
+{ TOpNone_Node }
+
+constructor TOpNone_Node.Create;
+begin
+  Name := '';
+  Title := 'None';
+  Description := 'Nothing';
 end;
 
 { TRunResults }

@@ -134,7 +134,7 @@ type
 
   TSL_DQ_String_Tokenizer = class(TTokenizer)
   public
-    Buffer: String;
+    StringBuffer: String;
     State: TStringState;
     QuoteChar: Char;
     EscapeChar: Char;
@@ -367,13 +367,13 @@ end;
 
 procedure TSL_DQ_String_Tokenizer.Append(const Text: string);
 begin
-  Buffer := Buffer + Text;
+  StringBuffer := StringBuffer + Text;
 end;
 
 procedure TSL_DQ_String_Tokenizer.Appended;
 begin
-  SetToken(Token(ctlToken, typeString, Buffer));
-  Buffer := '';
+  SetToken(Token(ctlToken, typeString, StringBuffer));
+  StringBuffer := '';
 end;
 
 constructor TSL_DQ_String_Tokenizer.Create;

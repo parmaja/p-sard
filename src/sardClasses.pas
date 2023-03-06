@@ -17,7 +17,7 @@ interface
 
 uses
   Classes, SysUtils, Contnrs,
-  mnClasses, mnUtils;
+  mnClasses, mnUtils, mnDON;
 
 const
   sEOL = [#0, #13, #10];
@@ -64,8 +64,6 @@ type
     property Value: string read FValue;
   end;
 
-  TSourceWriter = class;
-
   { TSardObjects }
 
   TSardObjects<_Object_: class> = class(TmnObjectList<_Object_>)
@@ -78,7 +76,7 @@ type
   TSardNamedObject = class(TmnNamedObject)
   private
   protected
-    procedure ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer); virtual;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); virtual;
   public
     function IsOpenBy(C: Char): Boolean;
   end;
@@ -141,31 +139,6 @@ type
     property Count: Integer read FCount;
   end;
 
-  { TSourceWriter }
-
-  TSourceWriter = class abstract(TObject)
-  public
-    TabWidth: Integer;
-    constructor Create;
-    procedure Add(const S: string); overload; virtual; abstract;
-    procedure Add(Level: Integer = 1; S: string = ''); overload;
-    procedure NewLine; virtual; abstract;
-  end;
-
-  { TStringSourceWriter }
-
-  TStringSourceWriter = class(TSourceWriter)
-  private
-    FStrings: TStrings;
-    FLine: string;
-  public
-    constructor Create(Strings: TStrings);
-    destructor Destroy; override;
-    procedure Flush;
-    procedure Add(const S: string); override;
-    procedure NewLine; override;
-  end;
-
 procedure RaiseError(AError: string; Line: Integer = 0; Column: Integer = 0);
 
 function ScanText1(const S: string; const Text: string; var Index: Integer): Boolean;
@@ -177,7 +150,7 @@ function FormatColLine(Column, Line: Integer): string;
 //If index can less than str length, usefull to port it to another language like c,d
 function IndexInStr(Index: Integer; const Str: string): Boolean; inline;
 //AToIndex not included
-function SliceText(const AText: String; const AFromIndex, AToIndex: Integer): String;
+function SliceText(const AText: String; const AFromIndex, AToIndex: Integer): String; inline;
 
 implementation
 
@@ -313,7 +286,7 @@ begin
   Result := False;
 end;
 
-procedure TSardNamedObject.ExportWrite(Writer: TSourceWriter; LastOne: Boolean; Level: Integer);
+procedure TSardNamedObject.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
 
 end;
@@ -436,50 +409,6 @@ end;
 procedure TSardStack<_Node_>.Pop;
 begin
   Pull(True);
-end;
-
-{ TSourceWriter }
-
-constructor TSourceWriter.Create;
-begin
-  inherited Create;
-  TabWidth := 4;
-end;
-
-procedure TSourceWriter.Add(Level: Integer; S: string);
-begin
-  Add(StringOfChar(' ', Level * TabWidth) + S);
-end;
-
-{ TStringSourceWriter }
-
-constructor TStringSourceWriter.Create(Strings: TStrings);
-begin
-  inherited Create;
-  FStrings := Strings;
-end;
-
-destructor TStringSourceWriter.Destroy;
-begin
-  Flush;
-  inherited;
-end;
-
-procedure TStringSourceWriter.Flush;
-begin
-  if FLine <> '' then
-    NewLine;
-end;
-
-procedure TStringSourceWriter.Add(const S: string);
-begin
-  FLine := FLine + S;
-end;
-
-procedure TStringSourceWriter.NewLine;
-begin
-  FStrings.Add(FLine);
-  FLine := '';
 end;
 
 { TSardString }

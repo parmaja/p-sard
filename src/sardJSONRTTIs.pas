@@ -16,7 +16,7 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Variants,
-  mnUtils, mnClasses, mnRTTIUtils,
+  mnUtils, mnClasses, mnRTTIUtils, mnDON,
   sardClasses, sardParsers, sardStandards, sardJSONs;
 
 type
@@ -25,8 +25,8 @@ type
 
   TRTTIJSONParser = class(TJSONParser)
   protected
-    procedure RequirePair(AParentObject: TObject; const AName: string; out AObject: TObject); override;
-    function SetObjectValue(AObject: TObject; const AName: string; const AValue: string; AType: TJSONType): TObject; override;
+    procedure AcquirePair(AParentObject: TObject; const AName: string; out AObject: TObject); override;
+    function AcquireValue(AObject: TObject; const AName: string; const AValue: string; AType: TDONType): TObject; override;
   end;
 
 implementation
@@ -36,12 +36,12 @@ uses
 
 { TRTTIJSONParser }
 
-procedure TRTTIJSONParser.RequirePair(AParentObject: TObject; const AName: string; out AObject: TObject);
+procedure TRTTIJSONParser.AcquirePair(AParentObject: TObject; const AName: string; out AObject: TObject);
 begin
   AObject := AParentObject;
 end;
 
-function TRTTIJSONParser.SetObjectValue(AObject: TObject; const AName: string; const AValue: string; AType: TJSONType): TObject;
+function TRTTIJSONParser.AcquireValue(AObject: TObject; const AName: string; const AValue: string; AType: TDONType): TObject;
 begin
   if AName <> '' then
     SetPropertyValue(AObject, AName, AValue);
