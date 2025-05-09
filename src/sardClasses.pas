@@ -132,7 +132,8 @@ type
     function Pull(FreeIt: Boolean = False): _Node_; //Pop but do not delete the object
     procedure Pop;
     function Peek: _Node_;
-    procedure SetCurrent(vNode:  _Node_; vOwnIt: Boolean = False);
+    //Current is Top of stack
+    procedure SetCurrentNode(vNode:  _Node_; vOwnIt: Boolean = False);
     property Current: _Node_ read GetCurrent;
     property Parent: _Node_ read GetParent;
     property Top: TSardStackItem read FTop;
@@ -302,7 +303,7 @@ end;
 
 { TSardStack }
 
-procedure TSardStack<_Node_>.SetCurrent(vNode: _Node_; vOwnIt: Boolean);
+procedure TSardStack<_Node_>.SetCurrentNode(vNode: _Node_; vOwnIt: Boolean);
 begin
   if Top = nil then
     RaiseError('Can'' set to current is nil');
@@ -380,8 +381,8 @@ begin
     aItem.Level := FTop.Level + 1;
   FTop := aItem;
   Inc(FCount);
-  SetCurrent(vNode, FOwnItems);
-  if vNode is TSardStackObject then
+  SetCurrentNode(vNode, FOwnItems);
+  if TObject(vNode) is TSardStackObject then
     TSardStackObject(vNode).Level := FCount;
   AfterPush;
   {$ifdef VERBOSE}
@@ -430,7 +431,7 @@ end;
 destructor TSardStack<_Node_>.TSardStackItem.Destroy;
 begin
   if OwnIt then
-    FreeAndNil(Node);
+    FreeAndNil(FNode);
   inherited;
 end;
 

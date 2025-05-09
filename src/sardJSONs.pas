@@ -130,7 +130,7 @@ type
     procedure AcquirePair(AParentObject: TObject; const AName: string; out AObject: TObject); virtual;
     function AcquireValue(AParentObject: TObject; const AName: string; const AValue: string; AType: TDONType): TObject; virtual; abstract;
   public
-    constructor Create(ALexer: TLexer; AObject: TObject); overload; virtual;
+    constructor Create(ALexer: TLexer; AObject: TObject); reintroduce; overload; virtual;
     destructor Destroy; override;
 
     property Strict: Boolean read FStrict write FStrict default true;
@@ -500,7 +500,7 @@ end;
 
 function TDataJSONParser.AcquireValue(AParentObject: TObject; const AName: string; const AValue: string; AType: TDONType): TObject;
 begin
-  Result := donAcquireValue(AParentObject, AValue, AType);
+  Result := JsonAcquireValue(AParentObject, AValue, AType);
 end;
 
 { TJSONLexer }

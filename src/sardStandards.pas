@@ -106,7 +106,7 @@ type
 
   TSardComment_Tokenizer = class(TBufferedEnclosed_Tokenizer)
   public
-    constructor Create;
+    constructor Create; override;
     procedure InternalSetToken(const Text: string); override;
   end;
 

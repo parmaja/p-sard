@@ -165,8 +165,8 @@ type
     procedure Scan(const Text: string; Started: Integer; var Column: Integer; var Resume: Boolean); override;
   public
     Control: TSardControl;
-    constructor Create(const AName: string; ACode: TsardControlID; const ADescription: string = ''); overload;
-    constructor Create(AControl: TSardControl); overload;
+    constructor Create(const AName: string; ACode: TsardControlID; const ADescription: string = ''); reintroduce; overload;
+    constructor Create(AControl: TSardControl); reintroduce; overload;
   end;
 
   { TController }
@@ -319,7 +319,7 @@ begin
   Start;
   w := TmnWrapperStream.Create(Stream, False);
   try
-    while not (cloRead in w.Done) do
+    while not (cloRead in w.State) do
     begin
       ScanLine(w.ReadLine(False));
     end;
@@ -551,7 +551,7 @@ end;
 
 constructor TControl_Tokenizer.Create(AControl: TSardControl);
 begin
-  inherited Create;
+  Create;
   Control := AControl;
 end;
 
@@ -602,7 +602,7 @@ end;
 
 constructor TTokenizer.Create;
 begin
-  inherited Create;
+  inherited;
 end;
 
 { TSardControl }

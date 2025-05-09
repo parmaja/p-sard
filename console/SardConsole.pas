@@ -31,9 +31,7 @@ type
     FParams: TStringList;
     Verbose: Boolean;
   public
-    {$ifdef delphi}
     function Location: string;
-    {$endif}
     procedure Run;
     constructor Create;
     destructor Destroy; override;
@@ -114,7 +112,8 @@ begin
 
             if Verbose then
               Writeln('Result:');
-            WriteLn((Script as TCodeScript).Result);
+
+            //WriteLn((Script as TCodeScript).Result);
             //Script.ExportToFile('export.sard');
           finally
             FreeAndNil(Lines);
@@ -139,7 +138,7 @@ constructor TSardConsole.Create;
 begin
   inherited Create;
   FParams := TStringList.Create;
-  ParseCommandLine(CmdLine, FParams);
+  ParseArguments(CmdLine, FParams, ['-']);
 end;
 
 destructor TSardConsole.Destroy;
@@ -148,12 +147,10 @@ begin
   inherited Destroy;
 end;
 
-{$ifdef delphi}
 function TSardConsole.Location: string;
 begin
   Result := ExtractFilePath(ParamStr(0));
 end;
-{$endif}
 
 function TSardConsole.WaitKey: Boolean;
 begin
