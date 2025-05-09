@@ -456,7 +456,7 @@ type
 
   TRunVariables = class(TSardNamedObjects<TRunVariable>)
   public
-    function Register(AName: string; ARunKind: TRunVarKinds): TRunVariable;
+    function Register(AName: string; ARunKind: TRunVarKinds = [rkLocal]): TRunVariable;
   end;
 
   { TRunResults }
@@ -530,77 +530,77 @@ type
 
   TOpNone_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpAnd_Node }
 
   TOpAnd_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpOr_Node }
 
   TOpOr_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpPlus_Node }
 
   TOpPlus_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpSub_Node }
 
   TOpSub_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpMultiply_Node }
 
   TOpMultiply_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpDivide_Node }
 
   TOpDivide_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpPower_Node }
 
   TOpPower_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpGreater_Node }
 
   TOpGreater_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpLesser_Node }
 
   TOpLesser_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpEqual_Node }
 
   TOpEqual_Node = class(TOperator_Node)
   public
-    constructor Create;
+    constructor Create; override;
   end;
 
   { TOpNotEqual_Node }
@@ -989,7 +989,7 @@ end;
 
 function TNode.GetAsText: Text;
 begin
-  if not ToText(Result) then
+  if (Self = nil) or not ToText(Result) then
     Result := '';
 end;
 
@@ -1116,14 +1116,14 @@ begin
   //* if not have a name, assign it to parent result
   Done := true;
   if (Name = '') then
-    Env.Results.SetCurrent(Env.Results.Parent, False)
+    Env.Results.SetCurrentNode(Env.Results.Parent, False)
   else
   begin
     //Ok let is declare it locally
-    v := Env.Stack.Current.Variables.Register(Name, [rkLocal]);
+    v := Env.Stack.Current.Variables.Register(Name);
     if (v = nil) then
       RaiseError('Variable not found!');
-    Env.Results.SetCurrent(v, True);
+    Env.Results.SetCurrentNode(v, False);
   end;
 end;
 
