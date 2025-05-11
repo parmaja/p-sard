@@ -284,6 +284,7 @@ type
   public
     Title: string;
     Description: string;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   end;
 
   { TConst_Node }
@@ -550,6 +551,8 @@ type
   { TOpPlus_Node }
 
   TOpPlus_Node = class(TOperator_Node)
+  protected
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   public
     constructor Create; override;
   end;
@@ -921,6 +924,8 @@ begin
   for itm in Self do
   begin
     itm.ExportWrite(Writer, LastOne, Level + 1);
+    Writer.Add(';');
+    Writer.NewLine;
   end;
 end;
 
@@ -1175,6 +1180,7 @@ end;
 procedure TInstance_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
   inherited;
+  Writer.Add(Name);
 end;
 
 { TText_Node }
@@ -1514,8 +1520,6 @@ procedure TStatements_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Le
 begin
   inherited;
   Statements.ExportWrite(Writer, LastOne, Level);
-  Writer.Add(';');
-  Writer.NewLine;
 end;
 
 procedure TStatements_Node.AfterExecute(Data: TRunData; Env: TRunEnv);
@@ -1608,6 +1612,12 @@ procedure TOperator_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boole
 begin
 end;
 
+procedure TOperator_Node.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
+begin
+  inherited;
+  Writer.Add(' ' + Name + ' ');
+end;
+
 { TOpEqual_Node }
 
 constructor TOpEqual_Node.Create;
@@ -1696,6 +1706,11 @@ begin
   Name := '+';
   Title := 'Plus';
   Description := 'Add object to another object';
+end;
+
+procedure TOpPlus_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
+begin
+  inherited;
 end;
 
 { TOpOr_Node }
