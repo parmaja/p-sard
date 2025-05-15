@@ -89,6 +89,19 @@ begin
         x:=10+10;
         y:=11+11;
         print(x+y);
+
+        5 + '10' * 10  -> 15
+        5 + 'belal' * 10  -> 5 //err
+
+        5 + '10' -> 15
+        5 + 'belal' -> error
+
+        'belal' + 5 -> 'belal5'
+        '10' + 5 -> '105'
+        '10' + 5 * '10' -> '1050'
+        '10' + 5 * 'belal' -> error
+
+        '105' * 'belal' -> error
       }
 
       with Script.Main do
