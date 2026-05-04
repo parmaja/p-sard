@@ -20,7 +20,7 @@ interface
 uses
   Classes, SysUtils,
   mnUtils,
-  sardClasses, sardObjects, sardParsers, sardScripts, sardJSONs;
+  sardClasses, sardObjects, sardParsers, sardScripts;
 
 type
 

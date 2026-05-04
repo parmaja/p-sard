@@ -15,6 +15,7 @@ unit sardObjects;
 
   Object have Execute and Operate
   Some objects (like Section) have a Block, and some have one Statment
+
   Block have Statements
     Statement: haves Node
       Node: Object
@@ -24,9 +25,6 @@ unit sardObjects;
 
   Stack: have data for run time execute, you cant share value between thread or multiple execute for the main object
     So Stack have Local Variables, Shadow of object
-  Shadow: it is mirror of object but have extra data about it that we can not save it in the original object,
-    it is useful for multiexecute.
-
 *}
 
 {
@@ -60,7 +58,7 @@ unit sardObjects;
   TsoArray:   From the name, object have another objects, a list of objectd without execute it,
               it is save the result of statment come from the parser
 
-* TsrdShadow: This object shadow of another object, he resposible of the memory storage like a varible
+* TsrdShadow: This object shadow of another object, he resposible of the memory storage like a variable
               When need to execute an object it will done by this shadow and insure it is exist before run
               Also we can make muliple shadow of one object when creating link to it, i mean creating another object based on first one
               Also it is made for dynamic scoping, we can access the value in it instead of local variable
@@ -86,9 +84,58 @@ type
   TDefines = class;
   TRunData = class;
   TRunEnv = class;
+  TStatement = class;
+  TStatements = class;
 
   TDebugInfo = class(TSardObject)
   end;
+
+  { TNode }
+
+  TNode = class abstract(TSardNamedObject)
+  private
+    FID: Int64;
+    FParent: TNode;
+    //FRefCount: Integer;
+    function GetAsBool: Bool;
+    function GetAsInteger: Integer;
+    function GetAsNumber: Number;
+    function GetAsText: Text;
+    procedure SetParent(AValue: TNode);
+  protected
+    FInternal: Boolean;
+    procedure SetName(const AValue: string); override;
+  public
+    function ToBool(out outValue: Boolean): Boolean; virtual;
+    function ToText(out outValue: Text): Boolean; virtual;
+    function ToNumber(out outValue: Number): Boolean; virtual;
+    function ToInteger(out outValue: Integer): Boolean; virtual;
+
+    property AsBool: Bool read GetAsBool;
+    property AsText: Text read GetAsText;
+    property AsNumber: Number read GetAsNumber;
+    property AsInteger: Integer read GetAsInteger;
+
+    procedure Assign(AFromObject: TNode); virtual;
+    function Clone(WithValues: Boolean = True): TNode;
+  protected
+    function DoOperate(AObject: TNode): Boolean; virtual; deprecated;
+    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); virtual; abstract;
+    procedure BeforeExecute(Data: TRunData; Env: TRunEnv); virtual;
+    procedure AfterExecute(Data: TRunData; Env: TRunEnv); virtual;
+    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
+  public
+    constructor Create; overload; virtual;
+    destructor Destroy; override;
+    function Operate(AObject: TNode): Boolean;
+    function Execute(Data: TRunData; Env: TRunEnv; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
+    property Parent: TNode read FParent write SetParent;
+    property ID: Int64 read FID;
+    property Internal: Boolean read FInternal; //registered inside
+  end;
+
+  TNodeClass = class of TNode;
+
 
   { TStatement }
 
@@ -120,52 +167,6 @@ type
     property Parent: TNode read FParent;
   end;
 
-  { TNode }
-
-  TNode = class abstract(TSardNamedObject)
-  private
-    FID: Int64;
-    FInternal: Boolean;
-    FParent: TNode;
-    //FRefCount: Integer;
-    function GetAsBool: Bool;
-    function GetAsInteger: Integer;
-    function GetAsNumber: Number;
-    function GetAsText: Text;
-    procedure SetParent(AValue: TNode);
-  protected
-    procedure SetName(const AValue: string); override;
-  public
-    function ToBool(out outValue: Boolean): Boolean; virtual;
-    function ToText(out outValue: Text): Boolean; virtual;
-    function ToNumber(out outValue: Number): Boolean; virtual;
-    function ToInteger(out outValue: Integer): Boolean; virtual;
-
-    property AsBool: Bool read GetAsBool;
-    property AsText: Text read GetAsText;
-    property AsNumber: Number read GetAsNumber;
-    property AsInteger: Integer read GetAsInteger;
-
-    procedure Assign(AFromObject: TNode); virtual;
-    function Clone(WithValues: Boolean = True): TNode;
-  protected
-    function DoOperate(AObject: TNode): Boolean; virtual;
-    procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); virtual; abstract;
-    procedure BeforeExecute(Data: TRunData; Env: TRunEnv); virtual;
-    procedure AfterExecute(Data: TRunData; Env: TRunEnv); virtual;
-    procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
-  public
-    constructor Create; overload; virtual;
-    destructor Destroy; override;
-    constructor CreateInternal;
-    function Operate(AObject: TNode): Boolean;
-    function Execute(Data: TRunData; Env: TRunEnv; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
-    property Parent: TNode read FParent write SetParent;
-    property ID: Int64 read FID;
-    property Internal: Boolean read FInternal; //registered inside
-  end;
-
-  TNodeClass = class of TNode;
 
   {TRefObject = class(TSardObject)
   end;}
@@ -209,7 +210,7 @@ type
   private
     FDefines: TDefines;
   public
-    //executeObject will execute in a context of statement if it is not null,
+    //ExecuteObject will execute in a context of statement if it is not null,
     ExecuteObject: TNode;
     ResultType: string;
     procedure Created; override;
@@ -221,6 +222,7 @@ type
   { TEnclose_Node }
   // 10 + ( x + 10)
   //-> ( x + 10)
+
   TEnclose_Node = class(TNode)
   private
     FStatement: TStatement;
@@ -289,7 +291,7 @@ type
 
   { TConst_Node }
 
-  TConst_Node = class(TNode)
+  TConst_Node = class abstract(TNode)
   private
   protected
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
@@ -434,8 +436,6 @@ type
   TRunVarKind = (rkLocal, rkArgument);
   TRunVarKinds = set of TRunVarKind;
 
-  { TSardRunValue }
-
   { TRunVariable }
 
   TRunVariable = class(TSardNamedObject)
@@ -471,8 +471,8 @@ type
 
   TRunData = class(TSardObjects<TRunData>)
   private
-    FAnObject: TDeclare_Node;
     FName: string;
+    FAnObject: TDeclare_Node;
     FParent: TRunData;
   public
     constructor Create(AParent: TRunData);
@@ -516,8 +516,8 @@ type
   TRunEnv = class(TSardObject)
   private
     FResults: TRunResults;
-    FRoot: TRunData;
     FStack: TRunStack;
+    FRoot: TRunData;
   public
     constructor Create;
     destructor Destroy; override;
@@ -1095,11 +1095,12 @@ begin
   FID := AtomicIncrement(NodeLastID);
 end;
 
-constructor TNode.CreateInternal;
+{constructor TNode.CreateInternal;
 begin
   Create;
   FInternal := True;
 end;
+}
 
 procedure TNode.ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer);
 begin
@@ -1522,6 +1523,12 @@ begin
   Statements.ExportWrite(Writer, LastOne, Level);
 end;
 
+procedure TStatements_Node.BeforeExecute(Data: TRunData; Env: TRunEnv);
+begin
+  inherited;
+  Env.Results.Push; //<--here we can push a variable result or create temp result to drop it
+end;
+
 procedure TStatements_Node.AfterExecute(Data: TRunData; Env: TRunEnv);
 begin
   inherited;
@@ -1538,12 +1545,6 @@ begin
     t.Value.Execute(Data, Env);
     t.Free;
   end;}
-end;
-
-procedure TStatements_Node.BeforeExecute(Data: TRunData; Env: TRunEnv);
-begin
-  inherited;
-  Env.Results.Push; //<--here we can push a variable result or create temp result to drop it
 end;
 
 procedure TStatements_Node.Created;

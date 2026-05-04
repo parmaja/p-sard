@@ -5,7 +5,7 @@ program Sard;
 uses
   Classes, SysUtils,
   sardClasses, sardObjects, sardParsers, sardScripts,
-  NodeConsole, sardJSONs;
+  NodeConsole;
 
 {$R *.res}
 

@@ -190,16 +190,21 @@ type
     constructor Create(ABlock: TBlock_Node);
   end;
 
+  TInternalNode = class(TNode)
+  public
+    constructor Create; override;
+  end;
+
   { TVersion_Const_Node }
 
-  TVersion_Const_Node = class(TNode)
+  TVersion_Const_Node = class(TInternalNode)
   protected
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   end;
 
   { TPI_Const_Node }
 
-  TPI_Const_Node = class(TNode)
+  TPI_Const_Node = class(TInternalNode)
   protected
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   end;
@@ -213,7 +218,7 @@ type
 
   { TPrint_Object_Node }
 
-  TPrint_Object_Node = class(TNode)
+  TPrint_Object_Node = class(TInternalNode)
   protected
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
   end;
@@ -483,15 +488,15 @@ var
   PI_Const: TPI_Const_Node;
   Print_Object: TPrint_object_Node;
 begin
-  Version_Const := TVersion_Const_Node.CreateInternal;
+  Version_Const := TVersion_Const_Node.Create;
   Version_Const.Name := 'Version';
   Main.DeclareObject(Version_Const);
 
-  PI_const := TPI_Const_Node.CreateInternal;
+  PI_const := TPI_Const_Node.Create;
   PI_Const.name := 'PI';
   Main.DeclareObject(PI_Const);
 
-  Print_Object := TPrint_object_Node.CreateInternal;
+  Print_Object := TPrint_object_Node.Create;
   Print_Object.Name := 'print';
   with Main.DeclareObject(Print_Object) do
     Defines.Parameters.Add('s', 'string');
@@ -1059,6 +1064,14 @@ begin
   Result.Name := Identifier;
   InternalSetObject(Result);
   Identifier := '';
+end;
+
+{ TInternalNode }
+
+constructor TInternalNode.Create;
+begin
+  inherited;
+  FInternal := True;
 end;
 
 end.

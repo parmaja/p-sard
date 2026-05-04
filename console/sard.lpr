@@ -9,7 +9,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, SysUtils,
-  sardClasses, sardObjects, sardParsers, sardScripts, sardJSONs,
+  sardClasses, sardObjects, sardParsers, sardScripts,
   SardConsole;
 
 {$R *.res}
