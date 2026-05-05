@@ -127,6 +127,7 @@ type
   public
     constructor Create; overload; virtual;
     destructor Destroy; override;
+    procedure AfterConstruction; override;
     function Operate(AObject: TNode): Boolean;
     function Execute(Data: TRunData; Env: TRunEnv; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
     property Parent: TNode read FParent write SetParent;
@@ -213,7 +214,7 @@ type
     //ExecuteObject will execute in a context of statement if it is not null,
     ExecuteObject: TNode;
     ResultType: string;
-    procedure Created; override;
+    procedure AfterConstruction; override;
     destructor Destroy; override;
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     property Defines: TDefines read FDefines;
@@ -232,7 +233,7 @@ type
     procedure DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean); override;
     procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   public
-    procedure Created; override;
+    procedure AfterConstruction; override;
     destructor Destroy; override;
     property Statement: TStatement read FStatement;
   end;
@@ -248,7 +249,7 @@ type
     procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
     procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   public
-    procedure Created; override;
+    procedure AfterConstruction; override;
     destructor Destroy; override;
     property Statements: TStatements read FStatements;
   end;
@@ -262,7 +263,7 @@ type
     procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
     procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   public
-    procedure Created; override;
+    procedure AfterConstruction; override;
     destructor Destroy; override;
     function DeclareObject(AObject: TNode): TDeclare_Node;
   end;
@@ -406,7 +407,7 @@ type
     FArguments: TStatements;
   protected
     procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
-    procedure Created; override;
+    procedure AfterConstruction; override;
   public
     constructor Create(AName: string = '');
     destructor Destroy; override;
@@ -624,7 +625,6 @@ implementation
 
 var
   NodeLastID: Int64 = 0;
-  ResultLastID: Int64 = 0;
 
 { TMain_Node }
 
@@ -634,6 +634,12 @@ begin
   begin
     Value := Env.Results.Current.ReleaseValue;
   end;
+  inherited;
+end;
+
+destructor TMain_Node.Destroy;
+begin
+  FreeAndNil(Value);
   inherited;
 end;
 
@@ -683,7 +689,7 @@ end;
 
 { TDeclare_Node }
 
-procedure TDeclare_Node.Created;
+procedure TDeclare_Node.AfterConstruction;
 begin
   inherited;
   FDefines := TDefines.Create;
@@ -748,8 +754,8 @@ begin
     Result := TRunData.Create(Self);
     Result.FName := AObject.Name;
     Result.FAnObject := AObject;
+    Add(Result);
   end;
-  Add(Result);//TODO BUG maybe into if
 end;
 
 function TRunData.FindDeclare(AName: string): TRunData;
@@ -1122,7 +1128,10 @@ begin
   //* if not have a name, assign it to parent result
   Done := true;
   if (Name = '') then
-    Env.Results.SetCurrentNode(Env.Results.Parent, False)
+  begin
+    if Env.Results.Parent <> nil then
+      Env.Results.SetCurrentNode(Env.Results.Parent, False);
+  end
   else
   begin
     //Ok let is declare it locally
@@ -1147,7 +1156,7 @@ begin
   Name := AName;
 end;
 
-procedure TInstance_Node.Created;
+procedure TInstance_Node.AfterConstruction;
 begin
   inherited;
   FArguments := TStatements.Create(Self);
@@ -1195,7 +1204,7 @@ end;
 procedure TText_Node.Assign(AFromObject: TNode);
 begin
   inherited;
-  Value := AFromObject.AsTExt;
+  Value := AFromObject.AsText;
 end;
 
 function TText_Node.DoOperate(AObject: TNode): Boolean;
@@ -1460,8 +1469,6 @@ begin
   end
   else
   begin
-      if (Env.Results.Current.Value = nil) then
-        Env.Results.Current.Value := Clone(False);
       Done := Env.Results.Current.Value.Operate(Self);
   end;
 end;
@@ -1485,7 +1492,7 @@ begin
   inherited;
 end;
 
-procedure TBlock_Node.Created;
+procedure TBlock_Node.AfterConstruction;
 begin
   inherited;
 end;
@@ -1503,7 +1510,7 @@ begin
     Result.Name := AObject.Name;
     AObject.Parent := Result;
     Result.ExecuteObject := AObject;
-    Add(nil);
+    Add(Result);
   end;
 end;
 
@@ -1547,7 +1554,7 @@ begin
   end;}
 end;
 
-procedure TStatements_Node.Created;
+procedure TStatements_Node.AfterConstruction;
 begin
   inherited;
   FStatements := TStatements.Create(Parent);
@@ -1570,11 +1577,22 @@ end;
 procedure TEnclose_Node.AfterExecute(Data: TRunData; Env: TRunEnv);
 var
   t: TRunVariable;
+  v: TNode;
 begin
   inherited;
   t := Env.Results.Pull;
-  if (t.Value <> nil) then
-    t.Value.Execute(Data, Env);
+  try
+    if (t.Value <> nil) then
+    begin
+      v := t.ReleaseValue;
+      if Env.Results.Current <> nil then
+        Env.Results.Current.Value := v
+      else
+        v.Free;
+    end;
+  finally
+    t.Free;
+  end;
 end;
 
 procedure TEnclose_Node.DoExecute(Data: TRunData; Env: TRunEnv; var Done: Boolean);
@@ -1583,9 +1601,9 @@ begin
   Done := true;
 end;
 
-procedure TEnclose_Node.Created;
+procedure TEnclose_Node.AfterConstruction;
 begin
-  inherited Created;
+  inherited;
   FStatement := TStatement.Create(Parent);
 end;
 

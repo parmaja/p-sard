@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, SynEdit, SynHighlighterCss, Forms, Controls,
   Graphics, Dialogs, StdCtrls,
   LCLType, Menus,
-  sard;
+  sardScripts;
 
 type
 
@@ -59,10 +59,10 @@ end;
 
 procedure TForm1.Build;
 var
-  aRun: TsardRun;
+  aRun: TCodeScript;
 begin
   Save;
-  aRun := TsardRun.Create;
+  aRun := TCodeScript.Create;
   try
     aRun.Compile(InputEdit.Lines);
   finally
@@ -103,11 +103,11 @@ end;
 
 procedure TForm1.Run;
 var
-  aRun: TsardRun;
+  aRun: TCodeScript;
 begin
   ResultEdit.Text := '';
   Save;
-  aRun := TsardRun.Create;
+  aRun := TCodeScript.Create;
   try
     aRun.Compile(InputEdit.Lines);
     aRun.Run;

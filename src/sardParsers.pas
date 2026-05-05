@@ -739,8 +739,8 @@ end;
 
 destructor TCollector.Destroy;
 begin
-  inherited;
   FreeAndNil(FController);
+  inherited;
 end;
 
 procedure TCollector.SetToken(Token: TSardToken);

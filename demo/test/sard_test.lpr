@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Classes,
-  Forms, main, sard, sardScanners, sardObjects, sardClasses;
+  Forms, main, sardScripts, sardObjects, sardClasses;
 
 {$R *.res}
 

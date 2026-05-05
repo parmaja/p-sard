@@ -39,7 +39,7 @@
         <PackageName Value="LCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="6">
+    <Units Count="2">
       <Unit0>
         <Filename Value="sard_test.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -52,26 +52,6 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="main"/>
       </Unit1>
-      <Unit2>
-        <Filename Value="..\..\src\sard.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="sard"/>
-      </Unit2>
-      <Unit3>
-        <Filename Value="..\..\src\sardObjects.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="sardObjects"/>
-      </Unit3>
-      <Unit4>
-        <Filename Value="..\..\src\sardScanners.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="sardScanners"/>
-      </Unit4>
-      <Unit5>
-        <Filename Value="..\..\src\sardClasses.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="sardClasses"/>
-      </Unit5>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -165,6 +165,7 @@ begin
   if not Resume then
   begin
     Column := Column + Length(openSymbol);
+    Started := Started + Length(openSymbol);
   end;
 
   while (IndexInStr(Column, Text)) do

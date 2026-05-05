@@ -228,10 +228,12 @@ type
   TCodeScript = class(TSardObject)
   protected
     procedure RegisterStandard;
+    function GetResult: string;
   public
     Main: TMain_Node;
     Scanner: TScanner;
     RegisterInternals: Boolean;
+    constructor Create; override;
     destructor Destroy; override;
     procedure Init;
     procedure Compile(Lines: TStringList); overload;
@@ -239,6 +241,7 @@ type
     procedure Run;
     procedure ExportToFile(FileName: string);
     procedure ExportToConsole;
+    property Result: string read GetResult;
   end;
 
 implementation
@@ -289,9 +292,9 @@ begin
       begin
           //TODO text = //need function doing escapes
           if (text = '\n') then
-            text := #13
-          else if (text = '\r') then
             text := #10
+          else if (text = '\r') then
+            text := #13
           else if (text = '\"') then
             text := '"'
           else if (text = '\''') then
@@ -445,7 +448,7 @@ end;
 
 constructor TCodeParser.Create(ALexer: TLexer; AStatements: TStatements);
 begin
-  inherited Create(False); //TODO Check if own
+  inherited Create(True); // Own the collectors
   ControlEnd := TSardControl.Create('', ctlEnd, '');
   Lexer := ALexer;
   if (AStatements = nil) then
@@ -474,6 +477,20 @@ begin
 end;
 
 { TSardScript }
+
+constructor TCodeScript.Create;
+begin
+  inherited;
+  RegisterInternals := True;
+end;
+
+function TCodeScript.GetResult: string;
+begin
+  if (Main <> nil) and (Main.Value <> nil) then
+    Result := Main.Value.AsText
+  else
+    Result := '';
+end;
 
 destructor TCodeScript.Destroy;
 begin
@@ -1026,7 +1043,7 @@ end;
 function TInstruction.SetInstance(AIdentifier: string): TInstance_Node;
 begin
   if (Identifier = '') then
-      RaiseError('Identifier is already set');
+      RaiseError('Identifier is not set');
   Result := TInstance_Node.Create;
   Result.Name := AIdentifier;
   InternalSetObject(Result);

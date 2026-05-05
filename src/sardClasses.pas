@@ -306,7 +306,7 @@ end;
 procedure TSardStack<_Node_>.SetCurrentNode(vNode: _Node_; vOwnIt: Boolean);
 begin
   if Top = nil then
-    RaiseError('Can'' set to current is nil');
+    RaiseError('Can''t set current to nil');
   Top.SetObject(vNode, vOwnIt);
 end;
 
