@@ -127,7 +127,6 @@ type
   public
     constructor Create; overload; virtual;
     destructor Destroy; override;
-    procedure AfterConstruction; override;
     function Operate(AObject: TNode): Boolean;
     function Execute(Data: TRunData; Env: TRunEnv; Defines: TDefines = nil; Arguments: TStatements = nil; Blocks: TStatements = nil): Boolean;
     property Parent: TNode read FParent write SetParent;
@@ -275,6 +274,7 @@ type
     procedure AfterExecute(Data: TRunData; Env: TRunEnv); override;
   public
     Value: TNode;
+    destructor Destroy; override;
     procedure ExportWrite(Writer: TSerializer; LastOne: Boolean; Level: Integer); override;
   end;
 

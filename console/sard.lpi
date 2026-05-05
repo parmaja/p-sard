@@ -68,10 +68,10 @@
     </RunParams>
     <RequiredPackages>
       <Item>
-        <PackageName Value="MiniLib"/>
+        <PackageName Value="SardLib"/>
       </Item>
       <Item>
-        <PackageName Value="Sard"/>
+        <PackageName Value="MiniLib"/>
       </Item>
       <Item>
         <PackageName Value="LCL"/>

@@ -233,7 +233,7 @@ type
     Main: TMain_Node;
     Scanner: TScanner;
     RegisterInternals: Boolean;
-    constructor Create; override;
+    constructor Create; virtual;
     destructor Destroy; override;
     procedure Init;
     procedure Compile(Lines: TStringList); overload;

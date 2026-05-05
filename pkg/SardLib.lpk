@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
-  <Package Version="4">
+  <Package Version="5">
     <PathDelim Value="\"/>
     <Name Value="SardLib"/>
     <Author Value="Zaher Dirkey, zaher@github"/>
@@ -37,16 +37,14 @@
         <UnitName Value="sardStandards"/>
       </Item5>
     </Files>
-    <RequiredPkgs Count="3">
+    <CompatibilityMode Value="True"/>
+    <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="MiniSockets"/>
       </Item1>
       <Item2>
-        <PackageName Value="MiniCommons"/>
-      </Item2>
-      <Item3>
         <PackageName Value="FCL"/>
-      </Item3>
+      </Item2>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>
